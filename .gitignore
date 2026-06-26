@@ -43,6 +43,11 @@ ScaffoldingReadMe.txt
 ~$*
 *~
 CodeCoverage/
+.vs/
+
+# Node/Vite frontend
+node_modules/
+dist/
 
 # MSBuild Binary and Structured Log
 *.binlog
