@@ -22,6 +22,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -100,6 +101,29 @@ h1 {
   flex-wrap: wrap;
 }
 
+.mode-label {
+  align-self: center;
+  color: #53606c;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.mode-select {
+  min-height: 40px;
+  max-width: 210px;
+  padding: 0 10px;
+  border: 1px solid #c9d1d9;
+  border-radius: 6px;
+  color: #202124;
+  background: #ffffff;
+  font-weight: 700;
+}
+
+.mode-select:focus {
+  border-color: #1f6f68;
+  outline: 3px solid rgb(31 111 104 / 18%);
+}
+
 .save-status {
   min-height: 28px;
   padding: 5px 10px;
@@ -158,6 +182,35 @@ h1 {
   min-height: 420px;
 }
 
+#editor-host {
+  min-width: 0;
+}
+
+.markdown-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid #c9d1d9;
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  background: #ffffff;
+}
+
+.markdown-toolbar button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid #d7dde3;
+  border-radius: 5px;
+  color: #202124;
+  background: #f7f8fa;
+  font-size: 0.82rem;
+}
+
+.markdown-toolbar button:hover {
+  background: #e9edf1;
+}
+
 .tox.tox-tinymce {
   border-color: #c9d1d9;
   border-radius: 8px;
@@ -167,6 +220,24 @@ h1 {
 .tox .tox-toolbar__overflow,
 .tox .tox-toolbar__primary {
   background: #ffffff;
+}
+
+.toastui-editor-defaultUI,
+.tui-editor-defaultUI {
+  border-color: #c9d1d9;
+  border-radius: 8px;
+}
+
+.toastui-editor-defaultUI-toolbar,
+.tui-editor-defaultUI-toolbar {
+  border-radius: 8px 8px 0 0;
+}
+
+.toastui-editor-contents,
+.tui-editor-contents {
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
 }
 
 .removed-image-note {
@@ -193,12 +264,17 @@ h1 {
   }
 
   .app-actions {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: auto 1fr;
   }
 
   .save-status {
     grid-column: 1 / -1;
     width: max-content;
+  }
+
+  .mode-select,
+  .app-actions button {
+    width: 100%;
   }
 }
 

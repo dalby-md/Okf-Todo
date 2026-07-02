@@ -18,5 +18,9 @@ public sealed class Issue
 
     public string BodyHtml { get; set; } = string.Empty;
 
+    public string BodyMarkdown { get; set; } = string.Empty;
+
+    public string EditorMode { get; set; } = "html";
+
     public List<ImageAsset> Images { get; set; } = [];
 }

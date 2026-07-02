@@ -15,6 +15,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(issue => issue.Title).IsRequired();
             entity.Property(issue => issue.Status).IsRequired();
             entity.Property(issue => issue.BodyHtml).IsRequired();
+            entity.Property(issue => issue.BodyMarkdown).IsRequired();
+            entity.Property(issue => issue.EditorMode).IsRequired();
             entity.Property(issue => issue.CreatedUtc).IsRequired();
             entity.Property(issue => issue.ModifiedUtc).IsRequired();
 

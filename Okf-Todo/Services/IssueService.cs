@@ -22,6 +22,8 @@ public sealed class IssueService(AppDbContext dbContext, HtmlSanitizerService ht
             Status = "Open",
             Priority = 0,
             BodyHtml = "<p>Start writing your text here.</p>",
+            BodyMarkdown = "Start writing your text here.",
+            EditorMode = "html",
             CreatedUtc = now,
             ModifiedUtc = now
         };
@@ -58,11 +60,20 @@ public sealed class IssueService(AppDbContext dbContext, HtmlSanitizerService ht
         issue.Priority = request.Priority;
         issue.DueUtc = request.DueUtc;
         issue.BodyHtml = htmlSanitizer.Sanitize(request.BodyHtml ?? string.Empty);
+        issue.BodyMarkdown = request.BodyMarkdown ?? string.Empty;
+        issue.EditorMode = NormalizeEditorMode(request.EditorMode);
         issue.ModifiedUtc = now;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return IssueDto.FromIssue(issue);
+    }
+
+    private static string NormalizeEditorMode(string? editorMode)
+    {
+        return string.Equals(editorMode, "markdown", StringComparison.OrdinalIgnoreCase)
+            ? "markdown"
+            : "html";
     }
 }
 
@@ -74,7 +85,9 @@ public sealed record IssueDto(
     DateTime? DueUtc,
     DateTime CreatedUtc,
     DateTime ModifiedUtc,
-    string BodyHtml)
+    string BodyHtml,
+    string BodyMarkdown,
+    string EditorMode)
 {
     public static IssueDto FromIssue(Issue issue)
     {
@@ -86,7 +99,9 @@ public sealed record IssueDto(
             issue.DueUtc,
             issue.CreatedUtc,
             issue.ModifiedUtc,
-            issue.BodyHtml);
+            issue.BodyHtml,
+            issue.BodyMarkdown,
+            issue.EditorMode);
     }
 }
 
@@ -96,7 +111,9 @@ public sealed record IssueSaveRequest(
     string? Status,
     int Priority,
     DateTime? DueUtc,
-    string? BodyHtml);
+    string? BodyHtml,
+    string? BodyMarkdown,
+    string? EditorMode);
 
 public sealed record IssueGetRequest(int Id);
 

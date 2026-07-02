@@ -62,6 +62,10 @@ namespace Photino.Okf_Todo.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("BodyMarkdown")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("TEXT");
 
@@ -69,6 +73,10 @@ namespace Photino.Okf_Todo.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("ModifiedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EditorMode")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Priority")
