@@ -1,6 +1,6 @@
 :root {
   color: #202124;
-  background: #f4f1ea;
+  background: #f7f8fa;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -21,11 +21,14 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
 button {
+  min-height: 40px;
+  padding: 0 16px;
   border: 0;
   border-radius: 6px;
   color: #ffffff;
@@ -34,24 +37,36 @@ button {
   font-weight: 700;
 }
 
-button:hover {
+button:hover:not(:disabled) {
   background: #155c56;
 }
 
-.app-shell {
-  display: grid;
-  min-height: 100vh;
-  padding: 32px;
-  place-items: center;
+button:disabled {
+  cursor: wait;
+  opacity: 0.55;
 }
 
-.todo-panel {
-  width: min(100%, 680px);
-  padding: 28px;
-  border: 1px solid #ddd6c8;
-  border-radius: 8px;
-  background: #fffdf8;
-  box-shadow: 0 24px 60px rgb(49 44 36 / 12%);
+.secondary-button {
+  color: #26514d;
+  background: #dbe9e6;
+}
+
+.secondary-button:hover:not(:disabled) {
+  background: #c9ddd9;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.editor-panel {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 10px;
+  max-width: 1120px;
+  min-height: calc(100vh - 48px);
+  margin: 0 auto;
 }
 
 .app-header {
@@ -59,13 +74,13 @@ button:hover {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 8px;
 }
 
 .eyebrow {
   margin: 0 0 4px;
-  color: #6b6356;
-  font-size: 0.8rem;
+  color: #5f6872;
+  font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -77,111 +92,130 @@ h1 {
   line-height: 1.1;
 }
 
-.todo-count {
-  flex: 0 0 auto;
-  padding: 6px 10px;
+.app-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.save-status {
+  min-height: 28px;
+  padding: 5px 10px;
   border-radius: 999px;
-  color: #1f6f68;
-  background: #e4f1ee;
+  color: #53606c;
+  background: #e9edf1;
   font-size: 0.875rem;
   font-weight: 700;
 }
 
-.todo-form {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
-  margin-bottom: 20px;
+.save-status.is-ready {
+  color: #26514d;
+  background: #dbe9e6;
 }
 
-.todo-form input {
-  min-width: 0;
-  padding: 12px 14px;
-  border: 1px solid #cfc7b7;
-  border-radius: 6px;
-  color: #202124;
-  background: #ffffff;
+.save-status.is-dirty {
+  color: #7b5100;
+  background: #fff1c7;
 }
 
-.todo-form button {
-  min-width: 84px;
-  padding: 0 18px;
+.save-status.is-saved {
+  color: #1f5d35;
+  background: #dff1e4;
 }
 
-.empty-state {
-  margin: 16px 0 0;
-  color: #6b6356;
-}
-
-.todo-list {
-  display: grid;
-  gap: 8px;
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-
-.todo-item {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 12px;
-  min-height: 48px;
-  padding: 10px 12px;
-  border: 1px solid #e6dfd1;
-  border-radius: 6px;
-  background: #ffffff;
-}
-
-.todo-item input {
-  width: 18px;
-  height: 18px;
-  accent-color: #1f6f68;
-}
-
-.todo-text {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.todo-item.is-done .todo-text {
-  color: #777064;
-  text-decoration: line-through;
-}
-
-.icon-button {
-  padding: 8px 10px;
+.save-status.is-error {
   color: #8f2f23;
   background: #f8e7e2;
 }
 
-.icon-button:hover {
-  background: #f1d0c7;
+.field-label {
+  margin-top: 8px;
+  color: #3f4852;
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
-@media (max-width: 520px) {
+.title-input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #c9d1d9;
+  border-radius: 6px;
+  color: #202124;
+  background: #ffffff;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.title-input:focus {
+  border-color: #1f6f68;
+  outline: 3px solid rgb(31 111 104 / 18%);
+}
+
+#text-body {
+  min-height: 420px;
+}
+
+.tox.tox-tinymce {
+  border-color: #c9d1d9;
+  border-radius: 8px;
+}
+
+.tox .tox-toolbar,
+.tox .tox-toolbar__overflow,
+.tox .tox-toolbar__primary {
+  background: #ffffff;
+}
+
+.removed-image-note {
+  padding: 10px 12px;
+  border: 1px dashed #c9d1d9;
+  border-radius: 6px;
+  color: #53606c;
+  background: #f1f4f7;
+}
+
+@media (max-width: 640px) {
   .app-shell {
-    padding: 18px;
+    padding: 16px;
   }
 
-  .todo-panel {
-    padding: 20px;
+  .editor-panel {
+    min-height: calc(100vh - 32px);
   }
 
   .app-header,
-  .todo-form {
+  .app-actions {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .app-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .save-status {
+    grid-column: 1 / -1;
+    width: max-content;
+  }
+}
+
+@media (max-width: 380px) {
+  .app-shell {
+    padding: 12px;
+  }
+
+  h1 {
+    font-size: 1.7rem;
+  }
+
+  .app-actions {
     grid-template-columns: 1fr;
   }
 
-  .app-header {
-    display: grid;
-  }
-
-  .todo-count {
-    width: max-content;
-  }
-
-  .todo-form button {
-    min-height: 44px;
+  .save-status {
+    width: 100%;
   }
 }

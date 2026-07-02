@@ -1,10 +1,7 @@
-\---
-
+---
 name: photino-diagnostics
-
 description: Use when a Photino.NET app fails to build, start, load assets, show the UI, communicate between JavaScript and .NET, or behaves differently after publish.
-
-\---
+---
 
 
 
@@ -12,65 +9,72 @@ Diagnose in this order:
 
 
 
-1\. Build problem:
+1. Build problem:
 
-&#x20;  - inspect .csproj
+  - inspect .csproj
 
-&#x20;  - inspect target framework, runtime identifiers, copied content files
+  - inspect target framework, runtime identifiers, copied content files
 
-&#x20;  - run dotnet restore and dotnet build
-
-
-
-2\. Startup problem:
-
-&#x20;  - inspect Program/startup code
-
-&#x20;  - inspect Photino window configuration
-
-&#x20;  - inspect working directory assumptions
-
-&#x20;  - inspect asset path resolution
+  - run dotnet restore and dotnet build
 
 
 
-3\. UI loading problem:
+2. Startup problem:
 
-&#x20;  - verify HTML/CSS/JS files are copied to output/publish
+  - inspect Program/startup code
 
-&#x20;  - verify relative paths
+  - inspect Photino window configuration
 
-&#x20;  - verify app starts from the expected working directory
+  - inspect working directory assumptions
 
-
-
-4\. JavaScript/.NET bridge problem:
-
-&#x20;  - inspect message names and payload shape
-
-&#x20;  - check serialization assumptions
-
-&#x20;  - add targeted ILogger logs around send/receive points
+  - inspect asset path resolution
 
 
 
-5\. Publish problem:
+3. UI loading problem:
 
-&#x20;  - compare bin output with publish output
+  - verify HTML/CSS/JS files are copied to output/publish
 
-&#x20;  - verify content files have CopyToOutputDirectory / CopyToPublishDirectory where needed
+  - verify relative paths
 
-&#x20;  - verify RID-specific behavior
+  - verify app starts from the expected working directory
+
+  - for a blank window with a static server running:
+    - `localhost` is normal for Photino.NET apps using `Photino.NET.Server`; it is the local loopback static file server
+    - if logs show `PhotinoWindow.Load(url)` but no HTTP request for that URL, suspect WebView navigation hang rather than missing files
+    - add or verify a startup readiness probe: start `CreateStaticFileServer`, request `/index.html` with `HttpClient`, then create/load the Photino window
+    - if navigation is intermittent, load a cache-busted URL such as `/index.html?v=<timestamp>`
+    - expected healthy sequence: server logs `GET /index.html` for readiness, `PhotinoWindow.Load(http://localhost:port/index.html?v=...)`, server logs `GET /index.html?v=...`, server logs JS/CSS asset requests, app-specific bridge logs appear if a bridge is used
+
+
+
+4. JavaScript/.NET bridge problem:
+
+  - inspect message names and payload shape
+
+  - check serialization assumptions
+
+  - add targeted ILogger logs around send/receive points
+
+
+
+5. Publish problem:
+
+  - compare bin output with publish output
+
+  - verify content files have CopyToOutputDirectory / CopyToPublishDirectory where needed
+
+  - verify RID-specific behavior
 
 
 
 Always produce:
 
-\- most likely cause
+- most likely cause
 
-\- exact file/setting to inspect
+- exact file/setting to inspect
 
-\- minimal fix
+- minimal fix
 
-\- command to verify
+- command to verify
 
