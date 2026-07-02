@@ -150,10 +150,6 @@
     }
   }
 
-  function getEditor() {
-    return window.tinymce ? window.tinymce.get('text-body') : null
-  }
-
   function renderShell() {
     $('#app').html(`
       <main class="app-shell">
@@ -251,16 +247,25 @@
 
   async function createImageFromFile(file) {
     const base64Data = await fileToBase64(file)
+    const dataUrl = `data:${file.type};base64,${base64Data}`
+    const existingAppSrc = editorImageSources.get(dataUrl)
+
+    if (existingAppSrc) {
+      return {
+        dataUrl,
+        appSrc: existingAppSrc
+      }
+    }
+
     const result = await sendBridgeMessage('image.create', {
       issueId,
-      filename: file.name,
+      filename: file.name || 'image',
       mimeType: file.type,
       base64Data,
       width: null,
       height: null
     })
 
-    const dataUrl = `data:${file.type};base64,${base64Data}`
     editorImageSources.set(dataUrl, result.src)
 
     return {
@@ -269,44 +274,65 @@
     }
   }
 
-  function insertImageFromFile(callback) {
+  function pickImageFromFile(existingFile) {
     const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/png,image/jpeg,image/gif,image/webp'
 
-    input.addEventListener('change', async function () {
-      const file = input.files && input.files[0]
-
-      if (!file) {
+    return new Promise(function (resolve, reject) {
+      if (existingFile) {
+        createImageFromFile(existingFile)
+          .then(function (image) {
+            resolve({
+              src: image.dataUrl,
+              attributes: {
+                alt: existingFile.name || '',
+                'data-app-src': image.appSrc
+              }
+            })
+          })
+          .catch(reject)
         return
       }
 
-      try {
-        setStatus('Saving image', 'ready')
-        const image = await createImageFromFile(file)
-        callback(image.dataUrl, {
-          alt: file.name,
-          'data-app-src': image.appSrc
-        })
-        markDirty()
-      } catch (error) {
-        setStatus(error.message || 'Could not save image', 'error')
-      }
-    })
+      input.type = 'file'
+      input.accept = 'image/png,image/jpeg,image/gif,image/webp'
 
-    input.click()
+      input.addEventListener('change', async function () {
+        const file = input.files && input.files[0]
+
+        if (!file) {
+          resolve(null)
+          return
+        }
+
+        try {
+          setStatus('Saving image', 'ready')
+          const image = await createImageFromFile(file)
+          markDirty()
+          resolve({
+            src: image.dataUrl,
+            attributes: {
+              alt: file.name,
+              'data-app-src': image.appSrc
+            }
+          })
+        } catch (error) {
+          setStatus(error.message || 'Could not save image', 'error')
+          reject(error)
+        }
+      })
+
+      input.click()
+    })
   }
 
   async function saveDocument() {
-    const editor = getEditor()
-
-    if (!editor || !currentIssue) {
+    if (!isEditorReady || !currentIssue) {
       setStatus('Editor is still loading', 'error')
       return
     }
 
     const title = $('#text-title').val().toString().trim() || defaultTitle
-    const bodyHtml = normalizeImagesForSave(editor.getContent({ format: 'html' }))
+    const bodyHtml = normalizeImagesForSave(window.Editor.getHtml())
 
     try {
       const issue = await sendBridgeMessage('issue.save', {
@@ -320,7 +346,7 @@
 
       currentIssue = issue
       $('#text-title').val(issue.title)
-      editor.setDirty(false)
+      window.Editor.markClean()
       setStatus('Saved to SQLite', 'saved')
     } catch (error) {
       setStatus(error.message || 'Could not save document', 'error')
@@ -332,13 +358,10 @@
       return
     }
 
-    const editor = getEditor()
     $('#text-title').val(defaultTitle)
 
-    if (editor) {
-      editor.setContent(defaultBody)
-      editor.setDirty(false)
-    }
+    window.Editor.load(defaultBody)
+    window.Editor.markClean()
 
     currentIssue = await sendBridgeMessage('issue.save', {
       id: issueId,
@@ -353,8 +376,8 @@
   }
 
   async function initializeEditor() {
-    if (!window.tinymce) {
-      setStatus('TinyMCE did not load', 'error')
+    if (!window.Editor) {
+      setStatus('Editor service did not load', 'error')
       return
     }
 
@@ -365,38 +388,17 @@
     $('#text-title').val(currentIssue.title || defaultTitle)
     $('#text-body').val(await resolveStoredImages(currentIssue.bodyHtml || defaultBody))
 
-    await window.tinymce.init({
+    window.Editor.onChanged(markDirty)
+    await window.Editor.initialize({
       selector: '#text-body',
-      base_url: '/tinymce',
-      suffix: '.min',
-      license_key: 'gpl',
-      menubar: false,
-      branding: false,
-      promotion: false,
-      plugins: 'autoresize code image link lists table',
-      toolbar:
-        'undo redo | blocks | bold italic underline | bullist numlist | blockquote | link image table | code',
-      automatic_uploads: true,
-      file_picker_types: 'image',
-      file_picker_callback: insertImageFromFile,
-      images_upload_handler: async function (blobInfo) {
-        const image = await createImageFromFile(blobInfo.blob())
-        return image.dataUrl
-      },
-      min_height: 420,
-      autoresize_bottom_margin: 0,
-      content_style:
+      baseUrl: '/tinymce',
+      minHeight: 420,
+      contentStyle:
         'body { color: #202124; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.55; }',
-      setup: function (editor) {
-        editor.on('change keyup undo redo setcontent', markDirty)
-      }
+      onPickImage: pickImageFromFile
     })
 
-    const editor = getEditor()
-    if (editor) {
-      editor.setDirty(false)
-    }
-
+    window.Editor.markClean()
     isEditorReady = true
     $('#save-button').prop('disabled', false)
     setStatus('Loaded from SQLite', 'ready')
