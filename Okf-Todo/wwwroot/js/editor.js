@@ -152,6 +152,29 @@
     editor.insertText(text)
   }
 
+  function icon(name) {
+    const icons = {
+      undo: '<path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-15-6.7L3 13"></path>',
+      redo: '<path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 15-6.7l3 2.7"></path>',
+      heading: '<path d="M6 4v16"></path><path d="M18 4v16"></path><path d="M6 12h12"></path>',
+      bold: '<path d="M7 4h6a4 4 0 0 1 0 8H7z"></path><path d="M7 12h7a4 4 0 0 1 0 8H7z"></path>',
+      italic: '<path d="M19 4h-9"></path><path d="M14 20H5"></path><path d="M15 4 9 20"></path>',
+      ul: '<path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path>',
+      ol: '<path d="M10 6h11"></path><path d="M10 12h11"></path><path d="M10 18h11"></path><path d="M4 6h1v4"></path><path d="M4 10h2"></path><path d="M4 14h2l-2 4h2"></path>',
+      quote: '<path d="M3 21c3 0 7-1 7-8V5H4v8h3c0 3-1 5-4 5z"></path><path d="M14 21c3 0 7-1 7-8V5h-6v8h3c0 3-1 5-4 5z"></path>',
+      link: '<path d="M10 13a5 5 0 0 0 7.1 0l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"></path><path d="M14 11a5 5 0 0 0-7.1 0l-2 2a5 5 0 0 0 7.1 7.1l1.1-1.1"></path>',
+      image: '<rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="8.5" cy="10.5" r="1.5"></circle><path d="m21 15-5-5L5 21"></path>',
+      table: '<rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 10h18"></path><path d="M9 4v16"></path><path d="M15 4v16"></path>',
+      code: '<path d="m8 9-4 3 4 3"></path><path d="m16 9 4 3-4 3"></path><path d="m14 4-4 16"></path>'
+    }
+
+    return `<svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name]}</svg>`
+  }
+
+  function toolbarButton(command, label, iconName) {
+    return `<button type="button" data-markdown-command="${command}" title="${label}" aria-label="${label}">${icon(iconName)}<span class="sr-only">${label}</span></button>`
+  }
+
   function destroyActiveAdapter() {
     if (!activeAdapter) {
       return
@@ -277,18 +300,18 @@
 
     host.innerHTML = `
       <div class="markdown-toolbar" aria-label="Markdown formatting">
-        <button type="button" data-markdown-command="undo">Undo</button>
-        <button type="button" data-markdown-command="redo">Redo</button>
-        <button type="button" data-markdown-command="heading">H</button>
-        <button type="button" data-markdown-command="bold">B</button>
-        <button type="button" data-markdown-command="italic">I</button>
-        <button type="button" data-markdown-command="ul">List</button>
-        <button type="button" data-markdown-command="ol">1.</button>
-        <button type="button" data-markdown-command="quote">Quote</button>
-        <button type="button" data-markdown-command="link">Link</button>
-        <button type="button" data-markdown-command="image">Image</button>
-        <button type="button" data-markdown-command="table">Table</button>
-        <button type="button" data-markdown-command="code">Code</button>
+        ${toolbarButton('undo', 'Undo', 'undo')}
+        ${toolbarButton('redo', 'Redo', 'redo')}
+        ${toolbarButton('heading', 'Heading', 'heading')}
+        ${toolbarButton('bold', 'Bold', 'bold')}
+        ${toolbarButton('italic', 'Italic', 'italic')}
+        ${toolbarButton('ul', 'Bulleted list', 'ul')}
+        ${toolbarButton('ol', 'Numbered list', 'ol')}
+        ${toolbarButton('quote', 'Quote', 'quote')}
+        ${toolbarButton('link', 'Link', 'link')}
+        ${toolbarButton('image', 'Image', 'image')}
+        ${toolbarButton('table', 'Table', 'table')}
+        ${toolbarButton('code', 'Code', 'code')}
       </div>
       <div id="markdown-body"></div>
     `

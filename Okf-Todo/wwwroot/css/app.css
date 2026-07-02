@@ -186,10 +186,21 @@ h1 {
   min-width: 0;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .markdown-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   padding: 8px;
   border: 1px solid #c9d1d9;
   border-bottom: 0;
@@ -198,17 +209,30 @@ h1 {
 }
 
 .markdown-toolbar button {
-  min-height: 32px;
-  padding: 0 10px;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
   border: 1px solid #d7dde3;
   border-radius: 5px;
   color: #202124;
   background: #f7f8fa;
-  font-size: 0.82rem;
 }
 
 .markdown-toolbar button:hover {
   background: #e9edf1;
+}
+
+.markdown-toolbar button:focus-visible {
+  border-color: #1f6f68;
+  outline: 3px solid rgb(31 111 104 / 18%);
+}
+
+.toolbar-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .tox.tox-tinymce {
