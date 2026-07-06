@@ -167,11 +167,14 @@ internal sealed class TestDatabase : IAsyncDisposable
         this.loggerFactory = loggerFactory;
         DbContext = dbContext;
         Lifecycle = new TaskLifecycleService(DbContext, loggerFactory.CreateLogger<TaskLifecycleService>());
+        Tasks = new TaskService(DbContext, Lifecycle);
     }
 
     public AppDbContext DbContext { get; }
 
     public TaskLifecycleService Lifecycle { get; }
+
+    public TaskService Tasks { get; }
 
     public static async Task<TestDatabase> CreateAsync()
     {

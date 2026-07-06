@@ -151,11 +151,24 @@
       .text(message)
   }
 
+  function getErrorMessage(error, fallback) {
+    return error && error.message ? error.message : fallback
+  }
+
+  function setFieldInvalid(selector, isInvalid) {
+    $(selector).toggleClass('is-invalid', isInvalid)
+  }
+
+  function clearValidationState() {
+    $('#task-title, #task-type').removeClass('is-invalid')
+  }
+
   function markDirty() {
     if (!isEditorReady) {
       return
     }
 
+    clearValidationState()
     isDirty = true
     setStatus('Unsaved changes', 'dirty')
   }
@@ -285,10 +298,14 @@
     $(`.view-tab[data-view="${currentView}"]`).addClass('is-active')
 
     if (visibleTasks.length === 0) {
+      const hasSearch = query.length > 0
+      const title = hasSearch ? 'No matching tasks' : `No ${viewLabels[currentView].toLowerCase()} tasks`
+      const detail = hasSearch ? 'Adjust the search text' : 'Create a task or switch view'
+
       $('#task-list').html(`
         <div class="empty-list">
-          <strong>No tasks yet</strong>
-          <span>Create your first task</span>
+          <strong>${encodeText(title)}</strong>
+          <span>${encodeText(detail)}</span>
         </div>
       `)
       return
@@ -373,6 +390,7 @@
   async function renderTaskEditor(task) {
     currentTask = task
     isDirty = false
+    clearValidationState()
 
     $('#task-editor-title').text(task.id ? task.title : 'New task')
     $('#task-status-label').text(task.taskStatusName || 'Draft')
@@ -451,25 +469,35 @@
       return
     }
 
+    clearValidationState()
     const payload = getTaskPayload()
     if (!payload.title) {
+      setFieldInvalid('#task-title', true)
       setStatus('Title is required', 'error')
       $('#task-title').trigger('focus')
       return
     }
 
     if (!payload.taskTypeCode) {
+      setFieldInvalid('#task-type', true)
       setStatus('Task type is required', 'error')
       $('#task-type').trigger('focus')
       return
     }
 
     setStatus('Saving', 'ready')
-    const savedTask = await sendBridgeMessage(currentTask.id ? 'task.update' : 'task.create', payload)
-    await renderTaskEditor(savedTask)
-    await loadTasks({ keepSelection: true })
-    isDirty = false
-    setStatus('Saved', 'saved')
+    $('#save-button').prop('disabled', true)
+
+    try {
+      const savedTask = await sendBridgeMessage(currentTask.id ? 'task.update' : 'task.create', payload)
+      await renderTaskEditor(savedTask)
+      await loadTasks({ keepSelection: true })
+      isDirty = false
+      setStatus('Saved', 'saved')
+    } catch (error) {
+      $('#save-button').prop('disabled', false)
+      throw error
+    }
   }
 
   async function runLifecycleAction(type) {
@@ -493,7 +521,7 @@
     $('#task-list').on('click', '.task-row', function () {
       const taskId = Number($(this).attr('data-task-id'))
       selectTask(taskId).catch(function (error) {
-        setStatus(error.message || 'Could not load task', 'error')
+        setStatus(getErrorMessage(error, 'Could not load task'), 'error')
       })
     })
 
@@ -507,22 +535,22 @@
     $('#task-form').on('input change', 'input, select', markDirty)
     $('#save-button').on('click', function () {
       saveTask().catch(function (error) {
-        setStatus(error.message || 'Could not save task', 'error')
+        setStatus(getErrorMessage(error, 'Could not save task'), 'error')
       })
     })
     $('#start-button').on('click', function () {
       runLifecycleAction('task.start').catch(function (error) {
-        setStatus(error.message || 'Could not start task', 'error')
+        setStatus(getErrorMessage(error, 'Could not start task'), 'error')
       })
     })
     $('#complete-button').on('click', function () {
       runLifecycleAction('task.complete').catch(function (error) {
-        setStatus(error.message || 'Could not complete task', 'error')
+        setStatus(getErrorMessage(error, 'Could not complete task'), 'error')
       })
     })
     $('#cancel-button').on('click', function () {
       runLifecycleAction('task.cancel').catch(function (error) {
-        setStatus(error.message || 'Could not cancel task', 'error')
+        setStatus(getErrorMessage(error, 'Could not cancel task'), 'error')
       })
     })
 

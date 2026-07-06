@@ -65,6 +65,12 @@ select:focus {
   outline: 3px solid rgb(31 111 104 / 18%);
 }
 
+input.is-invalid,
+select.is-invalid {
+  border-color: #b42318;
+  outline: 3px solid rgb(180 35 24 / 14%);
+}
+
 .secondary-button {
   color: #26514d;
   background: #dbe9e6;
