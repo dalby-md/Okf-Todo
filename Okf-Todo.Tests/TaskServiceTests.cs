@@ -92,7 +92,19 @@ public sealed class TaskServiceTests
         var started = await database.Tasks.StartAsync(created.Id, CancellationToken.None);
         Assert.Equal(TaskStatusCodes.Active, started.TaskStatusCode);
 
+        var startUndone = await database.Tasks.UndoStartAsync(created.Id, CancellationToken.None);
+        Assert.Equal(TaskStatusCodes.New, startUndone.TaskStatusCode);
+
+        started = await database.Tasks.StartAsync(created.Id, CancellationToken.None);
+        Assert.Equal(TaskStatusCodes.Active, started.TaskStatusCode);
+
         var completed = await database.Tasks.CompleteAsync(created.Id, CancellationToken.None);
+        Assert.Equal(TaskStatusCodes.Completed, completed.TaskStatusCode);
+
+        var reopened = await database.Tasks.ReopenAsync(created.Id, CancellationToken.None);
+        Assert.Equal(TaskStatusCodes.Active, reopened.TaskStatusCode);
+
+        completed = await database.Tasks.CompleteAsync(created.Id, CancellationToken.None);
         Assert.Equal(TaskStatusCodes.Completed, completed.TaskStatusCode);
 
         var cancellable = await database.Tasks.CreateAsync(CreateRequest("Task to cancel"), CancellationToken.None);

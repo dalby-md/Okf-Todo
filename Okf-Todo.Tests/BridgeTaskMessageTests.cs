@@ -60,6 +60,12 @@ public sealed class BridgeTaskMessageTests
         var started = await fixture.SendAsync("task.start", new { id = taskId });
         Assert.Equal(TaskStatusCodes.Active, started.GetProperty("taskStatusCode").GetString());
 
+        var startUndone = await fixture.SendAsync("task.undoStart", new { id = taskId });
+        Assert.Equal(TaskStatusCodes.New, startUndone.GetProperty("taskStatusCode").GetString());
+
+        started = await fixture.SendAsync("task.start", new { id = taskId });
+        Assert.Equal(TaskStatusCodes.Active, started.GetProperty("taskStatusCode").GetString());
+
         var waiting = await fixture.SendAsync("task.waiting.add", new
         {
             taskId,
@@ -74,6 +80,9 @@ public sealed class BridgeTaskMessageTests
 
         var completed = await fixture.SendAsync("task.complete", new { id = taskId });
         Assert.Equal(TaskStatusCodes.Completed, completed.GetProperty("taskStatusCode").GetString());
+
+        var reopened = await fixture.SendAsync("task.reopen", new { id = taskId });
+        Assert.Equal(TaskStatusCodes.Active, reopened.GetProperty("taskStatusCode").GetString());
 
         var cancellable = await fixture.SendAsync("task.create", new
         {

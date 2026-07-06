@@ -74,6 +74,27 @@ public sealed class TaskLifecycleService(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UndoStartTaskAsync(int taskId, CancellationToken cancellationToken = default)
+    {
+        var task = await GetTaskWithStatusAsync(taskId, cancellationToken);
+
+        if (task.TaskStatus?.Code != TaskStatusCodes.Active)
+        {
+            throw new ValidationException("Only active tasks can undo start.", "taskStatus");
+        }
+
+        var now = DateTime.UtcNow;
+        task.ActivatedAt = null;
+        task.CompletedAt = null;
+        task.CancelledAt = null;
+        task.WaitingSince = null;
+        task.UpdatedAt = now;
+
+        await ChangeStatusAsync(task, TaskStatusCodes.New, now, cancellationToken);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task AddWaitingForAsync(
         int taskId,
         TaskWaitingForRequest request,

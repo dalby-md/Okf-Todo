@@ -74,8 +74,12 @@ public sealed class BridgeMessageHandler(IServiceProvider services, ILogger<Brid
                 .UpdateAsync(GetPayload<TaskSaveRequest>(request), cancellationToken),
             "task.start" => await scopedServices.GetRequiredService<TaskService>()
                 .StartAsync(GetPayload<TaskIdRequest>(request).Id, cancellationToken),
+            "task.undoStart" => await scopedServices.GetRequiredService<TaskService>()
+                .UndoStartAsync(GetPayload<TaskIdRequest>(request).Id, cancellationToken),
             "task.complete" => await scopedServices.GetRequiredService<TaskService>()
                 .CompleteAsync(GetPayload<TaskIdRequest>(request).Id, cancellationToken),
+            "task.reopen" => await scopedServices.GetRequiredService<TaskService>()
+                .ReopenAsync(GetPayload<TaskIdRequest>(request).Id, cancellationToken),
             "task.cancel" => await scopedServices.GetRequiredService<TaskService>()
                 .CancelAsync(GetPayload<TaskIdRequest>(request).Id, cancellationToken),
             "task.waiting.add" => await scopedServices.GetRequiredService<TaskService>()

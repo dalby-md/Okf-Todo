@@ -70,6 +70,22 @@ public sealed class TaskLifecycleServiceTests
     }
 
     [Fact]
+    public async Task UndoStartTask_ChangesActiveTaskBackToNewAndLogsStatusChange()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var task = await database.CreateTaskAsync();
+        await database.Lifecycle.StartTaskAsync(task.Id);
+
+        await database.Lifecycle.UndoStartTaskAsync(task.Id);
+
+        var savedTask = await database.LoadTaskAsync(task.Id);
+
+        Assert.Equal(TaskStatusCodes.New, savedTask.TaskStatus?.Code);
+        Assert.Null(savedTask.ActivatedAt);
+        AssertHasLog(savedTask, TaskLogTypeCodes.StatusChanged, "Status changed from Active to New");
+    }
+
+    [Fact]
     public async Task AddWaitingFor_CreatesActiveWaitTargetSetsWaitingAndLogs()
     {
         await using var database = await TestDatabase.CreateAsync();

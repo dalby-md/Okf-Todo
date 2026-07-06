@@ -147,9 +147,21 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
         return await GetAsync(id, cancellationToken);
     }
 
+    public async Task<TaskDetailDto> UndoStartAsync(int id, CancellationToken cancellationToken)
+    {
+        await lifecycleService.UndoStartTaskAsync(id, cancellationToken);
+        return await GetAsync(id, cancellationToken);
+    }
+
     public async Task<TaskDetailDto> CompleteAsync(int id, CancellationToken cancellationToken)
     {
         await lifecycleService.CompleteTaskAsync(id, cancellationToken);
+        return await GetAsync(id, cancellationToken);
+    }
+
+    public async Task<TaskDetailDto> ReopenAsync(int id, CancellationToken cancellationToken)
+    {
+        await lifecycleService.ReopenTaskAsync(id, cancellationToken);
         return await GetAsync(id, cancellationToken);
     }
 

@@ -557,13 +557,18 @@
   function renderTaskHeaderAndActions(task) {
     const isSavedTask = !!task.id
     const isFinal = task.taskStatusCode === 'COMPLETED' || task.taskStatusCode === 'CANCELLED'
-    const canStart = isSavedTask && (task.taskStatusCode === 'NEW' || task.taskStatusCode === 'ACTIVE')
+    const canStartOrUndoStart = isSavedTask && (task.taskStatusCode === 'NEW' || task.taskStatusCode === 'ACTIVE')
+    const canReopen = isSavedTask && isFinal
     const canCompleteOrCancel = isSavedTask && !isFinal
 
     $('#task-editor-title').text(task.id ? task.title : 'New task')
     $('#task-status-label').text(task.taskStatusName || 'Draft')
-    $('#start-button').prop('disabled', !canStart)
-    $('#complete-button').prop('disabled', !canCompleteOrCancel)
+    $('#start-button')
+      .text(task.taskStatusCode === 'ACTIVE' ? 'Undo start' : 'Start')
+      .prop('disabled', !canStartOrUndoStart)
+    $('#complete-button')
+      .text(canReopen ? 'Reopen' : 'Complete')
+      .prop('disabled', !(canCompleteOrCancel || canReopen))
     $('#cancel-button').prop('disabled', !canCompleteOrCancel)
     renderWaitingPanel(task)
   }
@@ -743,6 +748,22 @@
     setStatus('Updated', 'saved')
   }
 
+  function runStartButtonAction() {
+    const type = currentTask && currentTask.taskStatusCode === 'ACTIVE'
+      ? 'task.undoStart'
+      : 'task.start'
+
+    return runLifecycleAction(type)
+  }
+
+  function runCompleteButtonAction() {
+    const type = currentTask && (currentTask.taskStatusCode === 'COMPLETED' || currentTask.taskStatusCode === 'CANCELLED')
+      ? 'task.reopen'
+      : 'task.complete'
+
+    return runLifecycleAction(type)
+  }
+
   async function addWaitingFor() {
     if (!currentTask || !currentTask.id) {
       setStatus('Save the task before adding waiting', 'error')
@@ -814,13 +835,13 @@
       })
     })
     $('#start-button').on('click', function () {
-      runLifecycleAction('task.start').catch(function (error) {
-        setStatus(getErrorMessage(error, 'Could not start task'), 'error')
+      runStartButtonAction().catch(function (error) {
+        setStatus(getErrorMessage(error, 'Could not update start state'), 'error')
       })
     })
     $('#complete-button').on('click', function () {
-      runLifecycleAction('task.complete').catch(function (error) {
-        setStatus(getErrorMessage(error, 'Could not complete task'), 'error')
+      runCompleteButtonAction().catch(function (error) {
+        setStatus(getErrorMessage(error, 'Could not update completion state'), 'error')
       })
     })
     $('#cancel-button').on('click', function () {
