@@ -49,9 +49,15 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
                 task.Id,
                 task.Title,
                 task.TaskType!.Name,
+                task.TaskType.BackgroundColor,
+                task.TaskType.ForegroundColor,
                 task.TaskStatus!.Code,
                 task.TaskStatus.Name,
+                task.TaskStatus.BackgroundColor,
+                task.TaskStatus.ForegroundColor,
                 task.TaskPriority == null ? null : task.TaskPriority.Name,
+                task.TaskPriority == null ? null : task.TaskPriority.BackgroundColor,
+                task.TaskPriority == null ? null : task.TaskPriority.ForegroundColor,
                 task.Deadline,
                 task.UpdatedAt))
             .ToListAsync(cancellationToken);
@@ -197,7 +203,11 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             .Where(lookup => lookup.IsActive)
             .OrderBy(lookup => lookup.SortOrder)
             .ThenBy(lookup => lookup.Name)
-            .Select(lookup => new LookupItemDto(lookup.Code, lookup.Name))
+            .Select(lookup => new LookupItemDto(
+                lookup.Code,
+                lookup.Name,
+                lookup.BackgroundColor,
+                lookup.ForegroundColor))
             .ToListAsync(cancellationToken);
     }
 
@@ -225,7 +235,11 @@ public sealed record TaskLookupsDto(
     IReadOnlyCollection<LookupItemDto> TaskSources,
     IReadOnlyCollection<LookupItemDto> BodyFormats);
 
-public sealed record LookupItemDto(string Code, string Name);
+public sealed record LookupItemDto(
+    string Code,
+    string Name,
+    string? BackgroundColor,
+    string? ForegroundColor);
 
 public sealed record TaskListRequest(string? View);
 
@@ -253,9 +267,15 @@ public sealed record TaskListItemDto(
     int Id,
     string Title,
     string TaskTypeName,
+    string? TaskTypeBackgroundColor,
+    string? TaskTypeForegroundColor,
     string TaskStatusCode,
     string TaskStatusName,
+    string? TaskStatusBackgroundColor,
+    string? TaskStatusForegroundColor,
     string? TaskPriorityName,
+    string? TaskPriorityBackgroundColor,
+    string? TaskPriorityForegroundColor,
     DateTime? Deadline,
     DateTime UpdatedAt);
 

@@ -210,9 +210,10 @@ h2 {
   font-size: 0.8rem;
 }
 
-.task-row-meta span {
+.task-badge {
   padding: 2px 6px;
   border-radius: 999px;
+  color: #374151;
   background: #eef1f4;
 }
 

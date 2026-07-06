@@ -13,7 +13,11 @@ public sealed class TaskServiceTests
         var lookups = await database.Tasks.GetLookupsAsync(CancellationToken.None);
 
         Assert.Contains(lookups.TaskTypes, item => item.Code == "ERROR" && item.Name == "Error");
+        Assert.Contains(lookups.TaskTypes, item =>
+            item.Code == "ERROR" && item.BackgroundColor == "#facc15" && item.ForegroundColor == "#111827");
         Assert.Contains(lookups.TaskPriorities, item => item.Code == "NORMAL" && item.Name == "Normal");
+        Assert.Contains(lookups.TaskPriorities, item =>
+            item.Code == "URGENT" && item.BackgroundColor == "#b42318" && item.ForegroundColor == "#ffffff");
         Assert.Contains(lookups.TaskSources, item => item.Code == "EMAIL" && item.Name == "Email");
         Assert.Contains(lookups.BodyFormats, item => item.Code == "HTML" && item.Name == "HTML");
     }
@@ -49,6 +53,10 @@ public sealed class TaskServiceTests
         Assert.Equal(created.Id, listed.Id);
         Assert.Equal("Fix failed deployment", listed.Title);
         Assert.Equal(TaskStatusCodes.New, listed.TaskStatusCode);
+        Assert.Equal("#facc15", listed.TaskTypeBackgroundColor);
+        Assert.Equal("#111827", listed.TaskTypeForegroundColor);
+        Assert.Equal("#6b7280", listed.TaskStatusBackgroundColor);
+        Assert.Equal("#ffffff", listed.TaskStatusForegroundColor);
 
         var activeTasks = await database.Tasks.ListAsync(new TaskListRequest("active"), CancellationToken.None);
         Assert.DoesNotContain(activeTasks, task => task.Id == created.Id);

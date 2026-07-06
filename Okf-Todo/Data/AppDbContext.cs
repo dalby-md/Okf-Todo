@@ -297,6 +297,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         entity.Property(lookup => lookup.Name).IsRequired();
         entity.Property(lookup => lookup.CreatedAt).IsRequired();
         entity.Property(lookup => lookup.UpdatedAt).IsRequired();
+        entity.Property(lookup => lookup.BackgroundColor).HasMaxLength(32);
+        entity.Property(lookup => lookup.ForegroundColor).HasMaxLength(32);
         entity.HasIndex(lookup => lookup.Code).IsUnique();
     }
 }

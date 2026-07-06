@@ -56,6 +56,8 @@ public sealed class LookupSeedService(AppDbContext dbContext, ILogger<LookupSeed
             Code = item.Code,
             Name = item.Name,
             Description = item.Description,
+            BackgroundColor = item.BackgroundColor,
+            ForegroundColor = item.ForegroundColor,
             SortOrder = item.SortOrder,
             IsActive = item.IsActive,
             IsSystem = item.IsSystem,
@@ -129,7 +131,9 @@ public sealed record LookupSeedItem(
     int SortOrder,
     bool IsSystem = false,
     bool IsActive = true,
-    string? Description = null);
+    string? Description = null,
+    string? BackgroundColor = null,
+    string? ForegroundColor = null);
 
 public sealed record TaskRelationTypeSeedItem(
     string Code,

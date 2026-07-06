@@ -1,24 +1,24 @@
 {
   "taskTypes": [
-    { "code": "CRITICAL_ERROR", "name": "Critical error", "sortOrder": 10 },
-    { "code": "ERROR", "name": "Error", "sortOrder": 20 },
-    { "code": "REQUEST", "name": "Request", "sortOrder": 30 },
-    { "code": "IDEA", "name": "Idea", "sortOrder": 40 },
-    { "code": "NOTE", "name": "Note", "sortOrder": 50 },
-    { "code": "INVESTIGATION", "name": "Investigation", "sortOrder": 60 },
-    { "code": "IMPROVEMENT", "name": "Improvement", "sortOrder": 70 }
+    { "code": "CRITICAL_ERROR", "name": "Critical error", "sortOrder": 10, "backgroundColor": "#b42318", "foregroundColor": "#ffffff" },
+    { "code": "ERROR", "name": "Error", "sortOrder": 20, "backgroundColor": "#facc15", "foregroundColor": "#111827" },
+    { "code": "REQUEST", "name": "Request", "sortOrder": 30, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
+    { "code": "IDEA", "name": "Idea", "sortOrder": 40, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
+    { "code": "NOTE", "name": "Note", "sortOrder": 50, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
+    { "code": "INVESTIGATION", "name": "Investigation", "sortOrder": 60, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
+    { "code": "IMPROVEMENT", "name": "Improvement", "sortOrder": 70, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" }
   ],
   "taskStatuses": [
-    { "code": "NEW", "name": "New", "sortOrder": 10, "isSystem": true },
-    { "code": "ACTIVE", "name": "Active", "sortOrder": 20, "isSystem": true },
-    { "code": "WAITING", "name": "Waiting", "sortOrder": 30, "isSystem": true },
-    { "code": "COMPLETED", "name": "Completed", "sortOrder": 40, "isSystem": true },
-    { "code": "CANCELLED", "name": "Cancelled", "sortOrder": 50, "isSystem": true }
+    { "code": "NEW", "name": "New", "sortOrder": 10, "isSystem": true, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
+    { "code": "ACTIVE", "name": "Active", "sortOrder": 20, "isSystem": true, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
+    { "code": "WAITING", "name": "Waiting", "sortOrder": 30, "isSystem": true, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
+    { "code": "COMPLETED", "name": "Completed", "sortOrder": 40, "isSystem": true, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
+    { "code": "CANCELLED", "name": "Cancelled", "sortOrder": 50, "isSystem": true, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" }
   ],
   "taskPriorities": [
-    { "code": "URGENT", "name": "Urgent", "sortOrder": 10 },
-    { "code": "NORMAL", "name": "Normal", "sortOrder": 20 },
-    { "code": "CAN_WAIT", "name": "Can wait", "sortOrder": 30 }
+    { "code": "URGENT", "name": "Urgent", "sortOrder": 10, "backgroundColor": "#b42318", "foregroundColor": "#ffffff" },
+    { "code": "NORMAL", "name": "Normal", "sortOrder": 20, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
+    { "code": "CAN_WAIT", "name": "Can wait", "sortOrder": 30, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" }
   ],
   "taskSources": [
     { "code": "MANUAL", "name": "Manual", "sortOrder": 10 },

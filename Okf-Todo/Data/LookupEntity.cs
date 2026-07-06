@@ -10,6 +10,10 @@ public abstract class LookupEntity
 
     public string? Description { get; set; }
 
+    public string? BackgroundColor { get; set; }
+
+    public string? ForegroundColor { get; set; }
+
     public int SortOrder { get; set; }
 
     public bool IsActive { get; set; } = true;

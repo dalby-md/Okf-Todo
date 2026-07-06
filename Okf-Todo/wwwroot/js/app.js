@@ -137,6 +137,21 @@
     return encodeText(value).replace(/"/g, '&quot;')
   }
 
+  function normalizeBadgeColor(value) {
+    const color = String(value || '').trim()
+    return /^#[0-9a-fA-F]{6}$/.test(color) ? color : null
+  }
+
+  function renderBadge(label, backgroundColor, foregroundColor) {
+    const safeBackground = normalizeBadgeColor(backgroundColor)
+    const safeForeground = normalizeBadgeColor(foregroundColor)
+    const style = safeBackground && safeForeground
+      ? ` style="background-color: ${safeBackground}; color: ${safeForeground};"`
+      : ''
+
+    return `<span class="task-badge"${style}>${encodeText(label)}</span>`
+  }
+
   function formatDate(value) {
     if (!value) {
       return ''
@@ -444,18 +459,18 @@
     $('#task-list').html(visibleTasks.map(function (task) {
       const selectedClass = currentTask && currentTask.id === task.id ? ' is-selected' : ''
       const priority = task.taskPriorityName
-        ? `<span>${encodeText(task.taskPriorityName)}</span>`
+        ? renderBadge(task.taskPriorityName, task.taskPriorityBackgroundColor, task.taskPriorityForegroundColor)
         : ''
       const deadline = task.deadline
-        ? `<span>Due ${encodeText(formatShortDate(task.deadline))}</span>`
+        ? `<span class="task-badge">Due ${encodeText(formatShortDate(task.deadline))}</span>`
         : ''
 
       return `
         <button class="task-row${selectedClass}" type="button" data-task-id="${task.id}">
           <span class="task-row-title">${encodeText(task.title)}</span>
           <span class="task-row-meta">
-            <span>${encodeText(task.taskTypeName)}</span>
-            <span>${encodeText(task.taskStatusName)}</span>
+            ${renderBadge(task.taskTypeName, task.taskTypeBackgroundColor, task.taskTypeForegroundColor)}
+            ${renderBadge(task.taskStatusName, task.taskStatusBackgroundColor, task.taskStatusForegroundColor)}
             ${priority}
             ${deadline}
           </span>
