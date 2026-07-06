@@ -162,6 +162,85 @@ public sealed class TaskServiceTests
         Assert.Equal("taskTypeCode", missingType.Field);
     }
 
+    [Fact]
+    public async Task ImageCreateGetAndTaskBodyPersistence_StoresTaskOwnedEditorImages()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var created = await database.Tasks.CreateAsync(CreateRequest("Task with image"), CancellationToken.None);
+        var base64Data = Convert.ToBase64String([0x89, 0x50, 0x4e, 0x47]);
+
+        var image = await database.Images.CreateAsync(new ImageCreateRequest(
+            IssueId: null,
+            TaskId: created.Id,
+            Filename: "screenshot.png",
+            MimeType: "image/png",
+            Base64Data: base64Data,
+            Width: null,
+            Height: null), CancellationToken.None);
+
+        Assert.StartsWith("app://image/", image.Src);
+
+        var loadedImage = await database.Images.GetAsync(image.Id, CancellationToken.None);
+        Assert.Equal("image/png", loadedImage.MimeType);
+        Assert.Equal(base64Data, loadedImage.Base64Data);
+        Assert.Equal("screenshot.png", loadedImage.Filename);
+
+        await database.Tasks.UpdateAsync(new TaskSaveRequest(
+            Id: created.Id,
+            Title: created.Title,
+            TaskTypeCode: created.TaskTypeCode,
+            Body: $"""<p>See image</p><img src="{image.Src}" alt="screenshot.png">""",
+            BodyFormatCode: "HTML",
+            TaskPriorityCode: created.TaskPriorityCode,
+            TaskSourceCode: null,
+            SourceReference: null,
+            SourceUrl: null,
+            Deadline: null), CancellationToken.None);
+
+        var reloaded = await database.Tasks.GetAsync(created.Id, CancellationToken.None);
+        Assert.Contains(image.Src, reloaded.Body);
+    }
+
+    [Fact]
+    public async Task ImageCreate_ValidatesTaskOwnerTypeAndSize()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var created = await database.Tasks.CreateAsync(CreateRequest("Task with invalid images"), CancellationToken.None);
+
+        var unsupported = await Assert.ThrowsAsync<BridgeException>(() =>
+            database.Images.CreateAsync(new ImageCreateRequest(
+                IssueId: null,
+                TaskId: created.Id,
+                Filename: "file.bmp",
+                MimeType: "image/bmp",
+                Base64Data: Convert.ToBase64String([1, 2, 3]),
+                Width: null,
+                Height: null), CancellationToken.None));
+        Assert.Equal("UnsupportedImageType", unsupported.Code);
+
+        var tooLarge = await Assert.ThrowsAsync<BridgeException>(() =>
+            database.Images.CreateAsync(new ImageCreateRequest(
+                IssueId: null,
+                TaskId: created.Id,
+                Filename: "large.png",
+                MimeType: "image/png",
+                Base64Data: Convert.ToBase64String(new byte[(5 * 1024 * 1024) + 1]),
+                Width: null,
+                Height: null), CancellationToken.None));
+        Assert.Equal("ImageTooLarge", tooLarge.Code);
+
+        var missingTask = await Assert.ThrowsAsync<BridgeException>(() =>
+            database.Images.CreateAsync(new ImageCreateRequest(
+                IssueId: null,
+                TaskId: 999,
+                Filename: "missing.png",
+                MimeType: "image/png",
+                Base64Data: Convert.ToBase64String([1, 2, 3]),
+                Width: null,
+                Height: null), CancellationToken.None));
+        Assert.Equal("NotFound", missingTask.Code);
+    }
+
     private static TaskSaveRequest CreateRequest(string title)
     {
         return new TaskSaveRequest(

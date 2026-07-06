@@ -168,6 +168,7 @@ internal sealed class TestDatabase : IAsyncDisposable
         DbContext = dbContext;
         Lifecycle = new TaskLifecycleService(DbContext, loggerFactory.CreateLogger<TaskLifecycleService>());
         Tasks = new TaskService(DbContext, Lifecycle);
+        Images = new ImageService(DbContext, loggerFactory.CreateLogger<ImageService>());
     }
 
     public AppDbContext DbContext { get; }
@@ -175,6 +176,8 @@ internal sealed class TestDatabase : IAsyncDisposable
     public TaskLifecycleService Lifecycle { get; }
 
     public TaskService Tasks { get; }
+
+    public ImageService Images { get; }
 
     public static async Task<TestDatabase> CreateAsync()
     {

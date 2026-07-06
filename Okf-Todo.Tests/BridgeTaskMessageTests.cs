@@ -115,6 +115,47 @@ public sealed class BridgeTaskMessageTests
         Assert.Equal("title", response.RootElement.GetProperty("error").GetProperty("details").GetProperty("field").GetString());
     }
 
+    [Fact]
+    public async Task Bridge_DispatchesTaskEditorImageMessages()
+    {
+        await using var fixture = await BridgeFixture.CreateAsync();
+        var task = await fixture.SendAsync("task.create", new
+        {
+            title = "Bridge image task",
+            taskTypeCode = "ERROR",
+            body = "",
+            bodyFormatCode = "HTML",
+            taskPriorityCode = (string?)null,
+            taskSourceCode = (string?)null,
+            sourceReference = (string?)null,
+            sourceUrl = (string?)null,
+            deadline = (DateTime?)null
+        });
+
+        var imageBytes = new byte[] { 1, 2, 3, 4 };
+        var image = await fixture.SendAsync("image.create", new
+        {
+            issueId = (int?)null,
+            taskId = task.GetProperty("id").GetInt32(),
+            filename = "paste.png",
+            mimeType = "image/png",
+            base64Data = Convert.ToBase64String(imageBytes),
+            width = (int?)null,
+            height = (int?)null
+        });
+
+        Assert.StartsWith("app://image/", image.GetProperty("src").GetString());
+
+        var loaded = await fixture.SendAsync("image.get", new
+        {
+            id = image.GetProperty("id").GetInt32()
+        });
+
+        Assert.Equal("image/png", loaded.GetProperty("mimeType").GetString());
+        Assert.Equal("paste.png", loaded.GetProperty("filename").GetString());
+        Assert.Equal(Convert.ToBase64String(imageBytes), loaded.GetProperty("base64Data").GetString());
+    }
+
     private sealed class BridgeFixture : IAsyncDisposable
     {
         private readonly SqliteConnection connection;
@@ -139,6 +180,7 @@ public sealed class BridgeTaskMessageTests
             serviceCollection.AddScoped<LookupSeedService>();
             serviceCollection.AddScoped<TaskLifecycleService>();
             serviceCollection.AddScoped<TaskService>();
+            serviceCollection.AddScoped<ImageService>();
 
             var services = serviceCollection.BuildServiceProvider();
 

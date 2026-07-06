@@ -16,6 +16,7 @@
   let currentView = 'active'
   let isEditorReady = false
   let isDirty = false
+  let editorImageStableSources = new Map()
 
   function createMessageId() {
     if (window.crypto && window.crypto.randomUUID) {
@@ -173,6 +174,17 @@
     })
   }
 
+  async function readBlobAsBase64(blob) {
+    const dataUrl = await readBlobAsDataUrl(blob)
+    const markerIndex = String(dataUrl).indexOf(',')
+
+    if (markerIndex < 0) {
+      throw new Error('Could not read selected image.')
+    }
+
+    return String(dataUrl).slice(markerIndex + 1)
+  }
+
   function chooseEditorImageFile() {
     return new Promise(function (resolve) {
       const input = document.createElement('input')
@@ -195,6 +207,11 @@
   }
 
   async function pickEditorImage(blob) {
+    if (!currentTask || !currentTask.id) {
+      setStatus('Save the task before adding images', 'error')
+      return null
+    }
+
     const imageBlob = blob || await chooseEditorImageFile()
 
     if (!imageBlob) {
@@ -211,13 +228,85 @@
       return null
     }
 
-    const dataUrl = await readBlobAsDataUrl(imageBlob)
+    const image = await sendBridgeMessage('image.create', {
+      taskId: currentTask.id,
+      issueId: null,
+      filename: imageBlob.name || null,
+      mimeType: imageBlob.type,
+      base64Data: await readBlobAsBase64(imageBlob),
+      width: null,
+      height: null
+    })
+
+    const displaySrc = await readBlobAsDataUrl(imageBlob)
+    editorImageStableSources.set(displaySrc, image.src)
+
     return {
-      src: dataUrl,
+      src: displaySrc,
       attributes: {
-        alt: imageBlob.name || 'image'
+        alt: imageBlob.name || 'image',
+        'data-app-src': image.src
       }
     }
+  }
+
+  function getImageIdFromAppSrc(src) {
+    const match = String(src || '').match(/^app:\/\/image\/(\d+)$/i)
+    return match ? Number(match[1]) : null
+  }
+
+  async function getEditorDisplayBody(body, bodyFormatCode) {
+    if (!body || bodyFormatCode === 'MARKDOWN') {
+      return body || ''
+    }
+
+    const template = document.createElement('template')
+    template.innerHTML = body
+    const images = Array.from(template.content.querySelectorAll('img[src^="app://image/"]'))
+
+    await Promise.all(images.map(async function (image) {
+      const imageId = getImageIdFromAppSrc(image.getAttribute('src'))
+
+      if (!imageId) {
+        return
+      }
+
+      const storedImage = await sendBridgeMessage('image.get', {
+        id: imageId
+      })
+      const stableSrc = image.getAttribute('src')
+      const displaySrc = `data:${storedImage.mimeType};base64,${storedImage.base64Data}`
+      image.setAttribute('data-app-src', stableSrc)
+      image.setAttribute('src', displaySrc)
+      editorImageStableSources.set(displaySrc, stableSrc)
+    }))
+
+    return template.innerHTML
+  }
+
+  function getPersistedEditorBody() {
+    const modeCode = $('#editor-mode').val().toString()
+    const body = modeCode === 'MARKDOWN'
+      ? window.Editor.getMarkdown()
+      : window.Editor.getHtml()
+
+    if (modeCode === 'MARKDOWN' || !body) {
+      return body
+    }
+
+    const template = document.createElement('template')
+    template.innerHTML = body
+    template.content.querySelectorAll('img').forEach(function (image) {
+      const stableSrc = image.getAttribute('data-app-src') || editorImageStableSources.get(image.getAttribute('src'))
+      if (!stableSrc) {
+        return
+      }
+
+      image.setAttribute('src', stableSrc)
+      image.removeAttribute('data-app-src')
+    })
+
+    return template.innerHTML
   }
 
   function setFieldInvalid(selector, isInvalid) {
@@ -473,7 +562,8 @@
 
   async function initializeEditorForTask(task) {
     const modeCode = task.bodyFormatCode === 'MARKDOWN' ? 'MARKDOWN' : 'HTML'
-    await initializeEditor(modeCode, task.body || '', null)
+    editorImageStableSources = new Map()
+    await initializeEditor(modeCode, await getEditorDisplayBody(task.body, modeCode), null)
   }
 
   function describeWaiting(waitingFor) {
@@ -525,10 +615,7 @@
   }
 
   function getEditorBody() {
-    const modeCode = $('#editor-mode').val().toString()
-    return modeCode === 'MARKDOWN'
-      ? window.Editor.getMarkdown()
-      : window.Editor.getHtml()
+    return getPersistedEditorBody()
   }
 
   function getTaskPayload() {

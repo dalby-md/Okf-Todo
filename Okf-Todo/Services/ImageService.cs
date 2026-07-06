@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Photino.Okf_Todo.Data;
 
 namespace Photino.Okf_Todo.Services;
 
-public sealed class ImageService(AppDbContext dbContext)
+public sealed class ImageService(AppDbContext dbContext, ILogger<ImageService> logger)
 {
     private const int MaxImageBytes = 5 * 1024 * 1024;
     private static readonly HashSet<string> AllowedMimeTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -21,22 +22,50 @@ public sealed class ImageService(AppDbContext dbContext)
             throw new BridgeException("UnsupportedImageType", "Only PNG, JPEG, GIF, and WebP images are supported.");
         }
 
-        var imageData = Convert.FromBase64String(request.Base64Data);
+        var hasIssueOwner = request.IssueId is not null;
+        var hasTaskOwner = request.TaskId is not null;
+        if (hasIssueOwner == hasTaskOwner)
+        {
+            throw new BridgeException("ValidationFailed", "Image must belong to exactly one issue or task.");
+        }
+
+        byte[] imageData;
+        try
+        {
+            imageData = Convert.FromBase64String(request.Base64Data);
+        }
+        catch (FormatException)
+        {
+            throw new BridgeException("ValidationFailed", "Image data is not valid base64.");
+        }
 
         if (imageData.Length > MaxImageBytes)
         {
             throw new BridgeException("ImageTooLarge", "Image must be 5 MB or smaller.");
         }
 
-        var issueExists = await dbContext.Issues.AnyAsync(issue => issue.Id == request.IssueId, cancellationToken);
-        if (!issueExists)
+        if (request.IssueId is not null)
         {
-            throw new BridgeException("NotFound", "Issue was not found.");
+            var issueExists = await dbContext.Issues.AnyAsync(issue => issue.Id == request.IssueId, cancellationToken);
+            if (!issueExists)
+            {
+                throw new BridgeException("NotFound", "Issue was not found.");
+            }
+        }
+
+        if (request.TaskId is not null)
+        {
+            var taskExists = await dbContext.TaskItems.AnyAsync(task => task.Id == request.TaskId, cancellationToken);
+            if (!taskExists)
+            {
+                throw new BridgeException("NotFound", "Task was not found.");
+            }
         }
 
         var image = new ImageAsset
         {
             IssueId = request.IssueId,
+            TaskId = request.TaskId,
             Filename = request.Filename,
             MimeType = request.MimeType,
             Width = request.Width,
@@ -47,6 +76,12 @@ public sealed class ImageService(AppDbContext dbContext)
 
         dbContext.Images.Add(image);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Stored editor image {ImageId} for {OwnerType} {OwnerId}.",
+            image.Id,
+            request.TaskId is null ? "issue" : "task",
+            request.TaskId ?? request.IssueId);
 
         return new ImageCreateResult(image.Id, $"app://image/{image.Id}");
     }
@@ -71,7 +106,8 @@ public sealed class ImageService(AppDbContext dbContext)
 }
 
 public sealed record ImageCreateRequest(
-    int IssueId,
+    int? IssueId,
+    int? TaskId,
     string? Filename,
     string MimeType,
     string Base64Data,

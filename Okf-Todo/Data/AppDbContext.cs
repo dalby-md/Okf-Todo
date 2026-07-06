@@ -71,6 +71,20 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(image => image.MimeType).IsRequired();
             entity.Property(image => image.ImageData).IsRequired();
             entity.Property(image => image.CreatedUtc).IsRequired();
+
+            entity.ToTable(table => table.HasCheckConstraint(
+                "CK_Images_OneOwner",
+                $"({nameof(ImageAsset.IssueId)} IS NOT NULL AND {nameof(ImageAsset.TaskId)} IS NULL) OR ({nameof(ImageAsset.IssueId)} IS NULL AND {nameof(ImageAsset.TaskId)} IS NOT NULL)"));
+
+            entity.HasOne(image => image.Issue)
+                .WithMany(issue => issue.Images)
+                .HasForeignKey(image => image.IssueId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(image => image.Task)
+                .WithMany(task => task.Images)
+                .HasForeignKey(image => image.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         ConfigureLookup<TaskType>(modelBuilder);
@@ -119,6 +133,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .WithMany(source => source.Tasks)
                 .HasForeignKey(task => task.TaskSourceId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(task => task.Images)
+                .WithOne(image => image.Task)
+                .HasForeignKey(image => image.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<TaskWaitingFor>(entity =>

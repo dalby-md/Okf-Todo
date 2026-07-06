@@ -56,6 +56,8 @@ public sealed class TaskItem
 
     public List<TaskAttachment> Attachments { get; set; } = [];
 
+    public List<ImageAsset> Images { get; set; } = [];
+
     public List<TaskStakeholder> Stakeholders { get; set; } = [];
 
     public List<TaskTaskTag> TaskTags { get; set; } = [];
