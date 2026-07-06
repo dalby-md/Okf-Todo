@@ -180,6 +180,7 @@ namespace Photino.Okf_Todo
             services.AddSingleton<HtmlSanitizerService>();
             services.AddScoped<LookupSeedService>();
             services.AddScoped<TaskLifecycleService>();
+            services.AddScoped<TaskService>();
             services.AddScoped<IssueService>();
             services.AddScoped<ImageService>();
             services.AddSingleton<BridgeMessageHandler>();

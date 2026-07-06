@@ -1,15 +1,19 @@
 (function ($) {
-  const issueId = 1
-  const defaultTitle = 'Untitled text'
-  const defaultBody = '<p>Start writing your text here.</p>'
-  const defaultMarkdown = 'Start writing your text here.'
   const pendingRequests = new Map()
-  const editorImageSources = new Map()
   const bridgeTimeoutMs = 15000
+  const viewLabels = {
+    inbox: 'Inbox',
+    active: 'Active',
+    completed: 'Completed',
+    all: 'All'
+  }
 
-  let currentIssue = null
+  let lookups = null
+  let tasks = []
+  let currentTask = null
+  let currentView = 'active'
   let isEditorReady = false
-  let currentEditorMode = 'html'
+  let isDirty = false
 
   function createMessageId() {
     if (window.crypto && window.crypto.randomUUID) {
@@ -97,12 +101,9 @@
   }
 
   function initializeBridgeReceiver() {
-    let registeredReceiver = false
-
     try {
       if (window.external && typeof window.external.receiveMessage === 'function') {
         window.external.receiveMessage(receiveBridgeMessage)
-        registeredReceiver = true
       }
     } catch (error) {
       setStatus(error.message || 'Could not register Photino bridge receiver', 'error')
@@ -113,13 +114,34 @@
         window.chrome.webview.addEventListener('message', function (event) {
           receiveBridgeMessage(event.data)
         })
-        registeredReceiver = true
       }
     } catch (error) {
       setStatus(error.message || 'Could not register WebView bridge receiver', 'error')
     }
+  }
 
-    return registeredReceiver
+  function encodeText(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+  }
+
+  function encodeAttribute(value) {
+    return encodeText(value).replace(/"/g, '&quot;')
+  }
+
+  function formatDate(value) {
+    if (!value) {
+      return ''
+    }
+
+    return String(value).slice(0, 10)
+  }
+
+  function formatShortDate(value) {
+    const formatted = formatDate(value)
+    return formatted || ''
   }
 
   function setStatus(message, state) {
@@ -129,426 +151,410 @@
       .text(message)
   }
 
-  function showFatalError(message) {
-    $('#app').html(`
-      <main class="app-shell">
-        <section class="editor-panel" aria-labelledby="app-title">
-          <header class="app-header">
-            <div>
-              <p class="eyebrow">SQLite HTML editor</p>
-              <h1 id="app-title">OKF Text</h1>
-            </div>
-          </header>
-          <p id="fatal-error" class="empty-state"></p>
-        </section>
-      </main>
-    `)
-    $('#fatal-error').text(message)
-  }
-
   function markDirty() {
-    if (isEditorReady) {
-      setStatus('Unsaved changes', 'dirty')
+    if (!isEditorReady) {
+      return
     }
+
+    isDirty = true
+    setStatus('Unsaved changes', 'dirty')
   }
 
   function renderShell() {
     $('#app').html(`
       <main class="app-shell">
-        <section class="editor-panel" aria-labelledby="app-title">
-          <header class="app-header">
+        <aside class="task-sidebar" aria-labelledby="app-title">
+          <header class="sidebar-header">
             <div>
-              <p class="eyebrow">SQLite HTML editor</p>
-              <h1 id="app-title">OKF Text</h1>
+              <p class="eyebrow">Local task system</p>
+              <h1 id="app-title">OKF Tasks</h1>
             </div>
-            <div class="app-actions" aria-label="Document actions">
-              <span id="save-status" class="save-status is-ready" role="status">Loading editor</span>
-              <label class="mode-label" for="editor-mode">Editor</label>
-              <select id="editor-mode" class="mode-select" disabled>
-                <option value="html">HTML editor</option>
-                <option value="markdown">TOAST UI Markdown</option>
-              </select>
-              <button id="reset-button" class="secondary-button" type="button">Reset</button>
+            <button id="new-task-button" type="button">New task</button>
+          </header>
+
+          <div class="view-tabs" aria-label="Task views">
+            ${Object.keys(viewLabels).map(function (view) {
+              return `<button class="view-tab" type="button" data-view="${view}">${viewLabels[view]}</button>`
+            }).join('')}
+          </div>
+
+          <label class="sr-only" for="task-search">Search tasks</label>
+          <input id="task-search" class="task-search" type="search" placeholder="Search tasks" autocomplete="off">
+
+          <div id="task-list" class="task-list" aria-label="Tasks"></div>
+        </aside>
+
+        <section class="task-editor-panel" aria-labelledby="task-editor-title">
+          <header class="editor-header">
+            <div>
+              <p id="task-status-label" class="eyebrow">No task selected</p>
+              <h2 id="task-editor-title">Select or create a task</h2>
+            </div>
+            <div class="app-actions" aria-label="Task actions">
+              <span id="save-status" class="save-status is-ready" role="status">Ready</span>
+              <button id="start-button" class="secondary-button" type="button" disabled>Start</button>
+              <button id="complete-button" class="secondary-button" type="button" disabled>Complete</button>
+              <button id="cancel-button" class="secondary-button danger-button" type="button" disabled>Cancel</button>
               <button id="save-button" type="button" disabled>Save</button>
             </div>
           </header>
 
-          <label class="field-label" for="text-title">Title</label>
-          <input
-            id="text-title"
-            class="title-input"
-            type="text"
-            autocomplete="off"
-          />
+          <form id="task-form" class="task-form">
+            <label class="field-label" for="task-title">Title</label>
+            <input id="task-title" class="title-input" type="text" autocomplete="off" required disabled>
 
-          <label class="field-label" for="text-body">Body</label>
-          <div id="editor-host">
-            <textarea id="text-body"></textarea>
-          </div>
+            <div class="metadata-grid">
+              <label class="field-block" for="task-type">
+                <span>Task type</span>
+                <select id="task-type" required disabled></select>
+              </label>
+              <label class="field-block" for="task-priority">
+                <span>Priority</span>
+                <select id="task-priority" disabled></select>
+              </label>
+              <label class="field-block" for="task-deadline">
+                <span>Deadline</span>
+                <input id="task-deadline" type="date" disabled>
+              </label>
+              <label class="field-block" for="task-source">
+                <span>Source</span>
+                <select id="task-source" disabled></select>
+              </label>
+              <label class="field-block" for="task-source-reference">
+                <span>Source reference</span>
+                <input id="task-source-reference" type="text" autocomplete="off" disabled>
+              </label>
+              <label class="field-block" for="task-source-url">
+                <span>Source URL</span>
+                <input id="task-source-url" type="url" autocomplete="off" disabled>
+              </label>
+            </div>
+
+            <div class="body-header">
+              <label class="field-label" for="text-body">Body</label>
+              <label class="mode-field" for="editor-mode">
+                <span>Editor</span>
+                <select id="editor-mode" disabled>
+                  <option value="HTML">HTML</option>
+                  <option value="MARKDOWN">Markdown</option>
+                </select>
+              </label>
+            </div>
+            <div id="editor-host" class="editor-host">
+              <textarea id="text-body"></textarea>
+            </div>
+          </form>
         </section>
       </main>
     `)
   }
 
-  function fileToBase64(file) {
-    return new Promise(function (resolve, reject) {
-      const reader = new FileReader()
-      reader.addEventListener('load', function () {
-        const result = reader.result.toString()
-        resolve(result.slice(result.indexOf(',') + 1))
-      })
-      reader.addEventListener('error', function () {
-        reject(reader.error || new Error('Could not read image file.'))
-      })
-      reader.readAsDataURL(file)
-    })
-  }
+  function renderLookupOptions(selector, items, includeEmpty) {
+    const options = []
 
-  function imageToDataUrl(image) {
-    return `data:${image.mimeType};base64,${image.base64Data}`
-  }
-
-  function getImageIdFromAppSrc(src) {
-    const match = /^app:\/\/image\/(\d+)$/i.exec(src || '')
-    return match ? Number(match[1]) : null
-  }
-
-  async function resolveStoredImages(bodyHtml) {
-    const $container = $('<div>').html(bodyHtml || defaultBody)
-    const imageElements = $container.find('img').toArray()
-
-    for (const imageElement of imageElements) {
-      const $image = $(imageElement)
-      const appSrc = $image.attr('src')
-      const imageId = getImageIdFromAppSrc(appSrc)
-
-      if (!imageId) {
-        continue
-      }
-
-      const image = await sendBridgeMessage('image.get', {
-        id: imageId
-      })
-      const dataUrl = imageToDataUrl(image)
-      editorImageSources.set(dataUrl, appSrc)
-      $image.attr('src', dataUrl)
-      $image.attr('data-app-src', appSrc)
+    if (includeEmpty) {
+      options.push('<option value="">None</option>')
     }
 
-    return $container.html()
+    ;(items || []).forEach(function (item) {
+      options.push(`<option value="${encodeAttribute(item.code)}">${encodeText(item.name)}</option>`)
+    })
+
+    $(selector).html(options.join(''))
   }
 
-  async function resolveStoredMarkdownImages(markdown) {
-    const replacements = []
-    const imageExpression = /!\[([^\]]*)\]\(app:\/\/image\/(\d+)\)/gi
-    let match
+  function renderLookups() {
+    renderLookupOptions('#task-type', lookups.taskTypes, false)
+    renderLookupOptions('#task-priority', lookups.taskPriorities, true)
+    renderLookupOptions('#task-source', lookups.taskSources, true)
+    renderLookupOptions('#editor-mode', lookups.bodyFormats, false)
+  }
 
-    while ((match = imageExpression.exec(markdown || defaultMarkdown)) !== null) {
-      replacements.push({
-        original: match[0],
-        alt: match[1],
-        imageId: Number(match[2])
+  function renderTaskList() {
+    const query = $('#task-search').val().toString().trim().toLowerCase()
+    const visibleTasks = query
+      ? tasks.filter(function (task) {
+        return task.title.toLowerCase().includes(query)
+          || task.taskTypeName.toLowerCase().includes(query)
+          || task.taskStatusName.toLowerCase().includes(query)
+          || (task.taskPriorityName || '').toLowerCase().includes(query)
       })
+      : tasks
+
+    $('.view-tab').removeClass('is-active')
+    $(`.view-tab[data-view="${currentView}"]`).addClass('is-active')
+
+    if (visibleTasks.length === 0) {
+      $('#task-list').html(`
+        <div class="empty-list">
+          <strong>No tasks yet</strong>
+          <span>Create your first task</span>
+        </div>
+      `)
+      return
     }
 
-    let resolvedMarkdown = markdown || defaultMarkdown
+    $('#task-list').html(visibleTasks.map(function (task) {
+      const selectedClass = currentTask && currentTask.id === task.id ? ' is-selected' : ''
+      const priority = task.taskPriorityName
+        ? `<span>${encodeText(task.taskPriorityName)}</span>`
+        : ''
+      const deadline = task.deadline
+        ? `<span>Due ${encodeText(formatShortDate(task.deadline))}</span>`
+        : ''
 
-    for (const replacement of replacements) {
-      const image = await sendBridgeMessage('image.get', {
-        id: replacement.imageId
-      })
-      const appSrc = `app://image/${replacement.imageId}`
-      const dataUrl = imageToDataUrl(image)
-      editorImageSources.set(dataUrl, appSrc)
-      resolvedMarkdown = resolvedMarkdown.replace(
-        replacement.original,
-        `![${replacement.alt}](${dataUrl})`
-      )
-    }
-
-    return resolvedMarkdown
+      return `
+        <button class="task-row${selectedClass}" type="button" data-task-id="${task.id}">
+          <span class="task-row-title">${encodeText(task.title)}</span>
+          <span class="task-row-meta">
+            <span>${encodeText(task.taskTypeName)}</span>
+            <span>${encodeText(task.taskStatusName)}</span>
+            ${priority}
+            ${deadline}
+          </span>
+        </button>
+      `
+    }).join(''))
   }
 
-  function normalizeImagesForSave(bodyHtml) {
-    const $container = $('<div>').html(bodyHtml || '')
-
-    $container.find('img').each(function () {
-      const $image = $(this)
-      const appSrc = $image.attr('data-app-src') || editorImageSources.get($image.attr('src'))
-
-      if (appSrc) {
-        $image.attr('src', appSrc)
-        $image.removeAttr('data-app-src')
-      }
-    })
-
-    return $container.html()
-  }
-
-  function normalizeMarkdownImagesForSave(markdown) {
-    let normalizedMarkdown = markdown || ''
-
-    editorImageSources.forEach(function (appSrc, dataUrl) {
-      normalizedMarkdown = normalizedMarkdown.split(dataUrl).join(appSrc)
-    })
-
-    return normalizedMarkdown
-  }
-
-  async function createImageFromFile(file) {
-    const base64Data = await fileToBase64(file)
-    const dataUrl = `data:${file.type};base64,${base64Data}`
-    const existingAppSrc = editorImageSources.get(dataUrl)
-
-    if (existingAppSrc) {
-      return {
-        dataUrl,
-        appSrc: existingAppSrc
-      }
-    }
-
-    const result = await sendBridgeMessage('image.create', {
-      issueId,
-      filename: file.name || 'image',
-      mimeType: file.type,
-      base64Data,
-      width: null,
-      height: null
-    })
-
-    editorImageSources.set(dataUrl, result.src)
+  function createDraftTask() {
+    const firstTaskType = lookups.taskTypes && lookups.taskTypes[0]
+    const htmlFormat = (lookups.bodyFormats || []).find(function (format) {
+      return format.code === 'HTML'
+    }) || (lookups.bodyFormats || [])[0]
 
     return {
-      dataUrl,
-      appSrc: result.src
+      id: null,
+      title: '',
+      body: '',
+      bodyFormatCode: htmlFormat ? htmlFormat.code : 'HTML',
+      taskTypeCode: firstTaskType ? firstTaskType.code : '',
+      taskStatusCode: 'DRAFT',
+      taskStatusName: 'Draft',
+      taskPriorityCode: '',
+      taskSourceCode: '',
+      sourceReference: '',
+      sourceUrl: '',
+      deadline: null
     }
   }
 
-  function pickImageFromFile(existingFile) {
-    const input = document.createElement('input')
-
-    return new Promise(function (resolve, reject) {
-      if (existingFile) {
-        createImageFromFile(existingFile)
-          .then(function (image) {
-            resolve({
-              src: image.dataUrl,
-              attributes: {
-                alt: existingFile.name || '',
-                'data-app-src': image.appSrc
-              }
-            })
-          })
-          .catch(reject)
-        return
-      }
-
-      input.type = 'file'
-      input.accept = 'image/png,image/jpeg,image/gif,image/webp'
-
-      input.addEventListener('change', async function () {
-        const file = input.files && input.files[0]
-
-        if (!file) {
-          resolve(null)
-          return
-        }
-
-        try {
-          setStatus('Saving image', 'ready')
-          const image = await createImageFromFile(file)
-          markDirty()
-          resolve({
-            src: image.dataUrl,
-            attributes: {
-              alt: file.name,
-              'data-app-src': image.appSrc
-            }
-          })
-        } catch (error) {
-          setStatus(error.message || 'Could not save image', 'error')
-          reject(error)
-        }
-      })
-
-      input.click()
-    })
-  }
-
-  async function saveDocument() {
-    if (!isEditorReady || !currentIssue) {
-      setStatus('Editor is still loading', 'error')
-      return
-    }
-
-    const title = $('#text-title').val().toString().trim() || defaultTitle
-    const bodyHtml = normalizeImagesForSave(window.Editor.getHtml())
-    const bodyMarkdown = currentEditorMode === 'markdown'
-      ? normalizeMarkdownImagesForSave(window.Editor.getMarkdown())
-      : currentIssue.bodyMarkdown || ''
-
-    try {
-      const issue = await sendBridgeMessage('issue.save', {
-        id: currentIssue.id,
-        title,
-        status: currentIssue.status || 'Open',
-        priority: currentIssue.priority || 0,
-        dueUtc: currentIssue.dueUtc || null,
-        bodyHtml,
-        bodyMarkdown,
-        editorMode: currentEditorMode
-      })
-
-      currentIssue = issue
-      $('#text-title').val(issue.title)
-      window.Editor.markClean()
-      setStatus('Saved to SQLite', 'saved')
-    } catch (error) {
-      setStatus(error.message || 'Could not save document', 'error')
-    }
-  }
-
-  async function resetDocument() {
-    if (!window.confirm('Reset this text to the starter content?')) {
-      return
-    }
-
-    $('#text-title').val(defaultTitle)
-
-    window.Editor.load(currentEditorMode === 'markdown' ? defaultMarkdown : defaultBody)
-    window.Editor.markClean()
-
-    currentIssue = await sendBridgeMessage('issue.save', {
-      id: issueId,
-      title: defaultTitle,
-      status: 'Open',
-      priority: 0,
-      dueUtc: null,
-      bodyHtml: defaultBody,
-      bodyMarkdown: defaultMarkdown,
-      editorMode: currentEditorMode
-    })
-
-    setStatus('Reset and saved to SQLite', 'saved')
-  }
-
-  async function initializeEditor() {
+  async function initializeEditorForTask(task) {
     if (!window.Editor) {
-      setStatus('Editor service did not load', 'error')
-      return
-    }
-
-    currentIssue = await sendBridgeMessage('issue.get', {
-      id: issueId
-    })
-
-    currentEditorMode = currentIssue.editorMode === 'markdown' ? 'markdown' : 'html'
-    $('#editor-mode').val(currentEditorMode)
-    $('#text-title').val(currentIssue.title || defaultTitle)
-
-    const hasStoredMarkdown = !!(currentIssue.bodyMarkdown && currentIssue.bodyMarkdown.trim())
-    const initialHtml = currentEditorMode === 'html' || !hasStoredMarkdown
-      ? await resolveStoredImages(currentIssue.bodyHtml || defaultBody)
-      : null
-    const initialMarkdown = currentEditorMode === 'markdown' && hasStoredMarkdown
-      ? await resolveStoredMarkdownImages(currentIssue.bodyMarkdown)
-      : defaultMarkdown
-
-    window.Editor.onChanged(markDirty)
-    await window.Editor.initialize({
-      mode: currentEditorMode,
-      selector: '#text-body',
-      hostSelector: '#editor-host',
-      baseUrl: '/tinymce',
-      minHeight: 420,
-      initialContent: currentEditorMode === 'markdown' ? initialMarkdown : initialHtml,
-      initialHtml: currentEditorMode === 'markdown' && !hasStoredMarkdown ? initialHtml : null,
-      contentStyle:
-        'body { color: #202124; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.55; }',
-      onPickImage: pickImageFromFile
-    })
-
-    window.Editor.markClean()
-    isEditorReady = true
-    $('#save-button').prop('disabled', false)
-    $('#editor-mode').prop('disabled', false)
-    setStatus('Loaded from SQLite', 'ready')
-  }
-
-  async function changeEditorMode(nextMode) {
-    if (nextMode !== 'html' && nextMode !== 'markdown') {
-      return
-    }
-
-    if (nextMode === currentEditorMode) {
-      return
-    }
-
-    if (currentIssue) {
-      if (currentEditorMode === 'markdown') {
-        currentIssue.bodyMarkdown = normalizeMarkdownImagesForSave(window.Editor.getMarkdown())
-      } else {
-        currentIssue.bodyHtml = normalizeImagesForSave(window.Editor.getHtml())
-      }
+      throw new Error('Editor service did not load.')
     }
 
     isEditorReady = false
-    currentEditorMode = nextMode
     $('#save-button').prop('disabled', true)
-    $('#editor-mode').prop('disabled', true)
-    setStatus('Switching editor', 'ready')
 
-    const hasStoredMarkdown = !!(currentIssue && currentIssue.bodyMarkdown && currentIssue.bodyMarkdown.trim())
-    const initialHtml = currentEditorMode === 'html' || !hasStoredMarkdown
-      ? await resolveStoredImages((currentIssue && currentIssue.bodyHtml) || defaultBody)
-      : null
-    const initialMarkdown = currentEditorMode === 'markdown' && hasStoredMarkdown
-      ? await resolveStoredMarkdownImages(currentIssue.bodyMarkdown)
-      : defaultMarkdown
+    const modeCode = task.bodyFormatCode === 'MARKDOWN' ? 'MARKDOWN' : 'HTML'
+    const editorMode = modeCode === 'MARKDOWN' ? 'markdown' : 'html'
 
     await window.Editor.initialize({
-      mode: currentEditorMode,
+      mode: editorMode,
       selector: '#text-body',
       hostSelector: '#editor-host',
       baseUrl: '/tinymce',
-      minHeight: 420,
-      initialContent: currentEditorMode === 'markdown' ? initialMarkdown : initialHtml,
-      initialHtml: currentEditorMode === 'markdown' && !hasStoredMarkdown ? initialHtml : null,
+      minHeight: 360,
+      initialContent: task.body || '',
       contentStyle:
-        'body { color: #202124; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.55; }',
-      onPickImage: pickImageFromFile
+        'body { color: #202124; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.55; }',
+      onPickImage: async function () {
+        setStatus('Images are not part of this UI slice', 'error')
+        return null
+      }
     })
 
+    window.Editor.markClean()
     isEditorReady = true
     $('#save-button').prop('disabled', false)
-    $('#editor-mode').prop('disabled', false)
-    markDirty()
+  }
+
+  async function renderTaskEditor(task) {
+    currentTask = task
+    isDirty = false
+
+    $('#task-editor-title').text(task.id ? task.title : 'New task')
+    $('#task-status-label').text(task.taskStatusName || 'Draft')
+    $('#task-title').val(task.title || '')
+    $('#task-type').val(task.taskTypeCode || '')
+    $('#task-priority').val(task.taskPriorityCode || '')
+    $('#task-deadline').val(formatDate(task.deadline))
+    $('#task-source').val(task.taskSourceCode || '')
+    $('#task-source-reference').val(task.sourceReference || '')
+    $('#task-source-url').val(task.sourceUrl || '')
+    $('#editor-mode').val(task.bodyFormatCode || 'HTML')
+
+    $('#task-form input, #task-form select').prop('disabled', false)
+    $('#editor-mode').prop('disabled', true)
+    $('#start-button').prop('disabled', !(task.id && task.taskStatusCode === 'NEW'))
+    $('#complete-button').prop('disabled', !(task.id && (task.taskStatusCode === 'NEW' || task.taskStatusCode === 'ACTIVE')))
+    $('#cancel-button').prop('disabled', !(task.id && task.taskStatusCode !== 'COMPLETED' && task.taskStatusCode !== 'CANCELLED'))
+
+    await initializeEditorForTask(task)
+    setStatus(task.id ? 'Loaded' : 'Draft', 'ready')
+    renderTaskList()
+  }
+
+  function getEditorBody() {
+    const modeCode = $('#editor-mode').val().toString()
+    return modeCode === 'MARKDOWN'
+      ? window.Editor.getMarkdown()
+      : window.Editor.getHtml()
+  }
+
+  function getTaskPayload() {
+    return {
+      id: currentTask && currentTask.id ? currentTask.id : null,
+      title: $('#task-title').val().toString().trim(),
+      taskTypeCode: $('#task-type').val().toString(),
+      body: getEditorBody(),
+      bodyFormatCode: $('#editor-mode').val().toString(),
+      taskPriorityCode: $('#task-priority').val().toString() || null,
+      taskSourceCode: $('#task-source').val().toString() || null,
+      sourceReference: $('#task-source-reference').val().toString().trim() || null,
+      sourceUrl: $('#task-source-url').val().toString().trim() || null,
+      deadline: $('#task-deadline').val().toString() || null
+    }
+  }
+
+  async function loadTasks(options) {
+    const keepSelection = options && options.keepSelection
+    tasks = await sendBridgeMessage('task.list', {
+      view: currentView
+    })
+    renderTaskList()
+
+    if (keepSelection && currentTask && currentTask.id) {
+      const stillVisible = tasks.some(function (task) {
+        return task.id === currentTask.id
+      })
+      if (stillVisible) {
+        return
+      }
+    }
+
+    if (!currentTask && tasks.length > 0) {
+      await selectTask(tasks[0].id)
+    }
+  }
+
+  async function selectTask(id) {
+    const task = await sendBridgeMessage('task.get', {
+      id
+    })
+    await renderTaskEditor(task)
+  }
+
+  async function saveTask() {
+    if (!currentTask) {
+      return
+    }
+
+    const payload = getTaskPayload()
+    if (!payload.title) {
+      setStatus('Title is required', 'error')
+      $('#task-title').trigger('focus')
+      return
+    }
+
+    if (!payload.taskTypeCode) {
+      setStatus('Task type is required', 'error')
+      $('#task-type').trigger('focus')
+      return
+    }
+
+    setStatus('Saving', 'ready')
+    const savedTask = await sendBridgeMessage(currentTask.id ? 'task.update' : 'task.create', payload)
+    await renderTaskEditor(savedTask)
+    await loadTasks({ keepSelection: true })
+    isDirty = false
+    setStatus('Saved', 'saved')
+  }
+
+  async function runLifecycleAction(type) {
+    if (!currentTask || !currentTask.id) {
+      return
+    }
+
+    const task = await sendBridgeMessage(type, {
+      id: currentTask.id
+    })
+    await renderTaskEditor(task)
+    await loadTasks({ keepSelection: true })
+    setStatus('Updated', 'saved')
+  }
+
+  function bindEvents() {
+    $('#new-task-button').on('click', function () {
+      renderTaskEditor(createDraftTask()).catch(showFatalError)
+    })
+
+    $('#task-list').on('click', '.task-row', function () {
+      const taskId = Number($(this).attr('data-task-id'))
+      selectTask(taskId).catch(function (error) {
+        setStatus(error.message || 'Could not load task', 'error')
+      })
+    })
+
+    $('.view-tab').on('click', function () {
+      currentView = $(this).attr('data-view')
+      currentTask = null
+      loadTasks().catch(showFatalError)
+    })
+
+    $('#task-search').on('input', renderTaskList)
+    $('#task-form').on('input change', 'input, select', markDirty)
+    $('#save-button').on('click', function () {
+      saveTask().catch(function (error) {
+        setStatus(error.message || 'Could not save task', 'error')
+      })
+    })
+    $('#start-button').on('click', function () {
+      runLifecycleAction('task.start').catch(function (error) {
+        setStatus(error.message || 'Could not start task', 'error')
+      })
+    })
+    $('#complete-button').on('click', function () {
+      runLifecycleAction('task.complete').catch(function (error) {
+        setStatus(error.message || 'Could not complete task', 'error')
+      })
+    })
+    $('#cancel-button').on('click', function () {
+      runLifecycleAction('task.cancel').catch(function (error) {
+        setStatus(error.message || 'Could not cancel task', 'error')
+      })
+    })
+
+    window.Editor.onChanged(markDirty)
+  }
+
+  function showFatalError(error) {
+    const message = typeof error === 'string' ? error : (error.message || 'The task workspace could not be loaded.')
+    $('#app').html(`
+      <main class="app-shell">
+        <section class="task-editor-panel">
+          <p class="empty-state">${encodeText(message)}</p>
+        </section>
+      </main>
+    `)
   }
 
   $(async function () {
     renderShell()
     initializeBridgeReceiver()
+    bindEvents()
 
     try {
-      await initializeEditor()
-    } catch (error) {
-      showFatalError(error.message || 'The saved document could not be loaded.')
-      return
-    }
+      lookups = await sendBridgeMessage('task.lookups.get', {})
+      renderLookups()
+      await loadTasks()
 
-    $('#text-title').on('input', markDirty)
-    $('#save-button').on('click', saveDocument)
-    $('#editor-mode').on('change', function () {
-      changeEditorMode($(this).val().toString()).catch(function (error) {
-        setStatus(error.message || 'Could not switch editor', 'error')
-        $('#editor-mode').val(currentEditorMode).prop('disabled', false)
-        $('#save-button').prop('disabled', false)
-      })
-    })
-    $('#reset-button').on('click', function () {
-      resetDocument().catch(function (error) {
-        setStatus(error.message || 'Could not reset document', 'error')
-      })
-    })
+      if (tasks.length === 0) {
+        await renderTaskEditor(createDraftTask())
+      }
+    } catch (error) {
+      showFatalError(error)
+    }
   })
 })(jQuery)

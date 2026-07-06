@@ -62,6 +62,22 @@ public sealed class BridgeMessageHandler(IServiceProvider services, ILogger<Brid
                 .CreateAsync(GetPayload<ImageCreateRequest>(request), cancellationToken),
             "image.get" => await scopedServices.GetRequiredService<ImageService>()
                 .GetAsync(GetPayload<ImageGetRequest>(request).Id, cancellationToken),
+            "task.lookups.get" => await scopedServices.GetRequiredService<TaskService>()
+                .GetLookupsAsync(cancellationToken),
+            "task.list" => await scopedServices.GetRequiredService<TaskService>()
+                .ListAsync(GetPayload<TaskListRequest>(request), cancellationToken),
+            "task.get" => await scopedServices.GetRequiredService<TaskService>()
+                .GetAsync(GetPayload<TaskGetRequest>(request).Id, cancellationToken),
+            "task.create" => await scopedServices.GetRequiredService<TaskService>()
+                .CreateAsync(GetPayload<TaskSaveRequest>(request), cancellationToken),
+            "task.update" => await scopedServices.GetRequiredService<TaskService>()
+                .UpdateAsync(GetPayload<TaskSaveRequest>(request), cancellationToken),
+            "task.start" => await scopedServices.GetRequiredService<TaskService>()
+                .StartAsync(GetPayload<TaskIdRequest>(request).Id, cancellationToken),
+            "task.complete" => await scopedServices.GetRequiredService<TaskService>()
+                .CompleteAsync(GetPayload<TaskIdRequest>(request).Id, cancellationToken),
+            "task.cancel" => await scopedServices.GetRequiredService<TaskService>()
+                .CancelAsync(GetPayload<TaskIdRequest>(request).Id, cancellationToken),
             _ => throw new BridgeException("InvalidMessage", $"Unsupported bridge message type '{request.Type}'.")
         };
     }
