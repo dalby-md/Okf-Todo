@@ -35,8 +35,11 @@ public sealed class BridgeTaskMessageTests
         Assert.Equal("Bridge task", created.GetProperty("title").GetString());
         Assert.Equal(TaskStatusCodes.New, created.GetProperty("taskStatusCode").GetString());
 
-        var list = await fixture.SendAsync("task.list", new { view = "active" });
-        Assert.Contains(list.EnumerateArray(), task => task.GetProperty("id").GetInt32() == taskId);
+        var inboxList = await fixture.SendAsync("task.list", new { view = "inbox" });
+        Assert.Contains(inboxList.EnumerateArray(), task => task.GetProperty("id").GetInt32() == taskId);
+
+        var activeList = await fixture.SendAsync("task.list", new { view = "active" });
+        Assert.DoesNotContain(activeList.EnumerateArray(), task => task.GetProperty("id").GetInt32() == taskId);
 
         var loaded = await fixture.SendAsync("task.get", new { id = taskId });
         Assert.Equal("<p>Created through bridge</p>", loaded.GetProperty("body").GetString());

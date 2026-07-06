@@ -30,15 +30,13 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
         {
             "inbox" => query.Where(task => task.TaskStatus != null && task.TaskStatus.Code == TaskStatusCodes.New),
             "active" => query.Where(task => task.TaskStatus != null
-                && (task.TaskStatus.Code == TaskStatusCodes.New
-                    || task.TaskStatus.Code == TaskStatusCodes.Active
+                && (task.TaskStatus.Code == TaskStatusCodes.Active
                     || task.TaskStatus.Code == TaskStatusCodes.Waiting)),
             "completed" => query.Where(task => task.TaskStatus != null
                 && (task.TaskStatus.Code == TaskStatusCodes.Completed || task.TaskStatus.Code == TaskStatusCodes.Cancelled)),
             "all" => query,
             _ => query.Where(task => task.TaskStatus != null
-                && (task.TaskStatus.Code == TaskStatusCodes.New
-                    || task.TaskStatus.Code == TaskStatusCodes.Active
+                && (task.TaskStatus.Code == TaskStatusCodes.Active
                     || task.TaskStatus.Code == TaskStatusCodes.Waiting))
         };
 

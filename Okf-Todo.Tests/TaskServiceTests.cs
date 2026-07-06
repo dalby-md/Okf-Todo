@@ -44,11 +44,14 @@ public sealed class TaskServiceTests
         Assert.Equal("INC123456", created.SourceReference);
         Assert.Equal("https://example.test/inc/123456", created.SourceUrl);
 
-        var activeTasks = await database.Tasks.ListAsync(new TaskListRequest("active"), CancellationToken.None);
-        var listed = Assert.Single(activeTasks);
+        var inboxTasks = await database.Tasks.ListAsync(new TaskListRequest("inbox"), CancellationToken.None);
+        var listed = Assert.Single(inboxTasks);
         Assert.Equal(created.Id, listed.Id);
         Assert.Equal("Fix failed deployment", listed.Title);
         Assert.Equal(TaskStatusCodes.New, listed.TaskStatusCode);
+
+        var activeTasks = await database.Tasks.ListAsync(new TaskListRequest("active"), CancellationToken.None);
+        Assert.DoesNotContain(activeTasks, task => task.Id == created.Id);
 
         var loaded = await database.Tasks.GetAsync(created.Id, CancellationToken.None);
         Assert.Equal("<p>Initial body</p>", loaded.Body);
