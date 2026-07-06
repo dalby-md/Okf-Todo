@@ -84,6 +84,7 @@ public sealed class TaskLifecycleService(
         }
 
         var now = DateTime.UtcNow;
+        await ResolveActiveWaitingTargetAsync(task, now, cancellationToken);
         task.ActivatedAt = null;
         task.CompletedAt = null;
         task.CancelledAt = null;
@@ -114,6 +115,11 @@ public sealed class TaskLifecycleService(
         }
 
         var task = await GetTaskWithStatusAsync(taskId, cancellationToken);
+        if (task.TaskStatus?.Code != TaskStatusCodes.Active)
+        {
+            throw new ValidationException("Waiting for can only be set on active tasks.", "taskStatus");
+        }
+
         var now = DateTime.UtcNow;
 
         var waitingFor = new TaskWaitingFor
@@ -136,8 +142,6 @@ public sealed class TaskLifecycleService(
             $"Waiting for changed to {targetText}",
             now,
             newValue: targetText);
-
-        await ChangeStatusAsync(task, TaskStatusCodes.Waiting, now, cancellationToken);
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }

@@ -312,39 +312,20 @@ h2 {
 
 .waiting-panel {
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  grid-template-columns: auto minmax(160px, 1fr) auto auto;
+  align-items: end;
+  gap: 8px;
+  padding: 8px 10px;
   border: 1px solid #d8dee5;
   border-radius: 7px;
   background: #ffffff;
 }
 
-.waiting-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.waiting-header h3 {
-  margin: 0;
-  overflow-wrap: anywhere;
-  color: #202124;
-  font-size: 1rem;
-}
-
-.waiting-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.simple-waiting-grid {
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.waiting-action {
-  align-content: end;
+.waiting-label {
+  align-self: center;
+  color: #374151;
+  font-size: 0.88rem;
+  font-weight: 750;
 }
 
 .field-block,
@@ -472,12 +453,8 @@ h2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .waiting-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .simple-waiting-grid {
-    grid-template-columns: minmax(0, 1fr) auto;
+  .waiting-panel {
+    grid-template-columns: auto minmax(160px, 1fr) auto auto;
   }
 }
 
@@ -508,16 +485,12 @@ h2 {
     grid-template-columns: 1fr;
   }
 
-  .waiting-header {
-    display: grid;
-  }
-
-  .waiting-grid {
+  .waiting-panel {
     grid-template-columns: 1fr;
   }
 
-  .simple-waiting-grid {
-    grid-template-columns: 1fr;
+  .waiting-label {
+    align-self: auto;
   }
 
   .mode-field {

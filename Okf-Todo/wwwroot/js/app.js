@@ -366,25 +366,11 @@
               </label>
             </div>
 
-            <section class="waiting-panel" aria-labelledby="waiting-title">
-              <div class="waiting-header">
-                <div>
-                  <p class="eyebrow">Waiting target</p>
-                  <h3 id="waiting-title">Not waiting</h3>
-                </div>
-                <button id="clear-waiting-button" class="secondary-button danger-button" type="button" disabled>Clear waiting</button>
-              </div>
-
-              <div class="waiting-grid simple-waiting-grid">
-                <label class="field-block" for="waiting-text">
-                  <span>Waiting for</span>
-                  <input id="waiting-text" type="text" autocomplete="off" placeholder="INC123456" disabled>
-                </label>
-                <div class="field-block waiting-action">
-                  <span>&nbsp;</span>
-                  <button id="add-waiting-button" class="secondary-button" type="button" disabled>Add waiting</button>
-                </div>
-              </div>
+            <section class="waiting-panel" aria-labelledby="waiting-label">
+              <label id="waiting-label" class="waiting-label" for="waiting-text">Waiting for</label>
+              <input id="waiting-text" type="text" autocomplete="off" placeholder="INC123456" disabled>
+              <button id="add-waiting-button" class="secondary-button" type="button" disabled>Set</button>
+              <button id="clear-waiting-button" class="secondary-button danger-button" type="button" disabled>Clear</button>
             </section>
 
             <div class="body-header">
@@ -544,11 +530,10 @@
 
   function renderWaitingPanel(task) {
     const waitingFor = task.activeWaitingFor
-    const canEditWaiting = !!(task.id && task.taskStatusCode !== 'COMPLETED' && task.taskStatusCode !== 'CANCELLED')
+    const canEditWaiting = !!(task.id && task.taskStatusCode === 'ACTIVE')
 
     $('#waiting-text').val(waitingFor ? describeWaiting(waitingFor) : '')
 
-    $('#waiting-title').text(waitingFor ? describeWaiting(waitingFor) : 'Not waiting')
     $('#clear-waiting-button').prop('disabled', !waitingFor)
     $('#add-waiting-button').prop('disabled', !canEditWaiting || !!waitingFor)
     $('#waiting-text').prop('disabled', !canEditWaiting || !!waitingFor)
@@ -740,12 +725,26 @@
       return
     }
 
+    if (!confirmActiveWaitClearBeforeLeavingActive(type)) {
+      setStatus('Task remains active', 'ready')
+      return
+    }
+
     const task = await sendBridgeMessage(type, {
       id: currentTask.id
     })
     refreshCurrentTaskWithoutEditor(task)
     await loadTasks({ keepSelection: true })
     setStatus('Updated', 'saved')
+  }
+
+  function confirmActiveWaitClearBeforeLeavingActive(type) {
+    const leavesActive = type === 'task.undoStart' || type === 'task.complete' || type === 'task.cancel'
+    if (!leavesActive || !currentTask || currentTask.taskStatusCode !== 'ACTIVE' || !currentTask.activeWaitingFor) {
+      return true
+    }
+
+    return window.confirm('This task has a waiting target. Clear waiting and continue?')
   }
 
   function runStartButtonAction() {

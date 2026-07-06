@@ -124,17 +124,18 @@ public sealed class TaskServiceTests
     {
         await using var database = await TestDatabase.CreateAsync();
         var created = await database.Tasks.CreateAsync(CreateRequest("Task waiting on ServiceDesk"), CancellationToken.None);
+        await database.Tasks.StartAsync(created.Id, CancellationToken.None);
 
         var waiting = await database.Tasks.AddWaitingForAsync(new TaskWaitingForSaveRequest(
             TaskId: created.Id,
             Label: "INC123456"), CancellationToken.None);
 
-        Assert.Equal(TaskStatusCodes.Waiting, waiting.TaskStatusCode);
+        Assert.Equal(TaskStatusCodes.Active, waiting.TaskStatusCode);
         Assert.NotNull(waiting.ActiveWaitingFor);
         Assert.Equal("INC123456", waiting.ActiveWaitingFor.Label);
 
         var activeTasks = await database.Tasks.ListAsync(new TaskListRequest("active"), CancellationToken.None);
-        Assert.Contains(activeTasks, task => task.Id == created.Id && task.TaskStatusCode == TaskStatusCodes.Waiting);
+        Assert.Contains(activeTasks, task => task.Id == created.Id && task.TaskStatusCode == TaskStatusCodes.Active);
 
         var secondWait = await Assert.ThrowsAsync<ValidationException>(() =>
             database.Tasks.AddWaitingForAsync(new TaskWaitingForSaveRequest(

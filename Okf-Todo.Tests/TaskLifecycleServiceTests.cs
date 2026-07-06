@@ -86,7 +86,7 @@ public sealed class TaskLifecycleServiceTests
     }
 
     [Fact]
-    public async Task AddWaitingFor_CreatesActiveWaitTargetSetsWaitingAndLogs()
+    public async Task AddWaitingFor_CreatesActiveWaitTargetKeepsTaskActiveAndLogs()
     {
         await using var database = await TestDatabase.CreateAsync();
         var task = await database.CreateTaskAsync();
@@ -101,11 +101,23 @@ public sealed class TaskLifecycleServiceTests
             .Where(waitingFor => waitingFor.TaskId == task.Id && waitingFor.ResolvedAt == null)
             .ToListAsync();
 
-        Assert.Equal(TaskStatusCodes.Waiting, savedTask.TaskStatus?.Code);
+        Assert.Equal(TaskStatusCodes.Active, savedTask.TaskStatus?.Code);
         Assert.NotNull(savedTask.WaitingSince);
         Assert.Single(activeTargets);
         AssertHasLog(savedTask, TaskLogTypeCodes.WaitingForChanged, "Waiting for changed to INC123456");
-        AssertHasLog(savedTask, TaskLogTypeCodes.StatusChanged, "Status changed from Active to Waiting");
+    }
+
+    [Fact]
+    public async Task AddWaitingFor_RejectsTaskThatIsNotActive()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var task = await database.CreateTaskAsync();
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => database.Lifecycle.AddWaitingForAsync(
+            task.Id,
+            new TaskWaitingForRequest("INC123456")));
+
+        Assert.Equal("taskStatus", exception.Field);
     }
 
     [Fact]
@@ -123,7 +135,6 @@ public sealed class TaskLifecycleServiceTests
         Assert.Null(savedTask.WaitingSince);
         Assert.NotNull(target.ResolvedAt);
         AssertHasLog(savedTask, TaskLogTypeCodes.WaitingForCleared, "Waiting for INC123456 was cleared");
-        AssertHasLog(savedTask, TaskLogTypeCodes.StatusChanged, "Status changed from Waiting to Active");
     }
 
     [Fact]

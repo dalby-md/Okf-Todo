@@ -74,7 +74,7 @@ public sealed class BridgeTaskMessageTests
             taskId,
             label = "INC789"
         });
-        Assert.Equal(TaskStatusCodes.Waiting, waiting.GetProperty("taskStatusCode").GetString());
+        Assert.Equal(TaskStatusCodes.Active, waiting.GetProperty("taskStatusCode").GetString());
         Assert.Equal("INC789", waiting.GetProperty("activeWaitingFor").GetProperty("label").GetString());
 
         var cleared = await fixture.SendAsync("task.waiting.clear", new { id = taskId });
