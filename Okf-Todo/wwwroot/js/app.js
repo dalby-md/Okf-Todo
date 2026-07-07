@@ -502,6 +502,7 @@
     const preference = await sendBridgeMessage('editor.preference.get', {})
     preferredBodyFormatCode = getSupportedBodyFormatCode(preference.bodyFormatCode)
     $('#editor-mode').val(preferredBodyFormatCode)
+    $('#editor-mode').prop('disabled', false)
   }
 
   function saveEditorPreference(bodyFormatCode) {
@@ -535,7 +536,7 @@
     $('#waiting-text').val('')
     $('#task-form input, #task-form select').prop('disabled', true)
     $('#add-waiting-button, #clear-waiting-button, #complete-button, #cancel-button, #save-button').prop('disabled', true)
-    $('#editor-mode').prop('disabled', true)
+    $('#editor-mode').prop('disabled', !lookups)
     $('#editor-host').html('<div class="empty-editor">Select a task to edit the body.</div>')
     setStatus('Ready', 'ready')
     renderTaskList()
@@ -912,11 +913,22 @@
   }
 
   async function switchEditorMode() {
+    const targetModeCode = $('#editor-mode').val().toString() === 'MARKDOWN' ? 'MARKDOWN' : 'HTML'
+
     if (!currentTask || !isEditorReady) {
+      $('#editor-mode').prop('disabled', true)
+
+      try {
+        await saveEditorPreference(targetModeCode)
+        $('#editor-mode').val(preferredBodyFormatCode)
+        setStatus('Editor preference saved', 'saved')
+      } finally {
+        $('#editor-mode').prop('disabled', false)
+      }
+
       return
     }
 
-    const targetModeCode = $('#editor-mode').val().toString() === 'MARKDOWN' ? 'MARKDOWN' : 'HTML'
     const activeModeCode = window.Editor.getMode() === 'markdown' ? 'MARKDOWN' : 'HTML'
 
     if (targetModeCode === activeModeCode) {
