@@ -240,10 +240,14 @@ h2 {
 }
 
 .task-badge {
-  padding: 1px 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
   border-radius: 999px;
   color: #374151;
   background: #eef1f4;
+  line-height: 1;
 }
 
 .task-badge-waiting {
