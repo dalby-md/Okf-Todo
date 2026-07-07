@@ -162,7 +162,7 @@ h2 {
 
 .view-tabs {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 3px;
   padding: 2px;
   border: 1px solid #d8dee5;
@@ -542,6 +542,18 @@ h2 {
   color: #53606c;
   font-size: 0.82rem;
   line-height: 1.4;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.form-error {
+  margin: -2px 0 0;
+  color: #8f2f23;
+  font-size: 0.78rem;
 }
 
 @media (max-width: 900px) {

@@ -429,6 +429,26 @@
             <p class="settings-help">If you do not understand this option, choose HTML.</p>
           </section>
         </div>
+
+        <div id="new-task-overlay" class="modal-overlay" hidden>
+          <section class="settings-dialog new-task-dialog" role="dialog" aria-modal="true" aria-labelledby="new-task-dialog-title">
+            <header class="settings-header">
+              <h2 id="new-task-dialog-title">New task</h2>
+            </header>
+
+            <label class="settings-field" for="new-task-title-input">
+              <span>Title</span>
+              <input id="new-task-title-input" type="text" autocomplete="off" required>
+            </label>
+
+            <p id="new-task-error" class="form-error" hidden>Title is required.</p>
+
+            <div class="modal-actions">
+              <button id="new-task-cancel-button" class="secondary-button" type="button">Cancel</button>
+              <button id="new-task-save-button" type="button">Save</button>
+            </div>
+          </section>
+        </div>
       </main>
     `)
   }
@@ -596,18 +616,16 @@
     }).join(''))
   }
 
-  function createDraftTask() {
+  function createNewTaskPayload(title) {
     const firstTaskType = lookups.taskTypes && lookups.taskTypes[0]
     const bodyFormatCode = getSupportedBodyFormatCode(preferredBodyFormatCode)
 
     return {
       id: null,
-      title: '',
+      title,
       body: '',
       bodyFormatCode,
       taskTypeCode: firstTaskType ? firstTaskType.code : '',
-      taskStatusCode: 'DRAFT',
-      taskStatusName: 'Draft',
       taskPriorityCode: '',
       taskSourceCode: '',
       sourceReference: '',
@@ -951,16 +969,58 @@
     $('#settings-button').trigger('focus')
   }
 
+  function openNewTaskDialog() {
+    $('#new-task-title-input').val('').removeClass('is-invalid')
+    $('#new-task-error').prop('hidden', true)
+    $('#new-task-save-button, #new-task-cancel-button').prop('disabled', false)
+    $('#new-task-overlay').prop('hidden', false)
+    $('#new-task-title-input').trigger('focus')
+  }
+
+  function closeNewTaskDialog() {
+    $('#new-task-overlay').prop('hidden', true)
+    $('#new-task-button').trigger('focus')
+  }
+
+  async function createTaskFromDialog() {
+    if ($('#new-task-save-button').prop('disabled')) {
+      return
+    }
+
+    const title = $('#new-task-title-input').val().toString().trim()
+    if (!title) {
+      $('#new-task-title-input').addClass('is-invalid').trigger('focus')
+      $('#new-task-error').prop('hidden', false)
+      return
+    }
+
+    const payload = createNewTaskPayload(title)
+    if (!payload.taskTypeCode) {
+      setStatus('Task type lookup is missing', 'error')
+      return
+    }
+
+    $('#new-task-save-button, #new-task-cancel-button').prop('disabled', true)
+    setStatus('Saving', 'ready')
+
+    try {
+      const savedTask = await sendBridgeMessage('task.create', payload)
+      closeNewTaskDialog()
+      selectViewForTask(savedTask)
+      await renderTaskEditor(savedTask)
+      await loadTasks({ keepSelection: true })
+      isDirty = false
+      window.Editor.markClean()
+      setStatus('Saved', 'saved')
+    } catch (error) {
+      $('#new-task-save-button, #new-task-cancel-button').prop('disabled', false)
+      throw error
+    }
+  }
+
   function bindEvents() {
     $('#new-task-button').on('click', function () {
-      const draftTask = createDraftTask()
-      selectViewForTask(draftTask)
-      renderTaskList()
-
-      Promise.all([
-        renderTaskEditor(draftTask),
-        loadTasks()
-      ]).catch(showFatalError)
+      openNewTaskDialog()
     })
 
     $('#settings-button').on('click', openSettings)
@@ -970,9 +1030,30 @@
         closeSettings()
       }
     })
+    $('#new-task-cancel-button').on('click', closeNewTaskDialog)
+    $('#new-task-save-button').on('click', function () {
+      createTaskFromDialog().catch(function (error) {
+        setStatus(getErrorMessage(error, 'Could not create task'), 'error')
+      })
+    })
+    $('#new-task-title-input').on('input', function () {
+      $(this).removeClass('is-invalid')
+      $('#new-task-error').prop('hidden', true)
+    })
+    $('#new-task-title-input').on('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        createTaskFromDialog().catch(function (error) {
+          setStatus(getErrorMessage(error, 'Could not create task'), 'error')
+        })
+      }
+    })
     $(document).on('keydown', function (event) {
       if (event.key === 'Escape' && !$('#settings-overlay').prop('hidden')) {
         closeSettings()
+      }
+      if (event.key === 'Escape' && !$('#new-task-overlay').prop('hidden')) {
+        closeNewTaskDialog()
       }
     })
 
