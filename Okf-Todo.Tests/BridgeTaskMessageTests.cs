@@ -192,6 +192,36 @@ public sealed class BridgeTaskMessageTests
     }
 
     [Fact]
+    public async Task Bridge_PersistsLayoutPreference()
+    {
+        await using var fixture = await BridgeFixture.CreateAsync();
+
+        var initial = await fixture.SendAsync("layout.preference.get", new { });
+        Assert.Equal(JsonValueKind.Null, initial.GetProperty("taskListWidth").ValueKind);
+        Assert.Equal(JsonValueKind.Null, initial.GetProperty("taskListHeight").ValueKind);
+
+        await fixture.SendAsync("editor.preference.save", new
+        {
+            bodyFormatCode = "MARKDOWN"
+        });
+
+        var saved = await fixture.SendAsync("layout.preference.save", new
+        {
+            taskListWidth = 412,
+            taskListHeight = 275
+        });
+        Assert.Equal(412, saved.GetProperty("taskListWidth").GetDouble());
+        Assert.Equal(275, saved.GetProperty("taskListHeight").GetDouble());
+
+        var loaded = await fixture.SendAsync("layout.preference.get", new { });
+        Assert.Equal(412, loaded.GetProperty("taskListWidth").GetDouble());
+        Assert.Equal(275, loaded.GetProperty("taskListHeight").GetDouble());
+
+        var editorPreference = await fixture.SendAsync("editor.preference.get", new { });
+        Assert.Equal("MARKDOWN", editorPreference.GetProperty("bodyFormatCode").GetString());
+    }
+
+    [Fact]
     public async Task Bridge_RejectsInvalidEditorPreference()
     {
         await using var fixture = await BridgeFixture.CreateAsync();
@@ -204,6 +234,22 @@ public sealed class BridgeTaskMessageTests
         Assert.False(response.RootElement.GetProperty("ok").GetBoolean());
         Assert.Equal("ValidationFailed", response.RootElement.GetProperty("error").GetProperty("code").GetString());
         Assert.Equal("bodyFormatCode", response.RootElement.GetProperty("error").GetProperty("details").GetProperty("field").GetString());
+    }
+
+    [Fact]
+    public async Task Bridge_RejectsInvalidLayoutPreference()
+    {
+        await using var fixture = await BridgeFixture.CreateAsync();
+
+        using var response = await fixture.SendRawAsync("layout.preference.save", new
+        {
+            taskListWidth = 40,
+            taskListHeight = 275
+        });
+
+        Assert.False(response.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Equal("ValidationFailed", response.RootElement.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal("taskListWidth", response.RootElement.GetProperty("error").GetProperty("details").GetProperty("field").GetString());
     }
 
     private sealed class BridgeFixture : IAsyncDisposable

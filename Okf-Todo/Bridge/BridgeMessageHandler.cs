@@ -66,6 +66,10 @@ public sealed class BridgeMessageHandler(IServiceProvider services, ILogger<Brid
                 .GetEditorPreferenceAsync(cancellationToken),
             "editor.preference.save" => await scopedServices.GetRequiredService<AppPreferenceService>()
                 .SaveEditorPreferenceAsync(GetPayload<EditorPreferenceSaveRequest>(request), cancellationToken),
+            "layout.preference.get" => await scopedServices.GetRequiredService<AppPreferenceService>()
+                .GetLayoutPreferenceAsync(cancellationToken),
+            "layout.preference.save" => await scopedServices.GetRequiredService<AppPreferenceService>()
+                .SaveLayoutPreferenceAsync(GetPayload<LayoutPreferenceSaveRequest>(request), cancellationToken),
             "task.lookups.get" => await scopedServices.GetRequiredService<TaskService>()
                 .GetLookupsAsync(cancellationToken),
             "task.list" => await scopedServices.GetRequiredService<TaskService>()

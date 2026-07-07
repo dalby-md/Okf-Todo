@@ -10,10 +10,7 @@
   const supportedEditorImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
   const maxEditorImageBytes = 5 * 1024 * 1024
   const wideLayoutMediaQuery = window.matchMedia('(min-width: 901px)')
-  const layoutStorageKeys = {
-    width: 'okfTodo.taskListWidth',
-    height: 'okfTodo.taskListHeight'
-  }
+  const defaultTaskListWidth = 320
 
   let lookups = null
   let tasks = []
@@ -22,6 +19,11 @@
   let isEditorReady = false
   let isDirty = false
   let preferredBodyFormatCode = 'HTML'
+  let layoutPreference = {
+    taskListWidth: defaultTaskListWidth,
+    taskListHeight: null
+  }
+  let layoutPreferenceSaveTimer = null
 
   function createMessageId() {
     if (window.crypto && window.crypto.randomUUID) {
@@ -547,25 +549,38 @@
     })
   }
 
-  function getStoredSplitValue(key, fallback) {
-    let storedValue = null
-
-    try {
-      storedValue = window.localStorage.getItem(key)
-    } catch {
-      storedValue = null
-    }
-
-    const value = Number(storedValue)
+  function getLayoutPreferenceValue(key, fallback) {
+    const value = Number(layoutPreference[key])
     return Number.isFinite(value) && value > 0 ? value : fallback
   }
 
-  function storeSplitValue(key, value) {
-    try {
-      window.localStorage.setItem(key, String(Math.round(value)))
-    } catch {
-      // The splitter still works for the current session when storage is unavailable.
+  function saveLayoutPreference() {
+    if (layoutPreferenceSaveTimer) {
+      window.clearTimeout(layoutPreferenceSaveTimer)
+      layoutPreferenceSaveTimer = null
     }
+
+    return sendBridgeMessage('layout.preference.save', {
+      taskListWidth: layoutPreference.taskListWidth,
+      taskListHeight: layoutPreference.taskListHeight
+    }).catch(function (error) {
+      setStatus(getErrorMessage(error, 'Could not save layout preference'), 'error')
+    })
+  }
+
+  function scheduleLayoutPreferenceSave() {
+    if (layoutPreferenceSaveTimer) {
+      window.clearTimeout(layoutPreferenceSaveTimer)
+    }
+
+    layoutPreferenceSaveTimer = window.setTimeout(saveLayoutPreference, 250)
+  }
+
+  async function loadLayoutPreference() {
+    const preference = await sendBridgeMessage('layout.preference.get', {})
+    layoutPreference.taskListWidth = preference.taskListWidth || defaultTaskListWidth
+    layoutPreference.taskListHeight = preference.taskListHeight || Math.round(window.innerHeight * 0.42)
+    applyStoredLayoutSplit(false)
   }
 
   function clampSplitValue(value, minimum, maximum) {
@@ -582,37 +597,45 @@
     }
   }
 
-  function setTaskListWidth(width) {
+  function setTaskListWidth(width, shouldSave) {
     const bounds = getLayoutBounds()
     const clampedWidth = clampSplitValue(width, 220, Math.max(260, bounds.width - 460))
     document.documentElement.style.setProperty('--task-list-width', `${clampedWidth}px`)
-    storeSplitValue(layoutStorageKeys.width, clampedWidth)
+    layoutPreference.taskListWidth = Math.round(clampedWidth)
+
+    if (shouldSave) {
+      scheduleLayoutPreferenceSave()
+    }
   }
 
-  function setTaskListHeight(height) {
+  function setTaskListHeight(height, shouldSave) {
     const bounds = getLayoutBounds()
     const clampedHeight = clampSplitValue(height, 170, Math.max(220, bounds.height - 380))
     document.documentElement.style.setProperty('--task-list-height', `${clampedHeight}px`)
-    storeSplitValue(layoutStorageKeys.height, clampedHeight)
+    layoutPreference.taskListHeight = Math.round(clampedHeight)
+
+    if (shouldSave) {
+      scheduleLayoutPreferenceSave()
+    }
   }
 
   function isWideLayout() {
     return wideLayoutMediaQuery.matches
   }
 
-  function applyStoredLayoutSplit() {
-    setTaskListWidth(getStoredSplitValue(layoutStorageKeys.width, 320))
-    setTaskListHeight(getStoredSplitValue(layoutStorageKeys.height, Math.round(window.innerHeight * 0.42)))
+  function applyStoredLayoutSplit(shouldSave) {
+    setTaskListWidth(getLayoutPreferenceValue('taskListWidth', defaultTaskListWidth), shouldSave)
+    setTaskListHeight(getLayoutPreferenceValue('taskListHeight', Math.round(window.innerHeight * 0.42)), shouldSave)
     $('#layout-resizer').attr('aria-orientation', isWideLayout() ? 'vertical' : 'horizontal')
   }
 
   function bindLayoutResizer() {
     const $resizer = $('#layout-resizer')
 
-    applyStoredLayoutSplit()
+    applyStoredLayoutSplit(false)
 
     const onMediaChange = function () {
-      applyStoredLayoutSplit()
+      applyStoredLayoutSplit(false)
     }
 
     if (typeof wideLayoutMediaQuery.addEventListener === 'function') {
@@ -629,31 +652,32 @@
 
       $(document).on('pointermove.layoutResizer', function (moveEvent) {
         if (isWideLayout()) {
-          setTaskListWidth(moveEvent.clientX - shellRect.left)
+          setTaskListWidth(moveEvent.clientX - shellRect.left, true)
         } else {
-          setTaskListHeight(moveEvent.clientY - shellRect.top)
+          setTaskListHeight(moveEvent.clientY - shellRect.top, true)
         }
       })
 
       $(document).on('pointerup.layoutResizer pointercancel.layoutResizer', function () {
         $resizer.removeClass('is-dragging')
         $(document).off('.layoutResizer')
+        saveLayoutPreference()
       })
     })
 
     $resizer.on('keydown', function (event) {
       const step = event.shiftKey ? 40 : 20
-      const currentWidth = getStoredSplitValue(layoutStorageKeys.width, 320)
-      const currentHeight = getStoredSplitValue(layoutStorageKeys.height, Math.round(window.innerHeight * 0.42))
+      const currentWidth = getLayoutPreferenceValue('taskListWidth', defaultTaskListWidth)
+      const currentHeight = getLayoutPreferenceValue('taskListHeight', Math.round(window.innerHeight * 0.42))
 
       if (isWideLayout() && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
         event.preventDefault()
-        setTaskListWidth(currentWidth + (event.key === 'ArrowRight' ? step : -step))
+        setTaskListWidth(currentWidth + (event.key === 'ArrowRight' ? step : -step), true)
       }
 
       if (!isWideLayout() && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
         event.preventDefault()
-        setTaskListHeight(currentHeight + (event.key === 'ArrowDown' ? step : -step))
+        setTaskListHeight(currentHeight + (event.key === 'ArrowDown' ? step : -step), true)
       }
     })
   }
@@ -1244,6 +1268,9 @@
 
     try {
       await waitForNextPaint()
+      loadLayoutPreference().catch(function (error) {
+        setStatus(getErrorMessage(error, 'Could not load layout preference'), 'error')
+      })
       lookups = await sendBridgeMessage('task.lookups.get', {})
       renderLookups()
       await loadEditorPreference()
