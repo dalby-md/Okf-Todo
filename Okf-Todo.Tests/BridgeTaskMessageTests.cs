@@ -182,15 +182,54 @@ public sealed class BridgeTaskMessageTests
         Assert.Equal(Convert.ToBase64String(imageBytes), loaded.GetProperty("base64Data").GetString());
     }
 
+    [Fact]
+    public async Task Bridge_PersistsEditorPreference()
+    {
+        await using var fixture = await BridgeFixture.CreateAsync();
+
+        var initial = await fixture.SendAsync("editor.preference.get", new { });
+        Assert.Equal("HTML", initial.GetProperty("bodyFormatCode").GetString());
+
+        var saved = await fixture.SendAsync("editor.preference.save", new
+        {
+            bodyFormatCode = "MARKDOWN"
+        });
+        Assert.Equal("MARKDOWN", saved.GetProperty("bodyFormatCode").GetString());
+
+        var loaded = await fixture.SendAsync("editor.preference.get", new { });
+        Assert.Equal("MARKDOWN", loaded.GetProperty("bodyFormatCode").GetString());
+    }
+
+    [Fact]
+    public async Task Bridge_RejectsInvalidEditorPreference()
+    {
+        await using var fixture = await BridgeFixture.CreateAsync();
+
+        using var response = await fixture.SendRawAsync("editor.preference.save", new
+        {
+            bodyFormatCode = "PLAIN_TEXT"
+        });
+
+        Assert.False(response.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Equal("ValidationFailed", response.RootElement.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal("bodyFormatCode", response.RootElement.GetProperty("error").GetProperty("details").GetProperty("field").GetString());
+    }
+
     private sealed class BridgeFixture : IAsyncDisposable
     {
         private readonly SqliteConnection connection;
+        private readonly string preferencesDirectory;
         private readonly ServiceProvider services;
         private readonly BridgeMessageHandler handler;
 
-        private BridgeFixture(SqliteConnection connection, ServiceProvider services, BridgeMessageHandler handler)
+        private BridgeFixture(
+            SqliteConnection connection,
+            string preferencesDirectory,
+            ServiceProvider services,
+            BridgeMessageHandler handler)
         {
             this.connection = connection;
+            this.preferencesDirectory = preferencesDirectory;
             this.services = services;
             this.handler = handler;
         }
@@ -199,13 +238,17 @@ public sealed class BridgeTaskMessageTests
         {
             var connection = new SqliteConnection("Data Source=:memory:");
             await connection.OpenAsync();
+            var preferencesDirectory = Path.Combine(Path.GetTempPath(), "Okf-Todo.Tests", Guid.NewGuid().ToString("N"));
 
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddLogging();
             serviceCollection.AddDbContext<AppDbContext>(options => options.UseSqlite(connection));
+            serviceCollection.AddSingleton<IAppPreferencePathProvider>(
+                new TestAppPreferencePathProvider(Path.Combine(preferencesDirectory, "app-preferences.json")));
             serviceCollection.AddScoped<LookupSeedService>();
             serviceCollection.AddScoped<TaskLifecycleService>();
             serviceCollection.AddScoped<TaskService>();
+            serviceCollection.AddScoped<AppPreferenceService>();
             serviceCollection.AddScoped<ImageService>();
 
             var services = serviceCollection.BuildServiceProvider();
@@ -221,7 +264,7 @@ public sealed class BridgeTaskMessageTests
                 services,
                 services.GetRequiredService<ILogger<BridgeMessageHandler>>());
 
-            return new BridgeFixture(connection, services, handler);
+            return new BridgeFixture(connection, preferencesDirectory, services, handler);
         }
 
         public async Task<JsonElement> SendAsync(string type, object payload)
@@ -248,6 +291,19 @@ public sealed class BridgeTaskMessageTests
         {
             await services.DisposeAsync();
             await connection.DisposeAsync();
+
+            if (Directory.Exists(preferencesDirectory))
+            {
+                Directory.Delete(preferencesDirectory, recursive: true);
+            }
+        }
+    }
+
+    private sealed class TestAppPreferencePathProvider(string preferencesPath) : IAppPreferencePathProvider
+    {
+        public string GetPreferencesPath()
+        {
+            return preferencesPath;
         }
     }
 }

@@ -62,6 +62,10 @@ public sealed class BridgeMessageHandler(IServiceProvider services, ILogger<Brid
                 .CreateAsync(GetPayload<ImageCreateRequest>(request), cancellationToken),
             "image.get" => await scopedServices.GetRequiredService<ImageService>()
                 .GetAsync(GetPayload<ImageGetRequest>(request).Id, cancellationToken),
+            "editor.preference.get" => await scopedServices.GetRequiredService<AppPreferenceService>()
+                .GetEditorPreferenceAsync(cancellationToken),
+            "editor.preference.save" => await scopedServices.GetRequiredService<AppPreferenceService>()
+                .SaveEditorPreferenceAsync(GetPayload<EditorPreferenceSaveRequest>(request), cancellationToken),
             "task.lookups.get" => await scopedServices.GetRequiredService<TaskService>()
                 .GetLookupsAsync(cancellationToken),
             "task.list" => await scopedServices.GetRequiredService<TaskService>()

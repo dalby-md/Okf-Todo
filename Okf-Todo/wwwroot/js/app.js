@@ -17,6 +17,7 @@
   let currentView = 'active'
   let isEditorReady = false
   let isDirty = false
+  let preferredBodyFormatCode = 'HTML'
 
   function createMessageId() {
     if (window.crypto && window.crypto.randomUUID) {
@@ -441,6 +442,35 @@
     renderLookupOptions('#editor-mode', lookups.bodyFormats, false)
   }
 
+  function getSupportedBodyFormatCode(code) {
+    const normalizedCode = (code || 'HTML').toString().trim().toUpperCase()
+    const bodyFormats = lookups && lookups.bodyFormats ? lookups.bodyFormats : []
+
+    if (bodyFormats.some(function (format) { return format.code === normalizedCode })) {
+      return normalizedCode
+    }
+
+    const htmlFormat = bodyFormats.find(function (format) {
+      return format.code === 'HTML'
+    })
+
+    return htmlFormat ? htmlFormat.code : (bodyFormats[0] ? bodyFormats[0].code : 'HTML')
+  }
+
+  async function loadEditorPreference() {
+    const preference = await sendBridgeMessage('editor.preference.get', {})
+    preferredBodyFormatCode = getSupportedBodyFormatCode(preference.bodyFormatCode)
+    $('#editor-mode').val(preferredBodyFormatCode)
+  }
+
+  function saveEditorPreference(bodyFormatCode) {
+    preferredBodyFormatCode = getSupportedBodyFormatCode(bodyFormatCode)
+
+    return sendBridgeMessage('editor.preference.save', {
+      bodyFormatCode: preferredBodyFormatCode
+    })
+  }
+
   function renderEmptyEditor() {
     currentTask = null
     isDirty = false
@@ -460,7 +490,7 @@
     $('#task-source').val('')
     $('#task-source-reference').val('')
     $('#task-source-url').val('')
-    $('#editor-mode').val('HTML')
+    $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
     $('#waiting-text').val('')
     $('#task-form input, #task-form select').prop('disabled', true)
     $('#add-waiting-button, #clear-waiting-button, #start-button, #complete-button, #cancel-button, #save-button').prop('disabled', true)
@@ -556,15 +586,13 @@
 
   function createDraftTask() {
     const firstTaskType = lookups.taskTypes && lookups.taskTypes[0]
-    const htmlFormat = (lookups.bodyFormats || []).find(function (format) {
-      return format.code === 'HTML'
-    }) || (lookups.bodyFormats || [])[0]
+    const bodyFormatCode = getSupportedBodyFormatCode(preferredBodyFormatCode)
 
     return {
       id: null,
       title: '',
       body: '',
-      bodyFormatCode: htmlFormat ? htmlFormat.code : 'HTML',
+      bodyFormatCode,
       taskTypeCode: firstTaskType ? firstTaskType.code : '',
       taskStatusCode: 'DRAFT',
       taskStatusName: 'Draft',
@@ -606,8 +634,16 @@
   }
 
   async function initializeEditorForTask(task) {
-    const modeCode = task.bodyFormatCode === 'MARKDOWN' ? 'MARKDOWN' : 'HTML'
-    await initializeEditor(modeCode, getEditorDisplayBody(task.body), null)
+    const modeCode = getSupportedBodyFormatCode(preferredBodyFormatCode)
+    const storedModeCode = task.bodyFormatCode === 'MARKDOWN' ? 'MARKDOWN' : 'HTML'
+    const body = getEditorDisplayBody(task.body)
+
+    if (modeCode === 'MARKDOWN' && storedModeCode === 'HTML') {
+      await initializeEditor(modeCode, '', body)
+      return
+    }
+
+    await initializeEditor(modeCode, body, null)
   }
 
   function describeWaiting(waitingFor) {
@@ -657,7 +693,7 @@
     $('#task-source').val(task.taskSourceCode || '')
     $('#task-source-reference').val(task.sourceReference || '')
     $('#task-source-url').val(task.sourceUrl || '')
-    $('#editor-mode').val(task.bodyFormatCode || 'HTML')
+    $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
     $('#task-form input, #task-form select').prop('disabled', false)
     $('#editor-mode').prop('disabled', false)
     renderTaskHeaderAndActions(task)
@@ -676,7 +712,7 @@
     $('#task-source').val(task.taskSourceCode || '')
     $('#task-source-reference').val(task.sourceReference || '')
     $('#task-source-url').val(task.sourceUrl || '')
-    $('#editor-mode').val(task.bodyFormatCode || 'HTML')
+    $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
     renderWaitingPanel(task)
 
     $('#task-form input, #task-form select').prop('disabled', false)
@@ -731,9 +767,13 @@
       }
 
       currentTask.bodyFormatCode = targetModeCode
+      preferredBodyFormatCode = targetModeCode
       $('#editor-mode').val(targetModeCode)
       $('#editor-mode').prop('disabled', false)
       markDirty()
+      await saveEditorPreference(targetModeCode).catch(function (error) {
+        setStatus(getErrorMessage(error, 'Could not save editor preference'), 'error')
+      })
     } catch (error) {
       $('#editor-mode').val(activeModeCode).prop('disabled', false)
       isEditorReady = true
@@ -996,6 +1036,7 @@
       await waitForNextPaint()
       lookups = await sendBridgeMessage('task.lookups.get', {})
       renderLookups()
+      await loadEditorPreference()
       await loadTasks()
       scheduleEditorPreload()
     } catch (error) {

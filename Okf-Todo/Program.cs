@@ -233,9 +233,11 @@ namespace Photino.Okf_Todo
             });
             services.AddDbContext<AppDbContext>(options => options.UseSqlite($"Data Source={databasePath}"));
             services.AddSingleton<HtmlSanitizerService>();
+            services.AddSingleton<IAppPreferencePathProvider, AppPreferencePathProvider>();
             services.AddScoped<LookupSeedService>();
             services.AddScoped<TaskLifecycleService>();
             services.AddScoped<TaskService>();
+            services.AddScoped<AppPreferenceService>();
             services.AddScoped<IssueService>();
             services.AddScoped<ImageService>();
             services.AddSingleton<BridgeMessageHandler>();
