@@ -3,7 +3,6 @@
   const bridgeTimeoutMs = 15000
   const imageBridgeTimeoutMs = 120000
   const viewLabels = {
-    inbox: 'Inbox',
     active: 'Active',
     completed: 'Completed',
     all: 'All'
@@ -179,10 +178,6 @@
 
   function getViewForTask(task) {
     const statusCode = task && task.taskStatusCode
-
-    if (statusCode === 'DRAFT' || statusCode === 'NEW') {
-      return 'inbox'
-    }
 
     if (statusCode === 'COMPLETED' || statusCode === 'CANCELLED') {
       return 'completed'
@@ -363,7 +358,6 @@
             <div class="app-actions" aria-label="Task actions">
               <button id="settings-button" class="icon-button" type="button" aria-label="Settings" title="Settings">&#9881;</button>
               <span id="save-status" class="save-status is-ready" role="status">Ready</span>
-              <button id="start-button" class="secondary-button" type="button" disabled>Start</button>
               <button id="complete-button" class="secondary-button" type="button" disabled>Complete</button>
               <button id="cancel-button" class="secondary-button danger-button" type="button" disabled>Cancel</button>
               <button id="save-button" type="button" disabled>Save</button>
@@ -511,7 +505,7 @@
     $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
     $('#waiting-text').val('')
     $('#task-form input, #task-form select').prop('disabled', true)
-    $('#add-waiting-button, #clear-waiting-button, #start-button, #complete-button, #cancel-button, #save-button').prop('disabled', true)
+    $('#add-waiting-button, #clear-waiting-button, #complete-button, #cancel-button, #save-button').prop('disabled', true)
     $('#editor-mode').prop('disabled', true)
     $('#editor-host').html('<div class="empty-editor">Select a task to edit the body.</div>')
     setStatus('Ready', 'ready')
@@ -686,15 +680,11 @@
   function renderTaskHeaderAndActions(task) {
     const isSavedTask = !!task.id
     const isFinal = task.taskStatusCode === 'COMPLETED' || task.taskStatusCode === 'CANCELLED'
-    const canStartOrUndoStart = isSavedTask && (task.taskStatusCode === 'NEW' || task.taskStatusCode === 'ACTIVE')
     const canReopen = isSavedTask && isFinal
     const canCompleteOrCancel = isSavedTask && !isFinal
 
     $('#task-editor-title').text(task.id ? task.title : 'New task')
     $('#task-status-label').text(task.taskStatusName || 'Draft')
-    $('#start-button')
-      .text(task.taskStatusCode === 'ACTIVE' ? 'Undo start' : 'Start')
-      .prop('disabled', !canStartOrUndoStart)
     $('#complete-button')
       .text(canReopen ? 'Reopen' : 'Complete')
       .prop('disabled', !(canCompleteOrCancel || canReopen))
@@ -893,20 +883,12 @@
   }
 
   function confirmActiveWaitClearBeforeLeavingActive(type) {
-    const leavesActive = type === 'task.undoStart' || type === 'task.complete' || type === 'task.cancel'
+    const leavesActive = type === 'task.complete' || type === 'task.cancel'
     if (!leavesActive || !currentTask || currentTask.taskStatusCode !== 'ACTIVE' || !currentTask.activeWaitingFor) {
       return true
     }
 
     return window.confirm('This task has a waiting target. Clear waiting and continue?')
-  }
-
-  function runStartButtonAction() {
-    const type = currentTask && currentTask.taskStatusCode === 'ACTIVE'
-      ? 'task.undoStart'
-      : 'task.start'
-
-    return runLifecycleAction(type)
   }
 
   function runCompleteButtonAction() {
@@ -1017,11 +999,6 @@
     $('#save-button').on('click', function () {
       saveTask().catch(function (error) {
         setStatus(getErrorMessage(error, 'Could not save task'), 'error')
-      })
-    })
-    $('#start-button').on('click', function () {
-      runStartButtonAction().catch(function (error) {
-        setStatus(getErrorMessage(error, 'Could not update start state'), 'error')
       })
     })
     $('#complete-button').on('click', function () {

@@ -9,11 +9,9 @@
     { "code": "IMPROVEMENT", "name": "Improvement", "sortOrder": 70, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" }
   ],
   "taskStatuses": [
-    { "code": "NEW", "name": "New", "sortOrder": 10, "isSystem": true, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
-    { "code": "ACTIVE", "name": "Active", "sortOrder": 20, "isSystem": true, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
-    { "code": "WAITING", "name": "Waiting", "sortOrder": 30, "isSystem": true, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
-    { "code": "COMPLETED", "name": "Completed", "sortOrder": 40, "isSystem": true, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
-    { "code": "CANCELLED", "name": "Cancelled", "sortOrder": 50, "isSystem": true, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" }
+    { "code": "ACTIVE", "name": "Active", "sortOrder": 10, "isSystem": true, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
+    { "code": "COMPLETED", "name": "Completed", "sortOrder": 20, "isSystem": true, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
+    { "code": "CANCELLED", "name": "Cancelled", "sortOrder": 30, "isSystem": true, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" }
   ],
   "taskPriorities": [
     { "code": "URGENT", "name": "Urgent", "sortOrder": 10, "backgroundColor": "#b42318", "foregroundColor": "#ffffff" },

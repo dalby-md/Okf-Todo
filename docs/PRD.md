@@ -62,7 +62,7 @@ Only these should be required in the first version:
 
 Everything else should be optional.
 
-A newly created task starts with status `NEW`.
+A newly created task starts with status `ACTIVE`.
 
 ## Task body
 
@@ -104,9 +104,7 @@ Task status answers:
 
 Initial task statuses:
 
-- New
 - Active
-- Waiting
 - Completed
 - Cancelled
 
@@ -125,9 +123,7 @@ Priority affects sorting and filtering.
 Use the following lifecycle in the first version:
 
 ```text
-New
 Active
-Waiting
 Completed
 Cancelled
 ```
@@ -135,10 +131,9 @@ Cancelled
 Rules:
 
 ```text
-Create task          => New
-Start work manually  => Active
-Add wait target      => Waiting
-Clear wait target    => Active
+Create task          => Active
+Add wait target      => Active with waiting target
+Clear wait target    => Active without waiting target
 Complete task        => Completed
 Reopen task          => Active
 Cancel task          => Cancelled
@@ -163,11 +158,11 @@ Store timestamps directly on the task for fast querying:
 
 Each task can have at most one active wait target.
 
-The wait target is important enough to affect task status.
+The wait target is important enough to affect task visibility and emphasis, while the task remains active.
 
 When a wait target is added:
 
-- Task status becomes `WAITING`.
+- Task status remains `ACTIVE`.
 - `WaitingSince` is set.
 - Automatic log entries are created.
 
@@ -247,13 +242,10 @@ Example timeline:
 
 ```text
 2026-07-03 12:15  Auto     Task created
-2026-07-03 12:18  Auto     Status changed from New to Active
 2026-07-03 12:22  Comment  Looks related to the release variable replacement script.
 2026-07-03 12:40  Auto     Priority changed from Normal to Urgent
 2026-07-03 12:45  Auto     Waiting for changed to ServiceDesk INC123456
-2026-07-03 12:45  Auto     Status changed from Active to Waiting
 2026-07-05 09:10  Auto     Waiting for ServiceDesk INC123456 was cleared
-2026-07-05 09:10  Auto     Status changed from Waiting to Active
 2026-07-05 10:30  Auto     Task completed
 ```
 
@@ -478,11 +470,11 @@ The display name can be edited.
 Example:
 
 ```text
-Code: WAITING
-Name: Waiting
+Code: ACTIVE
+Name: Active
 ```
 
-The user may rename `Waiting` to `Blocked`, but the code remains `WAITING`.
+The user may rename `Active` to `Open`, but the code remains `ACTIVE`.
 
 ## Lookup management UI
 
@@ -505,7 +497,6 @@ Add a settings/admin area for lookup values:
 Suggested first views:
 
 ```text
-Inbox / New
 Active tasks
 Urgent active tasks
 Waiting tasks

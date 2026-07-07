@@ -56,9 +56,7 @@ IMPROVEMENT      Improvement
 Initial values:
 
 ```text
-NEW          New
 ACTIVE       Active
-WAITING      Waiting
 COMPLETED    Completed
 CANCELLED    Cancelled
 ```
@@ -231,7 +229,7 @@ Notes:
 - `Title` is required.
 - `TaskTypeId` is required.
 - `TaskStatusId` is required.
-- New tasks start with status code `NEW`.
+- New tasks start with status code `ACTIVE`.
 - `BodyFormatId` is controlled by the editor.
 - `TaskSourceId` is optional.
 - `SourceUrl` is information only. No automatic opening behavior.
@@ -257,7 +255,7 @@ Rules:
 - A wait target does not need to exist in any other table.
 - If `ResolvedAt` is null, the wait target is active.
 - Enforce at most one active wait target per task.
-- Adding an active wait target sets task status to `WAITING`.
+- Adding an active wait target keeps task status `ACTIVE` and sets `Task.WaitingSince`.
 - Clearing an active wait target sets `ResolvedAt`, clears `Task.WaitingSince`, and sets task status to `ACTIVE`.
 - Do not add waiting type, URL, follow-up date, stakeholder link, or other structured waiting fields in the first version.
 
@@ -308,7 +306,6 @@ Example messages:
 
 ```text
 Task created
-Status changed from New to Active
 Priority changed from Normal to Urgent
 Waiting for changed to ServiceDesk INC123456
 Waiting for ServiceDesk INC123456 was cleared
@@ -473,7 +470,6 @@ Suggested service operations:
 
 ```text
 CreateTask
-StartTask
 AddWaitingFor
 ClearWaitingFor
 CompleteTask
@@ -494,24 +490,18 @@ Rules:
 
 ```text
 CreateTask:
-- Status = NEW
+- Status = ACTIVE
 - CreatedAt = now
+- ActivatedAt = now
 - UpdatedAt = now
 - Log: Task created
 
-StartTask:
-- Status = ACTIVE
-- ActivatedAt = now if null
-- UpdatedAt = now
-- Log: Status changed from New to Active
-
 AddWaitingFor:
 - Create active TaskWaitingFor
-- Task.Status = WAITING
+- Task.Status remains ACTIVE
 - Task.WaitingSince = now
 - UpdatedAt = now
 - Log: Waiting for changed to ...
-- Log: Status changed from ... to Waiting
 
 ClearWaitingFor:
 - Set TaskWaitingFor.ResolvedAt = now
@@ -585,33 +575,21 @@ Reason:
     ],
     "TaskStatuses": [
       {
-        "code": "NEW",
-        "name": "New",
-        "sortOrder": 10,
-        "isSystem": true
-      },
-      {
         "code": "ACTIVE",
         "name": "Active",
-        "sortOrder": 20,
-        "isSystem": true
-      },
-      {
-        "code": "WAITING",
-        "name": "Waiting",
-        "sortOrder": 30,
+        "sortOrder": 10,
         "isSystem": true
       },
       {
         "code": "COMPLETED",
         "name": "Completed",
-        "sortOrder": 40,
+        "sortOrder": 20,
         "isSystem": true
       },
       {
         "code": "CANCELLED",
         "name": "Cancelled",
-        "sortOrder": 50,
+        "sortOrder": 30,
         "isSystem": true
       }
     ]

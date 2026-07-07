@@ -21,8 +21,8 @@ public sealed class TaskLifecycleServiceTests
         Assert.True(statusCount > 0);
         Assert.True(tagCount > 0);
 
-        var newStatus = await database.DbContext.TaskStatuses.SingleAsync(status => status.Code == TaskStatusCodes.New);
-        newStatus.Name = "Renamed New";
+        var activeStatus = await database.DbContext.TaskStatuses.SingleAsync(status => status.Code == TaskStatusCodes.Active);
+        activeStatus.Name = "Renamed Active";
         await database.DbContext.SaveChangesAsync();
 
         await database.SeedAsync();
@@ -31,12 +31,12 @@ public sealed class TaskLifecycleServiceTests
         Assert.Equal(statusCount, await database.DbContext.TaskStatuses.CountAsync());
         Assert.Equal(tagCount, await database.DbContext.TaskTags.CountAsync());
 
-        var unchangedStatus = await database.DbContext.TaskStatuses.SingleAsync(status => status.Code == TaskStatusCodes.New);
-        Assert.Equal("Renamed New", unchangedStatus.Name);
+        var unchangedStatus = await database.DbContext.TaskStatuses.SingleAsync(status => status.Code == TaskStatusCodes.Active);
+        Assert.Equal("Renamed Active", unchangedStatus.Name);
     }
 
     [Fact]
-    public async Task CreateTask_CreatesNewTaskAndTaskCreatedLog()
+    public async Task CreateTask_CreatesActiveTaskAndTaskCreatedLog()
     {
         await using var database = await TestDatabase.CreateAsync();
 
@@ -48,14 +48,15 @@ public sealed class TaskLifecycleServiceTests
 
         var savedTask = await database.LoadTaskAsync(task.Id);
 
-        Assert.Equal(TaskStatusCodes.New, savedTask.TaskStatus?.Code);
+        Assert.Equal(TaskStatusCodes.Active, savedTask.TaskStatus?.Code);
+        Assert.NotNull(savedTask.ActivatedAt);
         Assert.NotEqual(default, savedTask.CreatedAt);
         Assert.NotEqual(default, savedTask.UpdatedAt);
         AssertHasLog(savedTask, TaskLogTypeCodes.TaskCreated, "Task created");
     }
 
     [Fact]
-    public async Task StartTask_ChangesStatusToActiveAndLogsStatusChange()
+    public async Task StartTask_LeavesActiveTaskActive()
     {
         await using var database = await TestDatabase.CreateAsync();
         var task = await database.CreateTaskAsync();
@@ -66,23 +67,18 @@ public sealed class TaskLifecycleServiceTests
 
         Assert.Equal(TaskStatusCodes.Active, savedTask.TaskStatus?.Code);
         Assert.NotNull(savedTask.ActivatedAt);
-        AssertHasLog(savedTask, TaskLogTypeCodes.StatusChanged, "Status changed from New to Active");
     }
 
     [Fact]
-    public async Task UndoStartTask_ChangesActiveTaskBackToNewAndLogsStatusChange()
+    public async Task UndoStartTask_IsRejectedBecauseTasksAreActiveByDefault()
     {
         await using var database = await TestDatabase.CreateAsync();
         var task = await database.CreateTaskAsync();
-        await database.Lifecycle.StartTaskAsync(task.Id);
 
-        await database.Lifecycle.UndoStartTaskAsync(task.Id);
+        var exception = await Assert.ThrowsAsync<ValidationException>(() =>
+            database.Lifecycle.UndoStartTaskAsync(task.Id));
 
-        var savedTask = await database.LoadTaskAsync(task.Id);
-
-        Assert.Equal(TaskStatusCodes.New, savedTask.TaskStatus?.Code);
-        Assert.Null(savedTask.ActivatedAt);
-        AssertHasLog(savedTask, TaskLogTypeCodes.StatusChanged, "Status changed from Active to New");
+        Assert.Equal("taskStatus", exception.Field);
     }
 
     [Fact]
@@ -90,7 +86,6 @@ public sealed class TaskLifecycleServiceTests
     {
         await using var database = await TestDatabase.CreateAsync();
         var task = await database.CreateTaskAsync();
-        await database.Lifecycle.StartTaskAsync(task.Id);
 
         await database.Lifecycle.AddWaitingForAsync(
             task.Id,
@@ -112,6 +107,7 @@ public sealed class TaskLifecycleServiceTests
     {
         await using var database = await TestDatabase.CreateAsync();
         var task = await database.CreateTaskAsync();
+        await database.Lifecycle.CompleteTaskAsync(task.Id);
 
         var exception = await Assert.ThrowsAsync<ValidationException>(() => database.Lifecycle.AddWaitingForAsync(
             task.Id,
@@ -264,7 +260,6 @@ internal sealed class TestDatabase : IAsyncDisposable
     public async Task<TaskItem> CreateWaitingTaskAsync()
     {
         var task = await CreateTaskAsync();
-        await Lifecycle.StartTaskAsync(task.Id);
         await Lifecycle.AddWaitingForAsync(
             task.Id,
             new TaskWaitingForRequest("INC123456"));

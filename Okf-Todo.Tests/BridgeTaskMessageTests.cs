@@ -33,13 +33,10 @@ public sealed class BridgeTaskMessageTests
 
         var taskId = created.GetProperty("id").GetInt32();
         Assert.Equal("Bridge task", created.GetProperty("title").GetString());
-        Assert.Equal(TaskStatusCodes.New, created.GetProperty("taskStatusCode").GetString());
-
-        var inboxList = await fixture.SendAsync("task.list", new { view = "inbox" });
-        Assert.Contains(inboxList.EnumerateArray(), task => task.GetProperty("id").GetInt32() == taskId);
+        Assert.Equal(TaskStatusCodes.Active, created.GetProperty("taskStatusCode").GetString());
 
         var activeList = await fixture.SendAsync("task.list", new { view = "active" });
-        Assert.DoesNotContain(activeList.EnumerateArray(), task => task.GetProperty("id").GetInt32() == taskId);
+        Assert.Contains(activeList.EnumerateArray(), task => task.GetProperty("id").GetInt32() == taskId);
 
         var loaded = await fixture.SendAsync("task.get", new { id = taskId });
         Assert.Equal("<p>Created through bridge</p>", loaded.GetProperty("body").GetString());
@@ -61,12 +58,6 @@ public sealed class BridgeTaskMessageTests
         Assert.Equal("REQUEST", updated.GetProperty("taskTypeCode").GetString());
 
         var started = await fixture.SendAsync("task.start", new { id = taskId });
-        Assert.Equal(TaskStatusCodes.Active, started.GetProperty("taskStatusCode").GetString());
-
-        var startUndone = await fixture.SendAsync("task.undoStart", new { id = taskId });
-        Assert.Equal(TaskStatusCodes.New, startUndone.GetProperty("taskStatusCode").GetString());
-
-        started = await fixture.SendAsync("task.start", new { id = taskId });
         Assert.Equal(TaskStatusCodes.Active, started.GetProperty("taskStatusCode").GetString());
 
         var waiting = await fixture.SendAsync("task.waiting.add", new

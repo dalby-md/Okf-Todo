@@ -98,7 +98,7 @@ Acceptance criteria:
 
 - Creating a task logs `Task created`.
 - Starting a task changes status to `ACTIVE` and logs the transition.
-- Adding a wait target changes status to `WAITING`, sets `WaitingSince`, and logs both waiting target and status change.
+- Adding a wait target keeps status `ACTIVE`, sets `WaitingSince`, and logs the waiting target change.
 - Clearing a wait target changes status to `ACTIVE`, clears `WaitingSince`, resolves the wait target, and logs both events.
 - Completing a task sets `CompletedAt` and logs completion.
 - Reopening a task changes status to `ACTIVE` and logs reopening.
@@ -112,9 +112,8 @@ Read /docs/PRD.md and /docs/DATA_MODEL.md.
 Implement a lifecycle service for TaskItem.
 
 Rules:
-- Create task => NEW
-- Start work => ACTIVE
-- Add wait target => WAITING
+- Create task => ACTIVE
+- Add wait target => ACTIVE with waiting target
 - Clear wait target => ACTIVE
 - Complete task => COMPLETED
 - Reopen task => ACTIVE
@@ -150,7 +149,7 @@ Scope:
 Acceptance criteria:
 
 - User can create a task quickly.
-- New task starts as `NEW`.
+- New task starts as `ACTIVE`.
 - User can edit title/body/type/priority/deadline/source.
 - Changes update `UpdatedAt`.
 - Meaningful changes create log entries where appropriate.
@@ -214,8 +213,8 @@ Scope:
 
 Acceptance criteria:
 
-- Adding wait target changes task status to `WAITING`.
-- Clearing wait target changes task status to `ACTIVE`.
+- Adding wait target keeps task status `ACTIVE` and sets the active waiting target.
+- Clearing wait target keeps task status `ACTIVE` and clears the active waiting target.
 - Logs are created.
 - Only one active wait target is allowed per task.
 - Do not add waiting type, URL, follow-up date, stakeholder link, or other structured waiting fields.
@@ -228,8 +227,8 @@ Add waiting target UI to the task edit screen.
 Rules:
 - A task can have only one active wait target.
 - User can enter direct text/reference such as INC123456.
-- Adding a wait target changes status to WAITING.
-- Clearing a wait target changes status to ACTIVE.
+- Adding a wait target keeps the task ACTIVE and sets the active waiting target.
+- Clearing a wait target keeps the task ACTIVE and clears the active waiting target.
 - Set/clear WaitingSince.
 - Create automatic log entries.
 - Do not add waiting type, URL, follow-up date, stakeholder link, or other structured waiting fields.
@@ -469,7 +468,6 @@ Scope:
 Add first useful views:
 
 ```text
-Inbox / New
 Active tasks
 Urgent active tasks
 Waiting tasks

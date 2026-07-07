@@ -22,7 +22,7 @@ public sealed class TaskLifecycleService(
 
         var now = DateTime.UtcNow;
         var taskType = await GetLookupByCodeAsync(dbContext.TaskTypes, request.TaskTypeCode, cancellationToken);
-        var status = await GetLookupByCodeAsync(dbContext.TaskStatuses, TaskStatusCodes.New, cancellationToken);
+        var status = await GetLookupByCodeAsync(dbContext.TaskStatuses, TaskStatusCodes.Active, cancellationToken);
         var priority = string.IsNullOrWhiteSpace(request.TaskPriorityCode)
             ? null
             : await GetLookupByCodeAsync(dbContext.TaskPriorities, request.TaskPriorityCode, cancellationToken);
@@ -46,14 +46,15 @@ public sealed class TaskLifecycleService(
             SourceUrl = NormalizeOptional(request.SourceUrl),
             Deadline = request.Deadline,
             CreatedAt = now,
-            UpdatedAt = now
+            UpdatedAt = now,
+            ActivatedAt = now
         };
 
         dbContext.TaskItems.Add(task);
         AddLog(task, await GetLogTypeAsync(TaskLogTypeCodes.TaskCreated, cancellationToken), "Task created", now);
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        logger.LogInformation("Created task {TaskId} with status {StatusCode}.", task.Id, TaskStatusCodes.New);
+        logger.LogInformation("Created task {TaskId} with status {StatusCode}.", task.Id, TaskStatusCodes.Active);
 
         return task;
     }
@@ -76,24 +77,8 @@ public sealed class TaskLifecycleService(
 
     public async Task UndoStartTaskAsync(int taskId, CancellationToken cancellationToken = default)
     {
-        var task = await GetTaskWithStatusAsync(taskId, cancellationToken);
-
-        if (task.TaskStatus?.Code != TaskStatusCodes.Active)
-        {
-            throw new ValidationException("Only active tasks can undo start.", "taskStatus");
-        }
-
-        var now = DateTime.UtcNow;
-        await ResolveActiveWaitingTargetAsync(task, now, cancellationToken);
-        task.ActivatedAt = null;
-        task.CompletedAt = null;
-        task.CancelledAt = null;
-        task.WaitingSince = null;
-        task.UpdatedAt = now;
-
-        await ChangeStatusAsync(task, TaskStatusCodes.New, now, cancellationToken);
-
-        await dbContext.SaveChangesAsync(cancellationToken);
+        _ = await GetTaskWithStatusAsync(taskId, cancellationToken);
+        throw new ValidationException("Start cannot be undone because tasks are active by default.", "taskStatus");
     }
 
     public async Task AddWaitingForAsync(
@@ -432,9 +417,7 @@ public sealed record TaskWaitingForRequest(string? Label);
 
 public static class TaskStatusCodes
 {
-    public const string New = "NEW";
     public const string Active = "ACTIVE";
-    public const string Waiting = "WAITING";
     public const string Completed = "COMPLETED";
     public const string Cancelled = "CANCELLED";
 }

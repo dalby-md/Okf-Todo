@@ -41,25 +41,25 @@ public sealed class TaskServiceTests
             Deadline: deadline), CancellationToken.None);
 
         Assert.Equal("Fix failed deployment", created.Title);
-        Assert.Equal(TaskStatusCodes.New, created.TaskStatusCode);
+        Assert.Equal(TaskStatusCodes.Active, created.TaskStatusCode);
         Assert.Equal("ERROR", created.TaskTypeCode);
         Assert.Equal("NORMAL", created.TaskPriorityCode);
         Assert.Equal("EMAIL", created.TaskSourceCode);
         Assert.Equal("INC123456", created.SourceReference);
         Assert.Equal("https://example.test/inc/123456", created.SourceUrl);
 
-        var inboxTasks = await database.Tasks.ListAsync(new TaskListRequest("inbox"), CancellationToken.None);
-        var listed = Assert.Single(inboxTasks);
+        var activeTasks = await database.Tasks.ListAsync(new TaskListRequest("active"), CancellationToken.None);
+        var listed = Assert.Single(activeTasks);
         Assert.Equal(created.Id, listed.Id);
         Assert.Equal("Fix failed deployment", listed.Title);
-        Assert.Equal(TaskStatusCodes.New, listed.TaskStatusCode);
+        Assert.Equal(TaskStatusCodes.Active, listed.TaskStatusCode);
         Assert.Equal("#facc15", listed.TaskTypeBackgroundColor);
         Assert.Equal("#111827", listed.TaskTypeForegroundColor);
         Assert.Equal("#6b7280", listed.TaskStatusBackgroundColor);
         Assert.Equal("#ffffff", listed.TaskStatusForegroundColor);
 
-        var activeTasks = await database.Tasks.ListAsync(new TaskListRequest("active"), CancellationToken.None);
-        Assert.DoesNotContain(activeTasks, task => task.Id == created.Id);
+        var completedTasks = await database.Tasks.ListAsync(new TaskListRequest("completed"), CancellationToken.None);
+        Assert.DoesNotContain(completedTasks, task => task.Id == created.Id);
 
         var loaded = await database.Tasks.GetAsync(created.Id, CancellationToken.None);
         Assert.Equal("<p>Initial body</p>", loaded.Body);
@@ -103,11 +103,9 @@ public sealed class TaskServiceTests
         var started = await database.Tasks.StartAsync(created.Id, CancellationToken.None);
         Assert.Equal(TaskStatusCodes.Active, started.TaskStatusCode);
 
-        var startUndone = await database.Tasks.UndoStartAsync(created.Id, CancellationToken.None);
-        Assert.Equal(TaskStatusCodes.New, startUndone.TaskStatusCode);
-
-        started = await database.Tasks.StartAsync(created.Id, CancellationToken.None);
-        Assert.Equal(TaskStatusCodes.Active, started.TaskStatusCode);
+        var undoStartException = await Assert.ThrowsAsync<ValidationException>(() =>
+            database.Tasks.UndoStartAsync(created.Id, CancellationToken.None));
+        Assert.Equal("taskStatus", undoStartException.Field);
 
         var completed = await database.Tasks.CompleteAsync(created.Id, CancellationToken.None);
         Assert.Equal(TaskStatusCodes.Completed, completed.TaskStatusCode);
@@ -132,7 +130,6 @@ public sealed class TaskServiceTests
     {
         await using var database = await TestDatabase.CreateAsync();
         var created = await database.Tasks.CreateAsync(CreateRequest("Task waiting on ServiceDesk"), CancellationToken.None);
-        await database.Tasks.StartAsync(created.Id, CancellationToken.None);
 
         var waiting = await database.Tasks.AddWaitingForAsync(new TaskWaitingForSaveRequest(
             TaskId: created.Id,
@@ -161,7 +158,6 @@ public sealed class TaskServiceTests
         var savedTask = await database.LoadTaskAsync(created.Id);
         Assert.Contains(savedTask.LogEntries, log => log.TaskLogType?.Code == TaskLogTypeCodes.WaitingForChanged);
         Assert.Contains(savedTask.LogEntries, log => log.TaskLogType?.Code == TaskLogTypeCodes.WaitingForCleared);
-        Assert.Contains(savedTask.LogEntries, log => log.TaskLogType?.Code == TaskLogTypeCodes.StatusChanged);
     }
 
     [Fact]
