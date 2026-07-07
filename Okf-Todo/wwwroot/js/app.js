@@ -441,6 +441,51 @@
     renderLookupOptions('#editor-mode', lookups.bodyFormats, false)
   }
 
+  function renderEmptyEditor() {
+    currentTask = null
+    isDirty = false
+    isEditorReady = false
+    clearValidationState()
+
+    if (window.Editor && typeof window.Editor.destroy === 'function') {
+      window.Editor.destroy()
+    }
+
+    $('#task-status-label').text('No task selected')
+    $('#task-editor-title').text('Select or create a task')
+    $('#task-title').val('')
+    $('#task-type').val('')
+    $('#task-priority').val('')
+    $('#task-deadline').val('')
+    $('#task-source').val('')
+    $('#task-source-reference').val('')
+    $('#task-source-url').val('')
+    $('#editor-mode').val('HTML')
+    $('#waiting-text').val('')
+    $('#task-form input, #task-form select').prop('disabled', true)
+    $('#add-waiting-button, #clear-waiting-button, #start-button, #complete-button, #cancel-button, #save-button').prop('disabled', true)
+    $('#editor-mode').prop('disabled', true)
+    $('#editor-host').html('<div class="empty-editor">Select a task to edit the body.</div>')
+    setStatus('Ready', 'ready')
+    renderTaskList()
+  }
+
+  function selectFirstVisibleTaskAfterPaint() {
+    if (currentTask || tasks.length === 0) {
+      return
+    }
+
+    window.setTimeout(function () {
+      if (currentTask || tasks.length === 0) {
+        return
+      }
+
+      selectTask(tasks[0].id).catch(function (error) {
+        setStatus(getErrorMessage(error, 'Could not load task'), 'error')
+      })
+    }, 0)
+  }
+
   function renderTaskList() {
     const query = $('#task-search').val().toString().trim().toLowerCase()
     const visibleTasks = query
@@ -449,6 +494,7 @@
           || task.taskTypeName.toLowerCase().includes(query)
           || task.taskStatusName.toLowerCase().includes(query)
           || (task.taskPriorityName || '').toLowerCase().includes(query)
+          || (task.activeWaitingForLabel || '').toLowerCase().includes(query)
       })
       : tasks
 
@@ -471,21 +517,26 @@
 
     $('#task-list').html(visibleTasks.map(function (task) {
       const selectedClass = currentTask && currentTask.id === task.id ? ' is-selected' : ''
+      const waitingClass = task.activeWaitingForLabel ? ' is-waiting' : ''
       const priority = task.taskPriorityName
         ? renderBadge(task.taskPriorityName, task.taskPriorityBackgroundColor, task.taskPriorityForegroundColor)
         : ''
       const deadline = task.deadline
         ? `<span class="task-badge">Due ${encodeText(formatShortDate(task.deadline))}</span>`
         : ''
+      const waiting = task.activeWaitingForLabel
+        ? `<span class="task-badge task-badge-waiting">Waiting: ${encodeText(task.activeWaitingForLabel)}</span>`
+        : ''
 
       return `
-        <button class="task-row${selectedClass}" type="button" data-task-id="${task.id}">
+        <button class="task-row${selectedClass}${waitingClass}" type="button" data-task-id="${task.id}">
           <span class="task-row-title">${encodeText(task.title)}</span>
           <span class="task-row-meta">
             ${renderBadge(task.taskTypeName, task.taskTypeBackgroundColor, task.taskTypeForegroundColor)}
             ${renderBadge(task.taskStatusName, task.taskStatusBackgroundColor, task.taskStatusForegroundColor)}
             ${priority}
             ${deadline}
+            ${waiting}
           </span>
         </button>
       `
@@ -563,8 +614,8 @@
     $('#waiting-text').val(waitingFor ? describeWaiting(waitingFor) : '')
 
     $('#clear-waiting-button').prop('disabled', !waitingFor)
-    $('#add-waiting-button').prop('disabled', !canEditWaiting || !!waitingFor)
-    $('#waiting-text').prop('disabled', !canEditWaiting || !!waitingFor)
+    $('#add-waiting-button').prop('disabled', !canEditWaiting)
+    $('#waiting-text').prop('disabled', !canEditWaiting)
   }
 
   function renderTaskHeaderAndActions(task) {
@@ -695,9 +746,7 @@
       }
     }
 
-    if (!currentTask && tasks.length > 0) {
-      await selectTask(tasks[0].id)
-    }
+    renderTaskList()
   }
 
   async function selectTask(id) {
@@ -870,7 +919,7 @@
 
     $('.view-tab').on('click', function () {
       currentView = $(this).attr('data-view')
-      currentTask = null
+      renderEmptyEditor()
       loadTasks().catch(showFatalError)
     })
 
@@ -934,11 +983,9 @@
     try {
       lookups = await sendBridgeMessage('task.lookups.get', {})
       renderLookups()
+      renderEmptyEditor()
       await loadTasks()
-
-      if (tasks.length === 0) {
-        await renderTaskEditor(createDraftTask())
-      }
+      selectFirstVisibleTaskAfterPaint()
     } catch (error) {
       showFatalError(error)
     }

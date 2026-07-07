@@ -25,7 +25,7 @@
 
     const promise = new Promise(function (resolve, reject) {
       const script = document.createElement('script')
-      script.src = `${src}?v=${Date.now()}`
+      script.src = src
       script.onload = resolve
       script.onerror = function () {
         reject(new Error(`Could not load ${src}.`))
@@ -51,6 +51,12 @@
 
     if (!window.toastui || !window.toastui.Editor) {
       await loadScript('/toastui/toastui-editor.js')
+    }
+  }
+
+  async function ensureTinyMceLoaded() {
+    if (!window.tinymce) {
+      await loadScript('/tinymce/tinymce.min.js')
     }
   }
 
@@ -195,9 +201,7 @@
 
     return {
       initialize: async function () {
-        if (!window.tinymce) {
-          throw new Error('TinyMCE did not load.')
-        }
+        await ensureTinyMceLoaded()
 
         await window.tinymce.init({
           selector,
@@ -564,6 +568,10 @@
 
     onChanged: function (callback) {
       changedCallbacks.push(callback)
+    },
+
+    destroy: function () {
+      destroyActiveAdapter()
     }
   }
 })(window, document)

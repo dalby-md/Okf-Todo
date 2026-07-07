@@ -165,16 +165,37 @@ public sealed class TaskLifecycleServiceTests
     }
 
     [Fact]
-    public async Task AddWaitingFor_RejectsSecondActiveWaitingTarget()
+    public async Task AddWaitingFor_UpdatesExistingActiveWaitingTarget()
     {
         await using var database = await TestDatabase.CreateAsync();
         var task = await database.CreateWaitingTaskAsync();
 
-        var exception = await Assert.ThrowsAsync<ValidationException>(() => database.Lifecycle.AddWaitingForAsync(
+        await database.Lifecycle.AddWaitingForAsync(
             task.Id,
-            new TaskWaitingForRequest("Anna")));
+            new TaskWaitingForRequest("Anna"));
 
-        Assert.Equal("waitingFor", exception.Field);
+        var activeTargets = await database.DbContext.TaskWaitingFors
+            .Where(waitingFor => waitingFor.TaskId == task.Id && waitingFor.ResolvedAt == null)
+            .ToListAsync();
+        var activeTarget = Assert.Single(activeTargets);
+
+        Assert.Equal("Anna", activeTarget.Label);
+    }
+
+    [Fact]
+    public async Task CompleteTask_WithActiveWaitingTargetClearsWaitingState()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var task = await database.CreateWaitingTaskAsync();
+
+        await database.Lifecycle.CompleteTaskAsync(task.Id);
+
+        var savedTask = await database.LoadTaskAsync(task.Id);
+        var target = await database.DbContext.TaskWaitingFors.SingleAsync(waitingFor => waitingFor.TaskId == task.Id);
+
+        Assert.Equal(TaskStatusCodes.Completed, savedTask.TaskStatus?.Code);
+        Assert.Null(savedTask.WaitingSince);
+        Assert.NotNull(target.ResolvedAt);
     }
 
     private static void AssertHasLog(TaskItem task, string code, string message)

@@ -143,13 +143,16 @@ public sealed class TaskServiceTests
         Assert.Equal("INC123456", waiting.ActiveWaitingFor.Label);
 
         var activeTasks = await database.Tasks.ListAsync(new TaskListRequest("active"), CancellationToken.None);
-        Assert.Contains(activeTasks, task => task.Id == created.Id && task.TaskStatusCode == TaskStatusCodes.Active);
+        Assert.Contains(activeTasks, task => task.Id == created.Id
+            && task.TaskStatusCode == TaskStatusCodes.Active
+            && task.ActiveWaitingForLabel == "INC123456");
 
-        var secondWait = await Assert.ThrowsAsync<ValidationException>(() =>
-            database.Tasks.AddWaitingForAsync(new TaskWaitingForSaveRequest(
-                created.Id,
-                "Anna"), CancellationToken.None));
-        Assert.Equal("waitingFor", secondWait.Field);
+        var updatedWaiting = await database.Tasks.AddWaitingForAsync(new TaskWaitingForSaveRequest(
+            created.Id,
+            "Anna"), CancellationToken.None);
+        Assert.Equal(TaskStatusCodes.Active, updatedWaiting.TaskStatusCode);
+        Assert.NotNull(updatedWaiting.ActiveWaitingFor);
+        Assert.Equal("Anna", updatedWaiting.ActiveWaitingFor.Label);
 
         var cleared = await database.Tasks.ClearWaitingForAsync(created.Id, CancellationToken.None);
         Assert.Equal(TaskStatusCodes.Active, cleared.TaskStatusCode);

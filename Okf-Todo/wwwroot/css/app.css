@@ -214,6 +214,16 @@ h2 {
   background: #eef7f5;
 }
 
+.task-row.is-waiting {
+  border-left: 3px solid #b45309;
+  background: #fffaf0;
+}
+
+.task-row.is-waiting:hover,
+.task-row.is-waiting.is-selected {
+  background: #fff4dc;
+}
+
 .task-row-title {
   overflow: hidden;
   font-weight: 500;
@@ -234,6 +244,11 @@ h2 {
   border-radius: 999px;
   color: #374151;
   background: #eef1f4;
+}
+
+.task-badge-waiting {
+  color: #78350f;
+  background: #fde68a;
 }
 
 .empty-list,
@@ -304,7 +319,7 @@ h2 {
 
 .task-form {
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto auto minmax(0, 1fr);
   gap: 8px;
   min-height: 0;
 }
@@ -334,12 +349,13 @@ h2 {
 .waiting-panel {
   display: grid;
   grid-template-columns: auto minmax(160px, 1fr) auto auto;
-  align-items: end;
+  align-items: center;
   gap: 6px;
   padding: 6px 8px;
   border: 1px solid #d8dee5;
   border-radius: 5px;
   background: #ffffff;
+  min-height: 0;
 }
 
 .waiting-label {
@@ -371,7 +387,18 @@ h2 {
   min-height: 320px;
 }
 
+.empty-editor {
+  display: grid;
+  min-height: 320px;
+  place-items: center;
+  border: 1px dashed #c9d1d9;
+  border-radius: 5px;
+  color: #5f6872;
+  background: #f8fafb;
+}
+
 #text-body {
+  width: 100%;
   min-height: 320px;
 }
 

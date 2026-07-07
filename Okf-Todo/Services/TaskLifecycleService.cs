@@ -106,14 +106,6 @@ public sealed class TaskLifecycleService(
             throw new ValidationException("Waiting for is required.", "waitingFor");
         }
 
-        var hasActiveWaitTarget = await dbContext.TaskWaitingFors
-            .AnyAsync(waitingFor => waitingFor.TaskId == taskId && waitingFor.ResolvedAt == null, cancellationToken);
-
-        if (hasActiveWaitTarget)
-        {
-            throw new ValidationException("Task already has an active waiting target.", "waitingFor");
-        }
-
         var task = await GetTaskWithStatusAsync(taskId, cancellationToken);
         if (task.TaskStatus?.Code != TaskStatusCodes.Active)
         {
@@ -121,18 +113,30 @@ public sealed class TaskLifecycleService(
         }
 
         var now = DateTime.UtcNow;
+        var label = request.Label.Trim();
+        var waitingFor = await dbContext.TaskWaitingFors
+            .SingleOrDefaultAsync(target => target.TaskId == taskId && target.ResolvedAt == null, cancellationToken);
 
-        var waitingFor = new TaskWaitingFor
+        if (waitingFor is null)
         {
-            TaskId = task.Id,
-            Label = request.Label.Trim(),
-            WaitingSince = now,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
+            waitingFor = new TaskWaitingFor
+            {
+                TaskId = task.Id,
+                Label = label,
+                WaitingSince = now,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
 
-        dbContext.TaskWaitingFors.Add(waitingFor);
-        task.WaitingSince = now;
+            dbContext.TaskWaitingFors.Add(waitingFor);
+            task.WaitingSince = now;
+        }
+        else
+        {
+            waitingFor.Label = label;
+            waitingFor.UpdatedAt = now;
+        }
+
         task.UpdatedAt = now;
 
         var targetText = waitingFor.Label!;

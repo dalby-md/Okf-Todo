@@ -59,6 +59,10 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
                 task.TaskPriority == null ? null : task.TaskPriority.BackgroundColor,
                 task.TaskPriority == null ? null : task.TaskPriority.ForegroundColor,
                 task.Deadline,
+                task.WaitingTargets
+                    .Where(waitingFor => waitingFor.ResolvedAt == null)
+                    .Select(waitingFor => waitingFor.Label)
+                    .SingleOrDefault(),
                 task.UpdatedAt))
             .ToListAsync(cancellationToken);
     }
@@ -277,6 +281,7 @@ public sealed record TaskListItemDto(
     string? TaskPriorityBackgroundColor,
     string? TaskPriorityForegroundColor,
     DateTime? Deadline,
+    string? ActiveWaitingForLabel,
     DateTime UpdatedAt);
 
 public sealed record TaskDetailDto(
