@@ -24,6 +24,8 @@
     taskListHeight: null
   }
   let layoutPreferenceSaveTimer = null
+  let unsavedChangesDialogResolve = null
+  let dirtyTrackingSuppressions = 0
 
   function createMessageId() {
     if (window.crypto && window.crypto.randomUUID) {
@@ -322,14 +324,94 @@
     $('#task-title, #task-type, #waiting-text').removeClass('is-invalid')
   }
 
+  function suppressDirtyTracking() {
+    dirtyTrackingSuppressions += 1
+
+    return function () {
+      window.setTimeout(function () {
+        dirtyTrackingSuppressions = Math.max(0, dirtyTrackingSuppressions - 1)
+      }, 0)
+    }
+  }
+
   function markDirty() {
-    if (!isEditorReady) {
+    if (!isEditorReady || dirtyTrackingSuppressions > 0) {
       return
     }
 
     clearValidationState()
     isDirty = true
     setStatus('Unsaved changes', 'dirty')
+  }
+
+  function hasUnsavedChanges() {
+    return !!(currentTask && isDirty)
+  }
+
+  function resolveUnsavedChangesDialog(choice) {
+    if (!unsavedChangesDialogResolve) {
+      return
+    }
+
+    const resolve = unsavedChangesDialogResolve
+    unsavedChangesDialogResolve = null
+    resolve(choice)
+  }
+
+  function setUnsavedChangesDialogBusy(isBusy) {
+    $('#unsaved-save-button')
+      .prop('disabled', isBusy)
+      .text(isBusy ? 'Saving' : 'Save')
+    $('#unsaved-discard-button, #unsaved-cancel-button').prop('disabled', isBusy)
+  }
+
+  function closeUnsavedChangesDialog() {
+    setUnsavedChangesDialogBusy(false)
+    $('#unsaved-changes-overlay').prop('hidden', true)
+  }
+
+  function showUnsavedChangesDialog() {
+    return new Promise(function (resolve) {
+      unsavedChangesDialogResolve = resolve
+      setUnsavedChangesDialogBusy(false)
+      $('#unsaved-changes-overlay').prop('hidden', false)
+      $('#unsaved-save-button').trigger('focus')
+    })
+  }
+
+  async function allowContextSwitch() {
+    if (!hasUnsavedChanges()) {
+      return true
+    }
+
+    const choice = await showUnsavedChangesDialog()
+    if (choice === 'cancel') {
+      closeUnsavedChangesDialog()
+      return false
+    }
+
+    if (choice === 'discard') {
+      closeUnsavedChangesDialog()
+      isDirty = false
+      setStatus('Changes discarded', 'ready')
+      return true
+    }
+
+    try {
+      setUnsavedChangesDialogBusy(true)
+      const saved = await saveTask()
+      if (saved) {
+        closeUnsavedChangesDialog()
+        return true
+      }
+
+      closeUnsavedChangesDialog()
+      return false
+    } catch (error) {
+      closeUnsavedChangesDialog()
+      setStatus(getErrorMessage(error, 'Could not save task'), 'error')
+      return false
+    }
   }
 
   function renderShell() {
@@ -455,6 +537,22 @@
             <div class="modal-actions">
               <button id="new-task-cancel-button" class="secondary-button" type="button">Cancel</button>
               <button id="new-task-save-button" type="button">Save</button>
+            </div>
+          </section>
+        </div>
+
+        <div id="unsaved-changes-overlay" class="modal-overlay" hidden>
+          <section class="settings-dialog unsaved-dialog" role="dialog" aria-modal="true" aria-labelledby="unsaved-changes-title">
+            <header class="settings-header">
+              <h2 id="unsaved-changes-title">Unsaved changes</h2>
+            </header>
+
+            <p class="settings-help">Save your changes before switching context?</p>
+
+            <div class="modal-actions">
+              <button id="unsaved-cancel-button" class="secondary-button" type="button">Cancel</button>
+              <button id="unsaved-discard-button" class="secondary-button danger-button" type="button">Discard</button>
+              <button id="unsaved-save-button" type="button">Save</button>
             </div>
           </section>
         </div>
@@ -854,43 +952,57 @@
   }
 
   function refreshCurrentTaskWithoutEditor(task) {
-    currentTask = task
-    $('#task-title').val(task.title || '')
-    $('#task-type').val(task.taskTypeCode || '')
-    $('#task-priority').val(task.taskPriorityCode || '')
-    $('#task-deadline').val(formatDate(task.deadline))
-    $('#task-source').val(task.taskSourceCode || '')
-    $('#task-source-reference').val(task.sourceReference || '')
-    $('#task-source-url').val(task.sourceUrl || '')
-    $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
-    $('#task-form input, #task-form select').prop('disabled', false)
-    $('#editor-mode').prop('disabled', false)
-    renderTaskHeaderAndActions(task)
-    renderTaskList()
+    const releaseDirtyTracking = suppressDirtyTracking()
+
+    try {
+      currentTask = task
+      $('#task-title').val(task.title || '')
+      $('#task-type').val(task.taskTypeCode || '')
+      $('#task-priority').val(task.taskPriorityCode || '')
+      $('#task-deadline').val(formatDate(task.deadline))
+      $('#task-source').val(task.taskSourceCode || '')
+      $('#task-source-reference').val(task.sourceReference || '')
+      $('#task-source-url').val(task.sourceUrl || '')
+      $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
+      $('#task-form input, #task-form select').prop('disabled', false)
+      $('#editor-mode').prop('disabled', false)
+      renderTaskHeaderAndActions(task)
+      renderTaskList()
+    } finally {
+      releaseDirtyTracking()
+    }
   }
 
   async function renderTaskEditor(task) {
-    currentTask = task
-    isDirty = false
-    clearValidationState()
+    const releaseDirtyTracking = suppressDirtyTracking()
 
-    $('#task-title').val(task.title || '')
-    $('#task-type').val(task.taskTypeCode || '')
-    $('#task-priority').val(task.taskPriorityCode || '')
-    $('#task-deadline').val(formatDate(task.deadline))
-    $('#task-source').val(task.taskSourceCode || '')
-    $('#task-source-reference').val(task.sourceReference || '')
-    $('#task-source-url').val(task.sourceUrl || '')
-    $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
-    renderWaitingPanel(task)
+    try {
+      currentTask = task
+      isDirty = false
+      clearValidationState()
 
-    $('#task-form input, #task-form select').prop('disabled', false)
-    $('#editor-mode').prop('disabled', false)
-    renderTaskHeaderAndActions(task)
+      $('#task-title').val(task.title || '')
+      $('#task-type').val(task.taskTypeCode || '')
+      $('#task-priority').val(task.taskPriorityCode || '')
+      $('#task-deadline').val(formatDate(task.deadline))
+      $('#task-source').val(task.taskSourceCode || '')
+      $('#task-source-reference').val(task.sourceReference || '')
+      $('#task-source-url').val(task.sourceUrl || '')
+      $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
+      renderWaitingPanel(task)
 
-    await initializeEditorForTask(task)
-    setStatus(task.id ? 'Loaded' : 'Draft', 'ready')
-    renderTaskList()
+      $('#task-form input, #task-form select').prop('disabled', false)
+      $('#editor-mode').prop('disabled', false)
+      renderTaskHeaderAndActions(task)
+
+      await initializeEditorForTask(task)
+      isDirty = false
+      window.Editor.markClean()
+      setStatus(task.id ? 'Loaded' : 'Draft', 'ready')
+      renderTaskList()
+    } finally {
+      releaseDirtyTracking()
+    }
   }
 
   function getEditorBody() {
@@ -963,6 +1075,7 @@
 
   async function loadTasks(options) {
     const keepSelection = options && options.keepSelection
+    const selectFirst = options && options.selectFirst
     tasks = await sendBridgeMessage('task.list', {
       view: currentView
     })
@@ -973,11 +1086,22 @@
         return task.id === currentTask.id
       })
       if (stillVisible) {
-        return
+        return currentTask
       }
     }
 
+    if (selectFirst) {
+      if (tasks.length > 0) {
+        await selectTask(tasks[0].id)
+        return currentTask
+      }
+
+      renderEmptyEditor()
+      return null
+    }
+
     renderTaskList()
+    return null
   }
 
   async function selectTask(id) {
@@ -989,7 +1113,7 @@
 
   async function saveTask() {
     if (!currentTask) {
-      return
+      return false
     }
 
     const isNewTask = !currentTask.id
@@ -999,18 +1123,19 @@
       setFieldInvalid('#task-title', true)
       setStatus('Title is required', 'error')
       $('#task-title').trigger('focus')
-      return
+      return false
     }
 
     if (!payload.taskTypeCode) {
       setFieldInvalid('#task-type', true)
       setStatus('Task type is required', 'error')
       $('#task-type').trigger('focus')
-      return
+      return false
     }
 
     setStatus('Saving', 'ready')
     $('#save-button').prop('disabled', true)
+    const releaseDirtyTracking = suppressDirtyTracking()
 
     try {
       const savedTask = await sendBridgeMessage(currentTask.id ? 'task.update' : 'task.create', payload)
@@ -1029,9 +1154,12 @@
       window.Editor.markClean()
       $('#save-button').prop('disabled', false)
       setStatus('Saved', 'saved')
+      return true
     } catch (error) {
       $('#save-button').prop('disabled', false)
       throw error
+    } finally {
+      releaseDirtyTracking()
     }
   }
 
@@ -1128,7 +1256,11 @@
     $('#new-task-error').prop('hidden', true)
     $('#new-task-save-button, #new-task-cancel-button').prop('disabled', false)
     $('#new-task-overlay').prop('hidden', false)
-    $('#new-task-title-input').trigger('focus')
+    window.setTimeout(function () {
+      const input = $('#new-task-title-input')[0]
+      input.focus()
+      input.select()
+    }, 0)
   }
 
   function closeNewTaskDialog() {
@@ -1174,7 +1306,11 @@
 
   function bindEvents() {
     $('#new-task-button').on('click', function () {
-      openNewTaskDialog()
+      allowContextSwitch().then(function (isAllowed) {
+        if (isAllowed) {
+          openNewTaskDialog()
+        }
+      })
     })
 
     $('#settings-button').on('click', openSettings)
@@ -1182,6 +1318,20 @@
     $('#settings-overlay').on('click', function (event) {
       if (event.target === this) {
         closeSettings()
+      }
+    })
+    $('#unsaved-save-button').on('click', function () {
+      resolveUnsavedChangesDialog('save')
+    })
+    $('#unsaved-discard-button').on('click', function () {
+      resolveUnsavedChangesDialog('discard')
+    })
+    $('#unsaved-cancel-button').on('click', function () {
+      resolveUnsavedChangesDialog('cancel')
+    })
+    $('#unsaved-changes-overlay').on('click', function (event) {
+      if (event.target === this) {
+        resolveUnsavedChangesDialog('cancel')
       }
     })
     $('#new-task-cancel-button').on('click', closeNewTaskDialog)
@@ -1203,6 +1353,9 @@
       }
     })
     $(document).on('keydown', function (event) {
+      if (event.key === 'Escape' && !$('#unsaved-changes-overlay').prop('hidden')) {
+        resolveUnsavedChangesDialog('cancel')
+      }
       if (event.key === 'Escape' && !$('#settings-overlay').prop('hidden')) {
         closeSettings()
       }
@@ -1213,15 +1366,35 @@
 
     $('#task-list').on('click', '.task-row', function () {
       const taskId = Number($(this).attr('data-task-id'))
-      selectTask(taskId).catch(function (error) {
-        setStatus(getErrorMessage(error, 'Could not load task'), 'error')
+      if (currentTask && currentTask.id === taskId) {
+        return
+      }
+
+      allowContextSwitch().then(function (isAllowed) {
+        if (!isAllowed) {
+          return
+        }
+
+        selectTask(taskId).catch(function (error) {
+          setStatus(getErrorMessage(error, 'Could not load task'), 'error')
+        })
       })
     })
 
     $('.view-tab').on('click', function () {
-      currentView = $(this).attr('data-view')
-      renderEmptyEditor()
-      loadTasks().catch(showFatalError)
+      const targetView = $(this).attr('data-view')
+      if (targetView === currentView) {
+        return
+      }
+
+      allowContextSwitch().then(function (isAllowed) {
+        if (!isAllowed) {
+          return
+        }
+
+        currentView = targetView
+        loadTasks({ selectFirst: true }).catch(showFatalError)
+      })
     })
 
     $('#task-search').on('input', renderTaskList)
@@ -1286,7 +1459,7 @@
       lookups = await sendBridgeMessage('task.lookups.get', {})
       renderLookups()
       await loadEditorPreference()
-      await loadTasks()
+      await loadTasks({ selectFirst: true })
       scheduleEditorPreload()
     } catch (error) {
       showFatalError(error)

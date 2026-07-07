@@ -540,6 +540,10 @@ h2 {
   box-shadow: 0 18px 60px rgb(15 23 42 / 24%);
 }
 
+.unsaved-dialog {
+  width: min(460px, 100%);
+}
+
 .settings-header {
   display: flex;
   align-items: center;
