@@ -1,4 +1,6 @@
 :root {
+  --task-list-width: 320px;
+  --task-list-height: 42vh;
   color: #202124;
   background: #f4f6f8;
   font-family:
@@ -108,7 +110,7 @@ select.is-invalid {
 
 .app-shell {
   display: grid;
-  grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(220px, var(--task-list-width)) 6px minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -120,6 +122,25 @@ select.is-invalid {
   padding: 12px;
   border-right: 1px solid #d8dee5;
   background: #ffffff;
+}
+
+.layout-resizer {
+  min-width: 6px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #d8dee5;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.layout-resizer:hover,
+.layout-resizer:focus-visible,
+.layout-resizer.is-dragging {
+  background: #1f6f68;
+  outline: none;
 }
 
 .sidebar-header,
@@ -559,16 +580,24 @@ h2 {
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(170px, var(--task-list-height)) 6px minmax(0, 1fr);
   }
 
   .task-sidebar {
-    max-height: 42vh;
+    min-height: 0;
+    max-height: none;
     border-right: 0;
-    border-bottom: 1px solid #d8dee5;
+    border-bottom: 0;
+  }
+
+  .layout-resizer {
+    width: 100%;
+    min-height: 6px;
+    cursor: row-resize;
   }
 
   .task-editor-panel {
-    min-height: 58vh;
+    min-height: 0;
   }
 
   .metadata-grid {

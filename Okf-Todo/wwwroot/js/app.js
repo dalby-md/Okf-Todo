@@ -9,6 +9,11 @@
   }
   const supportedEditorImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
   const maxEditorImageBytes = 5 * 1024 * 1024
+  const wideLayoutMediaQuery = window.matchMedia('(min-width: 901px)')
+  const layoutStorageKeys = {
+    width: 'okfTodo.taskListWidth',
+    height: 'okfTodo.taskListHeight'
+  }
 
   let lookups = null
   let tasks = []
@@ -349,6 +354,8 @@
           <div id="task-list" class="task-list" aria-label="Tasks"></div>
         </aside>
 
+        <div id="layout-resizer" class="layout-resizer" role="separator" aria-label="Resize task list" aria-orientation="vertical" tabindex="0"></div>
+
         <section class="task-editor-panel" aria-labelledby="task-editor-title">
           <header class="editor-header">
             <div>
@@ -537,6 +544,117 @@
       window.requestAnimationFrame(function () {
         window.requestAnimationFrame(resolve)
       })
+    })
+  }
+
+  function getStoredSplitValue(key, fallback) {
+    let storedValue = null
+
+    try {
+      storedValue = window.localStorage.getItem(key)
+    } catch {
+      storedValue = null
+    }
+
+    const value = Number(storedValue)
+    return Number.isFinite(value) && value > 0 ? value : fallback
+  }
+
+  function storeSplitValue(key, value) {
+    try {
+      window.localStorage.setItem(key, String(Math.round(value)))
+    } catch {
+      // The splitter still works for the current session when storage is unavailable.
+    }
+  }
+
+  function clampSplitValue(value, minimum, maximum) {
+    return Math.max(minimum, Math.min(maximum, value))
+  }
+
+  function getLayoutBounds() {
+    const shell = $('.app-shell')[0]
+    const rect = shell.getBoundingClientRect()
+
+    return {
+      width: rect.width || window.innerWidth,
+      height: rect.height || window.innerHeight
+    }
+  }
+
+  function setTaskListWidth(width) {
+    const bounds = getLayoutBounds()
+    const clampedWidth = clampSplitValue(width, 220, Math.max(260, bounds.width - 460))
+    document.documentElement.style.setProperty('--task-list-width', `${clampedWidth}px`)
+    storeSplitValue(layoutStorageKeys.width, clampedWidth)
+  }
+
+  function setTaskListHeight(height) {
+    const bounds = getLayoutBounds()
+    const clampedHeight = clampSplitValue(height, 170, Math.max(220, bounds.height - 380))
+    document.documentElement.style.setProperty('--task-list-height', `${clampedHeight}px`)
+    storeSplitValue(layoutStorageKeys.height, clampedHeight)
+  }
+
+  function isWideLayout() {
+    return wideLayoutMediaQuery.matches
+  }
+
+  function applyStoredLayoutSplit() {
+    setTaskListWidth(getStoredSplitValue(layoutStorageKeys.width, 320))
+    setTaskListHeight(getStoredSplitValue(layoutStorageKeys.height, Math.round(window.innerHeight * 0.42)))
+    $('#layout-resizer').attr('aria-orientation', isWideLayout() ? 'vertical' : 'horizontal')
+  }
+
+  function bindLayoutResizer() {
+    const $resizer = $('#layout-resizer')
+
+    applyStoredLayoutSplit()
+
+    const onMediaChange = function () {
+      applyStoredLayoutSplit()
+    }
+
+    if (typeof wideLayoutMediaQuery.addEventListener === 'function') {
+      wideLayoutMediaQuery.addEventListener('change', onMediaChange)
+    } else if (typeof wideLayoutMediaQuery.addListener === 'function') {
+      wideLayoutMediaQuery.addListener(onMediaChange)
+    }
+
+    $resizer.on('pointerdown', function (event) {
+      event.preventDefault()
+      const shell = $('.app-shell')[0]
+      const shellRect = shell.getBoundingClientRect()
+      $resizer.addClass('is-dragging')
+
+      $(document).on('pointermove.layoutResizer', function (moveEvent) {
+        if (isWideLayout()) {
+          setTaskListWidth(moveEvent.clientX - shellRect.left)
+        } else {
+          setTaskListHeight(moveEvent.clientY - shellRect.top)
+        }
+      })
+
+      $(document).on('pointerup.layoutResizer pointercancel.layoutResizer', function () {
+        $resizer.removeClass('is-dragging')
+        $(document).off('.layoutResizer')
+      })
+    })
+
+    $resizer.on('keydown', function (event) {
+      const step = event.shiftKey ? 40 : 20
+      const currentWidth = getStoredSplitValue(layoutStorageKeys.width, 320)
+      const currentHeight = getStoredSplitValue(layoutStorageKeys.height, Math.round(window.innerHeight * 0.42))
+
+      if (isWideLayout() && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+        event.preventDefault()
+        setTaskListWidth(currentWidth + (event.key === 'ArrowRight' ? step : -step))
+      }
+
+      if (!isWideLayout() && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+        event.preventDefault()
+        setTaskListHeight(currentHeight + (event.key === 'ArrowDown' ? step : -step))
+      }
     })
   }
 
@@ -1120,6 +1238,7 @@
   $(async function () {
     renderShell()
     initializeBridgeReceiver()
+    bindLayoutResizer()
     bindEvents()
     renderEmptyEditor()
 
