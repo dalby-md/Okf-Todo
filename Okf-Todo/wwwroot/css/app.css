@@ -401,6 +401,16 @@ h2 {
   background: #f8fafb;
 }
 
+.editor-loading {
+  display: grid;
+  min-height: 320px;
+  place-items: center;
+  border: 1px dashed #c9d1d9;
+  border-radius: 5px;
+  color: #5f6872;
+  background: #f8fafb;
+}
+
 #text-body {
   width: 100%;
   min-height: 320px;

@@ -4,6 +4,7 @@
 
   let activeAdapter = null
   let activeMode = 'html'
+  let activeInitialization = 0
   let pickImage = null
   const loadedAssets = new Map()
 
@@ -25,9 +26,19 @@
 
     const promise = new Promise(function (resolve, reject) {
       const script = document.createElement('script')
+      const timeoutId = window.setTimeout(function () {
+        loadedAssets.delete(src)
+        reject(new Error(`Timed out loading ${src}.`))
+      }, 15000)
+
       script.src = src
-      script.onload = resolve
+      script.onload = function () {
+        window.clearTimeout(timeoutId)
+        resolve()
+      }
       script.onerror = function () {
+        window.clearTimeout(timeoutId)
+        loadedAssets.delete(src)
         reject(new Error(`Could not load ${src}.`))
       }
       document.head.appendChild(script)
@@ -196,24 +207,32 @@
     const elementId = getElementId(selector)
     const host = getHost(options)
 
-    host.innerHTML = `<textarea id="${encodeAttribute(elementId)}"></textarea>`
-    document.querySelector(selector).value = options.initialContent || ''
+    host.innerHTML = `
+      <div class="editor-loading" role="status">Loading editor...</div>
+      <textarea id="${encodeAttribute(elementId)}"></textarea>
+    `
+    const textarea = document.querySelector(selector)
+    if (!textarea) {
+      throw new Error('Editor textarea was not created.')
+    }
+
+    textarea.value = options.initialContent || ''
 
     return {
       initialize: async function () {
         await ensureTinyMceLoaded()
 
         await window.tinymce.init({
-          selector,
+          target: textarea,
           base_url: options.baseUrl || '/tinymce',
           suffix: '.min',
           license_key: 'gpl',
           menubar: false,
           branding: false,
           promotion: false,
-          plugins: 'autoresize code image link lists table',
+          plugins: 'image link lists',
           toolbar:
-            'undo redo | blocks | bold italic underline | bullist numlist | blockquote | link image table | code',
+            'undo redo | blocks | bold italic underline | bullist numlist | blockquote | link image',
           automatic_uploads: true,
           file_picker_types: 'image',
           file_picker_callback: pickAndInsertImage,
@@ -225,8 +244,8 @@
             const image = await pickImage(blobInfo.blob())
             return image.src
           },
-          min_height: options.minHeight || 420,
-          autoresize_bottom_margin: 0,
+          height: options.minHeight || 420,
+          resize: true,
           content_style: options.contentStyle || '',
           setup: function (tinyEditor) {
             editor = tinyEditor
@@ -235,6 +254,14 @@
         })
 
         editor = window.tinymce.get(elementId)
+        if (!editor) {
+          throw new Error('TinyMCE did not attach to the editor textarea.')
+        }
+
+        const loading = host.querySelector('.editor-loading')
+        if (loading) {
+          loading.remove()
+        }
       },
 
       load: function (html) {
@@ -510,12 +537,30 @@
       activeMode = editorOptions.mode === 'markdown' ? 'markdown' : 'html'
       pickImage = editorOptions.onPickImage || null
 
+      const initializationId = ++activeInitialization
       destroyActiveAdapter()
-      activeAdapter = activeMode === 'markdown'
+      const adapter = activeMode === 'markdown'
         ? createToastUiAdapter(editorOptions)
         : createTinyMceAdapter(editorOptions)
 
-      await activeAdapter.initialize()
+      activeAdapter = adapter
+
+      try {
+        await adapter.initialize()
+      } catch (error) {
+        if (activeAdapter === adapter) {
+          activeAdapter = null
+        }
+
+        throw error
+      }
+
+      if (initializationId !== activeInitialization) {
+        if (activeAdapter === adapter) {
+          adapter.destroy()
+          activeAdapter = null
+        }
+      }
     },
 
     getMode: function () {
@@ -566,11 +611,16 @@
       requireAdapter().markClean()
     },
 
+    preloadHtml: function () {
+      return ensureTinyMceLoaded()
+    },
+
     onChanged: function (callback) {
       changedCallbacks.push(callback)
     },
 
     destroy: function () {
+      activeInitialization += 1
       destroyActiveAdapter()
     }
   }

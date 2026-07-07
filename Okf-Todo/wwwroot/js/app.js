@@ -478,22 +478,23 @@
     })
   }
 
-  function selectFirstVisibleTaskAfterPaint() {
-    if (currentTask || tasks.length === 0) {
+  function scheduleEditorPreload() {
+    if (!window.Editor || typeof window.Editor.preloadHtml !== 'function') {
       return
     }
 
-    window.requestAnimationFrame(function () {
-      window.requestAnimationFrame(function () {
-        if (currentTask || tasks.length === 0) {
-          return
-        }
-
-        selectTask(tasks[0].id).catch(function (error) {
-          setStatus(getErrorMessage(error, 'Could not load task'), 'error')
-        })
+    const preload = function () {
+      window.Editor.preloadHtml().catch(function () {
+        // The visible editor initialization path reports load errors when needed.
       })
-    })
+    }
+
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(preload, { timeout: 3000 })
+      return
+    }
+
+    window.setTimeout(preload, 1500)
   }
 
   function renderTaskList() {
@@ -996,7 +997,7 @@
       lookups = await sendBridgeMessage('task.lookups.get', {})
       renderLookups()
       await loadTasks()
-      selectFirstVisibleTaskAfterPaint()
+      scheduleEditorPreload()
     } catch (error) {
       showFatalError(error)
     }
