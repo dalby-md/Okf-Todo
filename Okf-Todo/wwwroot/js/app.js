@@ -177,6 +177,24 @@
     return error && error.message ? error.message : fallback
   }
 
+  function getViewForTask(task) {
+    const statusCode = task && task.taskStatusCode
+
+    if (statusCode === 'DRAFT' || statusCode === 'NEW') {
+      return 'inbox'
+    }
+
+    if (statusCode === 'COMPLETED' || statusCode === 'CANCELLED') {
+      return 'completed'
+    }
+
+    return 'active'
+  }
+
+  function selectViewForTask(task) {
+    currentView = getViewForTask(task)
+  }
+
   function readBlobAsDataUrl(blob) {
     return new Promise(function (resolve, reject) {
       const reader = new FileReader()
@@ -812,6 +830,7 @@
       return
     }
 
+    const isNewTask = !currentTask.id
     clearValidationState()
     const payload = getTaskPayload()
     if (!payload.title) {
@@ -839,6 +858,10 @@
         await renderTaskEditor(savedTask)
       }
 
+      if (isNewTask) {
+        selectViewForTask(savedTask)
+      }
+
       await loadTasks({ keepSelection: true })
       isDirty = false
       window.Editor.markClean()
@@ -864,6 +887,7 @@
       id: currentTask.id
     })
     refreshCurrentTaskWithoutEditor(task)
+    selectViewForTask(task)
     await loadTasks({ keepSelection: true })
     setStatus('Updated', 'saved')
   }
@@ -915,6 +939,7 @@
     })
 
     refreshCurrentTaskWithoutEditor(task)
+    selectViewForTask(task)
     await loadTasks({ keepSelection: true })
     setStatus('Waiting target added', 'saved')
   }
@@ -929,6 +954,7 @@
     })
 
     refreshCurrentTaskWithoutEditor(task)
+    selectViewForTask(task)
     await loadTasks({ keepSelection: true })
     setStatus('Waiting target cleared', 'saved')
   }
@@ -945,7 +971,14 @@
 
   function bindEvents() {
     $('#new-task-button').on('click', function () {
-      renderTaskEditor(createDraftTask()).catch(showFatalError)
+      const draftTask = createDraftTask()
+      selectViewForTask(draftTask)
+      renderTaskList()
+
+      Promise.all([
+        renderTaskEditor(draftTask),
+        loadTasks()
+      ]).catch(showFatalError)
     })
 
     $('#settings-button').on('click', openSettings)
