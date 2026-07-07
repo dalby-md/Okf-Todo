@@ -470,20 +470,30 @@
     renderTaskList()
   }
 
+  function waitForNextPaint() {
+    return new Promise(function (resolve) {
+      window.requestAnimationFrame(function () {
+        window.requestAnimationFrame(resolve)
+      })
+    })
+  }
+
   function selectFirstVisibleTaskAfterPaint() {
     if (currentTask || tasks.length === 0) {
       return
     }
 
-    window.setTimeout(function () {
-      if (currentTask || tasks.length === 0) {
-        return
-      }
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(function () {
+        if (currentTask || tasks.length === 0) {
+          return
+        }
 
-      selectTask(tasks[0].id).catch(function (error) {
-        setStatus(getErrorMessage(error, 'Could not load task'), 'error')
+        selectTask(tasks[0].id).catch(function (error) {
+          setStatus(getErrorMessage(error, 'Could not load task'), 'error')
+        })
       })
-    }, 0)
+    })
   }
 
   function renderTaskList() {
@@ -979,11 +989,12 @@
     renderShell()
     initializeBridgeReceiver()
     bindEvents()
+    renderEmptyEditor()
 
     try {
+      await waitForNextPaint()
       lookups = await sendBridgeMessage('task.lookups.get', {})
       renderLookups()
-      renderEmptyEditor()
       await loadTasks()
       selectFirstVisibleTaskAfterPaint()
     } catch (error) {
