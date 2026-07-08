@@ -455,8 +455,14 @@
               <h2 id="task-editor-title">Select or create a task</h2>
             </div>
             <div class="app-actions" aria-label="Task actions">
-              <button id="settings-button" class="icon-button" type="button" aria-label="Settings" title="Settings">&#9881;</button>
               <span id="save-status" class="save-status is-ready" role="status">Ready</span>
+              <button id="settings-button" class="icon-button setup-button" type="button" aria-label="Setup" title="Setup">
+                <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                  <path d="M12 8.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"></path>
+                  <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.04.04-2.12 2.12-.04-.04a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.1 1.66V20.5h-3v-.1a1.8 1.8 0 0 0-1.1-1.66 1.8 1.8 0 0 0-1.98.36l-.04.04-2.12-2.12.04-.04A1.8 1.8 0 0 0 4.6 15a1.8 1.8 0 0 0-1.66-1.1H2.8v-3h.14A1.8 1.8 0 0 0 4.6 9.8a1.8 1.8 0 0 0-.36-1.98l-.04-.04 2.12-2.12.04.04a1.8 1.8 0 0 0 1.98.36 1.8 1.8 0 0 0 1.1-1.66V4.3h3v.1a1.8 1.8 0 0 0 1.1 1.66 1.8 1.8 0 0 0 1.98-.36l.04-.04 2.12 2.12-.04.04a1.8 1.8 0 0 0-.36 1.98 1.8 1.8 0 0 0 1.66 1.1h.14v3h-.14A1.8 1.8 0 0 0 19.4 15Z"></path>
+                </svg>
+                <span>Setup</span>
+              </button>
               <button id="complete-button" class="secondary-button" type="button" disabled>Complete</button>
               <button id="cancel-button" class="secondary-button danger-button" type="button" disabled>Cancel</button>
               <button id="save-button" type="button" disabled>Save</button>
