@@ -230,9 +230,16 @@ h2 {
 }
 
 .task-row:hover,
-.task-row.is-selected {
-  border-color: #1f6f68;
-  background: #eef7f5;
+.task-row:hover:not(:disabled) {
+  border-color: #b8c2cc;
+  background: #f8fafb;
+}
+
+.task-row.is-selected,
+.task-row.is-selected:hover,
+.task-row.is-selected:hover:not(:disabled) {
+  border-color: #9aa5b1;
+  background: #f4f6f8;
 }
 
 .task-row.is-waiting {
@@ -241,15 +248,18 @@ h2 {
 }
 
 .task-row.is-waiting:hover,
-.task-row.is-waiting.is-selected {
+.task-row.is-waiting:hover:not(:disabled),
+.task-row.is-waiting.is-selected,
+.task-row.is-waiting.is-selected:hover,
+.task-row.is-waiting.is-selected:hover:not(:disabled) {
   background: #fff4dc;
 }
 
 .task-row-title {
-  overflow: hidden;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  font-weight: 400;
+  line-height: 1.25;
+  white-space: normal;
 }
 
 .task-row-meta {

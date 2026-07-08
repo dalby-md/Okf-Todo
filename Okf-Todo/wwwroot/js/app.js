@@ -161,6 +161,14 @@
     return `<span class="task-badge"${style}>${encodeText(label)}</span>`
   }
 
+  function renderTaskStatusBadge(task) {
+    if (task.taskStatusCode === 'ACTIVE') {
+      return renderBadge(task.taskStatusName, '#6b7280', '#ffffff')
+    }
+
+    return renderBadge(task.taskStatusName, task.taskStatusBackgroundColor, task.taskStatusForegroundColor)
+  }
+
   function formatDate(value) {
     if (!value) {
       return ''
@@ -857,7 +865,7 @@
           <span class="task-row-title">${encodeText(task.title)}</span>
           <span class="task-row-meta">
             ${renderBadge(task.taskTypeName, task.taskTypeBackgroundColor, task.taskTypeForegroundColor)}
-            ${renderBadge(task.taskStatusName, task.taskStatusBackgroundColor, task.taskStatusForegroundColor)}
+            ${renderTaskStatusBadge(task)}
             ${priority}
             ${deadline}
             ${waiting}
