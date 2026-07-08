@@ -16,6 +16,13 @@ public sealed class AppPreferenceService(
     private const double MaximumTaskListWidth = 2400;
     private const double MinimumTaskListHeight = 120;
     private const double MaximumTaskListHeight = 1800;
+    private const int MinimumWindowWidth = 640;
+    private const int MaximumWindowWidth = 10000;
+    private const int MinimumWindowHeight = 480;
+    private const int MaximumWindowHeight = 10000;
+    private const int MinimumWindowCoordinate = -20000;
+    private const int MaximumWindowCoordinate = 20000;
+    private const bool DefaultWindowIsMaximized = true;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
@@ -91,6 +98,65 @@ public sealed class AppPreferenceService(
             layoutMode);
 
         return new LayoutPreferenceDto(taskListWidth, taskListHeight, layoutMode);
+    }
+
+    public async Task<WindowPreferenceDto> GetWindowPreferenceAsync(CancellationToken cancellationToken)
+    {
+        var preferences = await ReadPreferencesAsync(cancellationToken);
+        return NormalizeOrDefaultWindowPreference(preferences);
+    }
+
+    public async Task<WindowPreferenceDto> SaveWindowPreferenceAsync(
+        WindowPreferenceSaveRequest request,
+        CancellationToken cancellationToken)
+    {
+        var preferences = await ReadPreferencesAsync(cancellationToken);
+        var isMaximized = request.IsMaximized;
+        var left = request.Left is null
+            ? preferences.WindowLeft
+            : NormalizeWindowCoordinate(request.Left, "left");
+        var top = request.Top is null
+            ? preferences.WindowTop
+            : NormalizeWindowCoordinate(request.Top, "top");
+        var width = request.Width is null
+            ? preferences.WindowWidth
+            : NormalizeWindowSize(
+                request.Width,
+                MinimumWindowWidth,
+                MaximumWindowWidth,
+                "width");
+        var height = request.Height is null
+            ? preferences.WindowHeight
+            : NormalizeWindowSize(
+                request.Height,
+                MinimumWindowHeight,
+                MaximumWindowHeight,
+                "height");
+
+        if (!isMaximized && (left is null || top is null || width is null || height is null))
+        {
+            throw new ValidationException("Window preference is incomplete.", "window");
+        }
+
+        preferences = preferences with
+        {
+            WindowLeft = left,
+            WindowTop = top,
+            WindowWidth = width,
+            WindowHeight = height,
+            WindowIsMaximized = isMaximized
+        };
+        await WritePreferencesAsync(preferences, cancellationToken);
+
+        logger.LogInformation(
+            "Saved window preference with left {WindowLeft}, top {WindowTop}, width {WindowWidth}, height {WindowHeight}, maximized {WindowIsMaximized}.",
+            left,
+            top,
+            width,
+            height,
+            isMaximized);
+
+        return new WindowPreferenceDto(left, top, width, height, isMaximized);
     }
 
     private async Task<StoredPreferences> ReadPreferencesAsync(CancellationToken cancellationToken)
@@ -186,7 +252,16 @@ public sealed class AppPreferenceService(
 
     private static StoredPreferences CreateDefaultPreferences()
     {
-        return new StoredPreferences(DefaultBodyFormatCode, null, null, DefaultLayoutMode);
+        return new StoredPreferences(
+            DefaultBodyFormatCode,
+            null,
+            null,
+            DefaultLayoutMode,
+            null,
+            null,
+            null,
+            null,
+            DefaultWindowIsMaximized);
     }
 
     private static string NormalizeOrDefaultLayoutMode(string? layoutMode)
@@ -215,6 +290,53 @@ public sealed class AppPreferenceService(
         }
 
         throw new ValidationException("Layout mode is invalid.", "layoutMode");
+    }
+
+    private WindowPreferenceDto NormalizeOrDefaultWindowPreference(StoredPreferences preferences)
+    {
+        try
+        {
+            var isMaximized = preferences.WindowIsMaximized ?? DefaultWindowIsMaximized;
+            if (preferences.WindowLeft is null
+                || preferences.WindowTop is null
+                || preferences.WindowWidth is null
+                || preferences.WindowHeight is null)
+            {
+                return new WindowPreferenceDto(null, null, null, null, isMaximized);
+            }
+
+            return new WindowPreferenceDto(
+                NormalizeWindowCoordinate(preferences.WindowLeft, "left"),
+                NormalizeWindowCoordinate(preferences.WindowTop, "top"),
+                NormalizeWindowSize(preferences.WindowWidth, MinimumWindowWidth, MaximumWindowWidth, "width"),
+                NormalizeWindowSize(preferences.WindowHeight, MinimumWindowHeight, MaximumWindowHeight, "height"),
+                isMaximized);
+        }
+        catch (ValidationException exception)
+        {
+            logger.LogWarning(exception, "Stored window preference is invalid.");
+            return new WindowPreferenceDto(null, null, null, null, DefaultWindowIsMaximized);
+        }
+    }
+
+    private static int NormalizeWindowCoordinate(int? value, string field)
+    {
+        if (value is null || value < MinimumWindowCoordinate || value > MaximumWindowCoordinate)
+        {
+            throw new ValidationException("Window preference is invalid.", field);
+        }
+
+        return value.Value;
+    }
+
+    private static int NormalizeWindowSize(int? value, int minimum, int maximum, string field)
+    {
+        if (value is null || value < minimum || value > maximum)
+        {
+            throw new ValidationException("Window preference is invalid.", field);
+        }
+
+        return value.Value;
     }
 }
 
@@ -249,8 +371,17 @@ public sealed record LayoutPreferenceDto(double? TaskListWidth, double? TaskList
 
 public sealed record LayoutPreferenceSaveRequest(double? TaskListWidth, double? TaskListHeight, string? LayoutMode);
 
+public sealed record WindowPreferenceDto(int? Left, int? Top, int? Width, int? Height, bool IsMaximized);
+
+public sealed record WindowPreferenceSaveRequest(int? Left, int? Top, int? Width, int? Height, bool IsMaximized);
+
 internal sealed record StoredPreferences(
     string? EditorBodyFormatCode,
     double? TaskListWidth,
     double? TaskListHeight,
-    string? LayoutMode);
+    string? LayoutMode,
+    int? WindowLeft,
+    int? WindowTop,
+    int? WindowWidth,
+    int? WindowHeight,
+    bool? WindowIsMaximized);

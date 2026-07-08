@@ -1,3 +1,9 @@
+html,
+body,
+#app {
+  height: 100%;
+}
+
 :root {
   --task-list-width: 320px;
   --task-list-height: 42vh;
@@ -18,8 +24,9 @@
 
 body {
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 100%;
   margin: 0;
+  overflow: hidden;
   font-size: 14px;
 }
 
@@ -131,7 +138,9 @@ select.is-invalid {
 .app-shell {
   display: grid;
   grid-template-columns: minmax(220px, var(--task-list-width)) 6px minmax(0, 1fr);
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .task-sidebar {
@@ -139,6 +148,8 @@ select.is-invalid {
   grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 8px;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   padding: 12px;
   border-right: 1px solid #d8dee5;
   background: #ffffff;
@@ -231,7 +242,8 @@ h2 {
 
 .task-list {
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding-right: 2px;
 }
 
@@ -326,7 +338,8 @@ h2 {
   grid-template-rows: auto minmax(0, 1fr);
   gap: 10px;
   min-width: 0;
-  min-height: 100vh;
+  min-height: 0;
+  overflow: auto;
   padding: 12px 16px;
 }
 
@@ -686,7 +699,7 @@ h2 {
 }
 
 :root.layout-mode-side-by-side .task-editor-panel {
-  min-height: 100vh;
+  min-height: 0;
 }
 
 @media (max-width: 640px) {

@@ -13,6 +13,8 @@ namespace Photino.Okf_Todo
 {
     internal class Program
     {
+        private static readonly Size DefaultWindowSize = new(1280, 800);
+
         [STAThread]
         static void Main(string[] args)
         {
@@ -60,32 +62,102 @@ namespace Photino.Okf_Todo
             string appUrl = $"{readinessUrl}?v={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
             startupLogger.LogInformation("Loading UI from {AppUrl}", appUrl);
 
+            var windowPreference = LoadWindowPreference(services, startupLogger);
             var window = new PhotinoWindow()
                 .SetTitle("OKF Todo")
                 .SetUseOsDefaultSize(false)
-                .SetSize(new Size(1280, 800))
-                .Center()
+                .SetSize(GetStartupWindowSize(windowPreference))
                 .SetResizable(true)
-                .SetMaximized(true)
-                .RegisterCustomSchemeHandler("app", (object sender, string scheme, string url, out string contentType) =>
-                    OpenCustomSchemeStream(services, startupLogger, url, out contentType))
-                .RegisterWebMessageReceivedHandler((object? sender, string message) =>
-                {
-                    if (sender is not PhotinoWindow window)
+                .RegisterCustomSchemeHandler(
+                    "app",
+                    (object sender, string scheme, string url, out string contentType) =>
+                        OpenCustomSchemeStream(services, startupLogger, url, out contentType))
+                .RegisterWebMessageReceivedHandler(
+                    (object? sender, string message) =>
                     {
-                        return;
-                    }
+                        if (sender is not PhotinoWindow window)
+                        {
+                            return;
+                        }
 
-                    _ = Task.Run(async () =>
-                    {
-                        var handler = services.GetRequiredService<BridgeMessageHandler>();
-                        var response = await handler.HandleAsync(message);
-                        window.SendWebMessage(response);
+                        _ = Task.Run(async () =>
+                        {
+                            var handler = services.GetRequiredService<BridgeMessageHandler>();
+                            var response = await handler.HandleAsync(message);
+                            window.SendWebMessage(response);
+                        });
                     });
-                })
-                .Load(appUrl);
+
+            ApplyStartupWindowPlacement(window, windowPreference);
+            window.WindowClosing += (_, _) =>
+            {
+                SaveWindowPreference(services, startupLogger, window);
+                return false;
+            };
+            window.Load(appUrl);
 
             window.WaitForClose();
+        }
+
+        private static WindowPreferenceDto LoadWindowPreference(IServiceProvider services, ILogger logger)
+        {
+            try
+            {
+                using var scope = services.CreateScope();
+                return scope.ServiceProvider.GetRequiredService<AppPreferenceService>()
+                    .GetWindowPreferenceAsync(CancellationToken.None)
+                    .GetAwaiter()
+                    .GetResult();
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning(exception, "Could not load window preference.");
+                return new WindowPreferenceDto(null, null, null, null, true);
+            }
+        }
+
+        private static void SaveWindowPreference(IServiceProvider services, ILogger logger, PhotinoWindow window)
+        {
+            try
+            {
+                var isMaximized = window.Maximized;
+                var request = isMaximized
+                    ? new WindowPreferenceSaveRequest(null, null, null, null, true)
+                    : new WindowPreferenceSaveRequest(window.Left, window.Top, window.Width, window.Height, false);
+
+                using var scope = services.CreateScope();
+                scope.ServiceProvider.GetRequiredService<AppPreferenceService>()
+                    .SaveWindowPreferenceAsync(request, CancellationToken.None)
+                    .GetAwaiter()
+                    .GetResult();
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning(exception, "Could not save window preference.");
+            }
+        }
+
+        private static Size GetStartupWindowSize(WindowPreferenceDto preference)
+        {
+            return preference is { IsMaximized: false, Width: not null, Height: not null }
+                ? new Size(preference.Width.Value, preference.Height.Value)
+                : DefaultWindowSize;
+        }
+
+        private static void ApplyStartupWindowPlacement(PhotinoWindow window, WindowPreferenceDto preference)
+        {
+            if (preference is { IsMaximized: false, Left: not null, Top: not null })
+            {
+                window.SetLocation(new Point(preference.Left.Value, preference.Top.Value));
+                return;
+            }
+
+            window.Center();
+
+            if (preference.IsMaximized)
+            {
+                window.SetMaximized(true);
+            }
         }
 
         private static Stream OpenCustomSchemeStream(
