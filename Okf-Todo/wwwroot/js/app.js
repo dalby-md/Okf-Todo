@@ -1167,6 +1167,12 @@
     }, 0)
   }
 
+  function focusTaskList() {
+    window.setTimeout(function () {
+      $('#task-list').trigger('focus')
+    }, 0)
+  }
+
   function focusTaskSearchWithKey(key) {
     const search = $('#task-search')
     const currentValue = search.val().toString()
@@ -1583,10 +1589,12 @@
     if (selectFirst) {
       if (tasks.length > 0) {
         await selectTask(tasks[0].id)
+        focusTaskRow(tasks[0].id)
         return currentTask
       }
 
       renderEmptyEditor()
+      focusTaskList()
       return null
     }
 

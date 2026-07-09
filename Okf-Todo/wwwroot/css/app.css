@@ -271,11 +271,11 @@ h2 {
 .task-row.is-selected:hover,
 .task-row.is-selected:hover:not(:disabled) {
   border-color: #9aa5b1;
+  border-left: 3px solid #4b5563;
   background: #f4f6f8;
 }
 
 .task-row.is-waiting {
-  border-left: 3px solid #b45309;
   background: #fffaf0;
 }
 
