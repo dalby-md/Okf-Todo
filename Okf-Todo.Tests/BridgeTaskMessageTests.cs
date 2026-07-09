@@ -108,6 +108,44 @@ public sealed class BridgeTaskMessageTests
         Assert.Equal("Updated bridge task", updated.GetProperty("title").GetString());
         Assert.Equal("REQUEST", updated.GetProperty("taskTypeCode").GetString());
 
+        var saveDrivenWaiting = await fixture.SendAsync("task.update", new
+        {
+            id = taskId,
+            title = "Updated bridge task",
+            taskTypeCode = "REQUEST",
+            body = "<p>Updated through bridge</p>",
+            bodyFormatCode = "HTML",
+            taskPriorityCode = "URGENT",
+            taskSourceCode = "TEAMS",
+            sourceReference = "Chat",
+            sourceUrl = (string?)null,
+            deadline = (DateTime?)null,
+            activeWaitingForLabel = "SAVEWAIT"
+        });
+        Assert.Equal("SAVEWAIT", saveDrivenWaiting.GetProperty("activeWaitingFor").GetProperty("label").GetString());
+
+        var saveDrivenWaitingList = await fixture.SendAsync("task.list", new { view = "active" });
+        var saveDrivenWaitingListItem = Assert.Single(
+            saveDrivenWaitingList.EnumerateArray(),
+            task => task.GetProperty("id").GetInt32() == taskId);
+        Assert.Equal("SAVEWAIT", saveDrivenWaitingListItem.GetProperty("activeWaitingForLabel").GetString());
+
+        var saveDrivenWaitingCleared = await fixture.SendAsync("task.update", new
+        {
+            id = taskId,
+            title = "Updated bridge task",
+            taskTypeCode = "REQUEST",
+            body = "<p>Updated through bridge</p>",
+            bodyFormatCode = "HTML",
+            taskPriorityCode = "URGENT",
+            taskSourceCode = "TEAMS",
+            sourceReference = "Chat",
+            sourceUrl = (string?)null,
+            deadline = (DateTime?)null,
+            activeWaitingForLabel = (string?)null
+        });
+        Assert.Equal(JsonValueKind.Null, saveDrivenWaitingCleared.GetProperty("activeWaitingFor").ValueKind);
+
         var started = await fixture.SendAsync("task.start", new { id = taskId });
         Assert.Equal(TaskStatusCodes.Active, started.GetProperty("taskStatusCode").GetString());
 

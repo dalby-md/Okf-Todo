@@ -521,14 +521,11 @@
                 <span>Source URL</span>
                 <input id="task-source-url" type="url" autocomplete="off" disabled>
               </label>
+              <label class="field-block waiting-field" for="waiting-text">
+                <span>Waiting for</span>
+                <input id="waiting-text" type="text" autocomplete="off" disabled>
+              </label>
             </div>
-
-            <section class="waiting-panel" aria-labelledby="waiting-label">
-              <label id="waiting-label" class="waiting-label" for="waiting-text">Waiting for</label>
-              <input id="waiting-text" type="text" autocomplete="off" disabled>
-              <button id="add-waiting-button" class="secondary-button" type="button" disabled>Set</button>
-              <button id="clear-waiting-button" class="secondary-button danger-button" type="button" disabled>Clear</button>
-            </section>
 
             <div class="body-header">
               <label class="field-label" for="text-body">Body</label>
@@ -889,7 +886,7 @@
     $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
     $('#waiting-text').val('')
     $('#task-form input, #task-form select').prop('disabled', true)
-    $('#add-waiting-button, #clear-waiting-button, #complete-button, #cancel-button, #save-button').prop('disabled', true)
+    $('#complete-button, #cancel-button, #save-button').prop('disabled', true)
     $('#editor-mode').prop('disabled', !lookups)
     $('#editor-host').html('<div class="empty-editor">Select a task to edit the body.</div>')
     setStatus('Ready', 'ready')
@@ -1319,8 +1316,6 @@
 
     $('#waiting-text').val(waitingFor ? describeWaiting(waitingFor) : '')
 
-    $('#clear-waiting-button').prop('disabled', !waitingFor)
-    $('#add-waiting-button').prop('disabled', !canEditWaiting)
     $('#waiting-text').prop('disabled', !canEditWaiting)
   }
 
@@ -1514,7 +1509,8 @@
       taskSourceCode: $('#task-source').val().toString() || null,
       sourceReference: $('#task-source-reference').val().toString().trim() || null,
       sourceUrl: $('#task-source-url').val().toString().trim() || null,
-      deadline: $('#task-deadline').val().toString() || null
+      deadline: $('#task-deadline').val().toString() || null,
+      activeWaitingForLabel: $('#waiting-text').val().toString().trim() || null
     }
   }
 
@@ -1691,48 +1687,6 @@
       : 'task.complete'
 
     return runLifecycleAction(type)
-  }
-
-  async function addWaitingFor() {
-    if (!currentTask || !currentTask.id) {
-      setStatus('Save the task before adding waiting', 'error')
-      return
-    }
-
-    clearValidationState()
-    const label = $('#waiting-text').val().toString().trim()
-
-    if (!label) {
-      setFieldInvalid('#waiting-text', true)
-      setStatus('Waiting for is required', 'error')
-      $('#waiting-text').trigger('focus')
-      return
-    }
-
-    const task = await sendBridgeMessage('task.waiting.add', {
-      taskId: currentTask.id,
-      label
-    })
-
-    refreshCurrentTaskWithoutEditor(task)
-    selectViewForTask(task)
-    await loadTasks({ keepSelection: true })
-    setStatus('Waiting target added', 'saved')
-  }
-
-  async function clearWaitingFor() {
-    if (!currentTask || !currentTask.id || !currentTask.activeWaitingFor) {
-      return
-    }
-
-    const task = await sendBridgeMessage('task.waiting.clear', {
-      id: currentTask.id
-    })
-
-    refreshCurrentTaskWithoutEditor(task)
-    selectViewForTask(task)
-    await loadTasks({ keepSelection: true })
-    setStatus('Waiting target cleared', 'saved')
   }
 
   function openSettings() {
@@ -1977,7 +1931,7 @@
     })
 
     $('#task-search').on('input', renderTaskList)
-    $('#task-form').on('input change', '#task-title, #task-type, #task-priority, #task-deadline, #task-source, #task-source-reference, #task-source-url', markDirty)
+    $('#task-form').on('input change', '#task-title, #task-type, #task-priority, #task-deadline, #task-source, #task-source-reference, #task-source-url, #waiting-text', markDirty)
     $('#editor-mode').on('change', function () {
       switchEditorMode().catch(function (error) {
         setStatus(getErrorMessage(error, 'Could not switch editor'), 'error')
@@ -1999,17 +1953,6 @@
         setStatus(getErrorMessage(error, 'Could not cancel task'), 'error')
       })
     })
-    $('#add-waiting-button').on('click', function () {
-      addWaitingFor().catch(function (error) {
-        setStatus(getErrorMessage(error, 'Could not add waiting target'), 'error')
-      })
-    })
-    $('#clear-waiting-button').on('click', function () {
-      clearWaitingFor().catch(function (error) {
-        setStatus(getErrorMessage(error, 'Could not clear waiting target'), 'error')
-      })
-    })
-
     window.Editor.onChanged(markDirty)
   }
 

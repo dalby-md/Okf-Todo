@@ -211,6 +211,8 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             request.SourceUrl,
             request.Deadline), cancellationToken);
 
+        await ApplyWaitingForAsync(task.Id, request.ActiveWaitingForLabel, cancellationToken);
+
         return await GetAsync(task.Id, cancellationToken);
     }
 
@@ -236,6 +238,7 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             .Include(item => item.TaskType)
             .Include(item => item.TaskPriority)
             .Include(item => item.TaskSource)
+            .Include(item => item.WaitingTargets.Where(target => target.ResolvedAt == null))
             .SingleOrDefaultAsync(item => item.Id == request.Id.Value, cancellationToken)
             ?? throw new ValidationException("Task was not found.", "taskId");
 
@@ -260,6 +263,7 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
         await lifecycleService.ChangeDeadlineAsync(task.Id, request.Deadline, cancellationToken);
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await ApplyWaitingForAsync(task.Id, request.ActiveWaitingForLabel, cancellationToken);
 
         return await GetAsync(task.Id, cancellationToken);
     }
@@ -513,6 +517,35 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    private async Task ApplyWaitingForAsync(int taskId, string? requestedLabel, CancellationToken cancellationToken)
+    {
+        var normalizedLabel = NormalizeOptional(requestedLabel);
+        var activeWaitingFor = await dbContext.TaskWaitingFors
+            .AsNoTracking()
+            .SingleOrDefaultAsync(target => target.TaskId == taskId && target.ResolvedAt == null, cancellationToken);
+
+        if (activeWaitingFor is null && normalizedLabel is null)
+        {
+            return;
+        }
+
+        if (activeWaitingFor is not null && string.Equals(activeWaitingFor.Label, normalizedLabel, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (normalizedLabel is null)
+        {
+            await lifecycleService.ClearWaitingForAsync(taskId, cancellationToken);
+            return;
+        }
+
+        await lifecycleService.AddWaitingForAsync(
+            taskId,
+            new TaskWaitingForRequest(normalizedLabel),
+            cancellationToken);
+    }
+
     private static string NormalizeLookupCode(string code)
     {
         return string.IsNullOrWhiteSpace(code)
@@ -634,7 +667,8 @@ public sealed record TaskSaveRequest(
     string? TaskSourceCode,
     string? SourceReference,
     string? SourceUrl,
-    DateTime? Deadline);
+    DateTime? Deadline,
+    string? ActiveWaitingForLabel = null);
 
 public sealed record TaskListItemDto(
     int Id,

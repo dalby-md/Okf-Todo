@@ -402,6 +402,49 @@ public sealed class TaskServiceTests
     }
 
     [Fact]
+    public async Task Update_CanSetAndClearWaitingForThroughNormalSave()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var created = await database.Tasks.CreateAsync(CreateRequest("Task with saved waiting field"), CancellationToken.None);
+
+        var waiting = await database.Tasks.UpdateAsync(new TaskSaveRequest(
+            Id: created.Id,
+            Title: created.Title,
+            TaskTypeCode: created.TaskTypeCode,
+            Body: created.Body,
+            BodyFormatCode: "HTML",
+            TaskPriorityCode: created.TaskPriorityCode,
+            TaskSourceCode: null,
+            SourceReference: null,
+            SourceUrl: null,
+            Deadline: null,
+            ActiveWaitingForLabel: "INC123456"), CancellationToken.None);
+
+        Assert.Equal(TaskStatusCodes.Active, waiting.TaskStatusCode);
+        Assert.NotNull(waiting.ActiveWaitingFor);
+        Assert.Equal("INC123456", waiting.ActiveWaitingFor.Label);
+
+        var activeTasks = await database.Tasks.ListAsync(new TaskListRequest("active"), CancellationToken.None);
+        Assert.Contains(activeTasks, task => task.Id == created.Id && task.ActiveWaitingForLabel == "INC123456");
+
+        var cleared = await database.Tasks.UpdateAsync(new TaskSaveRequest(
+            Id: created.Id,
+            Title: created.Title,
+            TaskTypeCode: created.TaskTypeCode,
+            Body: created.Body,
+            BodyFormatCode: "HTML",
+            TaskPriorityCode: created.TaskPriorityCode,
+            TaskSourceCode: null,
+            SourceReference: null,
+            SourceUrl: null,
+            Deadline: null,
+            ActiveWaitingForLabel: null), CancellationToken.None);
+
+        Assert.Equal(TaskStatusCodes.Active, cleared.TaskStatusCode);
+        Assert.Null(cleared.ActiveWaitingFor);
+    }
+
+    [Fact]
     public async Task CreateAndUpdate_RejectMissingRequiredFields()
     {
         await using var database = await TestDatabase.CreateAsync();
