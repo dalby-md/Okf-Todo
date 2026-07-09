@@ -7,6 +7,16 @@
     completed: 'Completed',
     all: 'All'
   }
+  const lookupSettingsGroups = {
+    taskTypes: 'Task types',
+    taskPriorities: 'Priorities',
+    taskStatuses: 'Statuses'
+  }
+  const lookupSettingsGroupNouns = {
+    taskTypes: 'task type',
+    taskPriorities: 'priority',
+    taskStatuses: 'status'
+  }
   const supportedEditorImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
   const maxEditorImageBytes = 5 * 1024 * 1024
   const wideLayoutMediaQuery = window.matchMedia('(min-width: 901px)')
@@ -24,6 +34,9 @@
   let isEditorReady = false
   let isDirty = false
   let preferredBodyFormatCode = 'HTML'
+  let lookupSettings = null
+  let activeLookupSettingsGroup = 'taskTypes'
+  let editingLookupCode = null
   let layoutPreference = {
     taskListWidth: defaultTaskListWidth,
     taskListHeight: null,
@@ -155,6 +168,10 @@
   function normalizeBadgeColor(value) {
     const color = String(value || '').trim()
     return /^#[0-9a-fA-F]{6}$/.test(color) ? color : null
+  }
+
+  function getColorInputValue(value, fallback) {
+    return normalizeBadgeColor(value) || fallback
   }
 
   function renderBadge(label, backgroundColor, foregroundColor) {
@@ -523,7 +540,7 @@
         </section>
 
         <div id="settings-overlay" class="modal-overlay" hidden>
-          <section class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+          <section class="settings-dialog setup-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
             <header class="settings-header">
               <h2 id="settings-title">Settings</h2>
               <button id="settings-close-button" class="icon-button" type="button" aria-label="Close settings" title="Close">&times;</button>
@@ -547,6 +564,81 @@
                 <option value="STACKED">Stacked</option>
               </select>
             </label>
+
+            <section class="lookup-settings-panel" aria-labelledby="lookup-settings-title">
+              <h3 id="lookup-settings-title">Lookup values</h3>
+              <div id="lookup-settings-groups" class="lookup-group-buttons" aria-label="Lookup groups"></div>
+            </section>
+          </section>
+        </div>
+
+        <div id="lookup-list-overlay" class="modal-overlay" hidden>
+          <section class="settings-dialog lookup-list-dialog" role="dialog" aria-modal="true" aria-labelledby="lookup-list-title">
+            <header class="settings-header">
+              <h2 id="lookup-list-title">Lookup values</h2>
+              <button id="lookup-list-close-button" class="icon-button" type="button" aria-label="Close lookup list" title="Close">&times;</button>
+            </header>
+
+            <div id="lookup-list-items" class="lookup-list-items"></div>
+
+            <div class="modal-actions">
+              <button id="lookup-list-done-button" class="secondary-button" type="button">Close</button>
+              <button id="lookup-list-new-button" type="button">New</button>
+            </div>
+          </section>
+        </div>
+
+        <div id="lookup-edit-overlay" class="modal-overlay" hidden>
+          <section class="settings-dialog lookup-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="lookup-edit-title">
+            <header class="settings-header">
+              <h2 id="lookup-edit-title">Lookup value</h2>
+            </header>
+
+            <div class="lookup-edit-grid">
+              <label class="settings-field" for="lookup-edit-code">
+                <span>Code</span>
+                <input id="lookup-edit-code" type="text" autocomplete="off">
+              </label>
+              <label class="settings-field" for="lookup-edit-name">
+                <span>Name</span>
+                <input id="lookup-edit-name" type="text" autocomplete="off" required>
+              </label>
+              <label class="settings-field lookup-description-edit" for="lookup-edit-description">
+                <span>Description</span>
+                <input id="lookup-edit-description" type="text" autocomplete="off">
+              </label>
+              <label class="settings-field" for="lookup-edit-sort-order">
+                <span>Sort</span>
+                <input id="lookup-edit-sort-order" type="number" step="1">
+              </label>
+              <label class="settings-field" for="lookup-edit-background-color">
+                <span>Background</span>
+                <input id="lookup-edit-background-color" type="color">
+              </label>
+              <label class="settings-field" for="lookup-edit-foreground-color">
+                <span>Text</span>
+                <input id="lookup-edit-foreground-color" type="color">
+              </label>
+            </div>
+
+            <div class="lookup-edit-options">
+              <label class="lookup-check">
+                <input id="lookup-edit-is-active" type="checkbox">
+                <span>Active</span>
+              </label>
+              <label class="lookup-check">
+                <input id="lookup-edit-is-selected" type="checkbox">
+                <span>Selected</span>
+              </label>
+              <span id="lookup-edit-preview" class="lookup-edit-preview"></span>
+            </div>
+
+            <p id="lookup-edit-error" class="form-error" hidden></p>
+
+            <div class="modal-actions">
+              <button id="lookup-edit-cancel-button" class="secondary-button" type="button">Cancel</button>
+              <button id="lookup-edit-save-button" type="button">Save</button>
+            </div>
           </section>
         </div>
 
@@ -608,6 +700,135 @@
     renderLookupOptions('#task-priority', lookups.taskPriorities, true)
     renderLookupOptions('#task-source', lookups.taskSources, true)
     renderLookupOptions('#editor-mode', lookups.bodyFormats, false)
+  }
+
+  function renderLookupSettings() {
+    $('#lookup-settings-groups').html(Object.keys(lookupSettingsGroups).map(function (group) {
+      const count = lookupSettings && lookupSettings[group] ? lookupSettings[group].length : 0
+      const countLabel = lookupSettings ? `<span>${count}</span>` : ''
+      return `<button class="lookup-group-button secondary-button" type="button" data-lookup-group="${group}">${lookupSettingsGroups[group]}${countLabel}</button>`
+    }).join(''))
+  }
+
+  async function loadLookupSettings() {
+    $('#lookup-settings-groups').html('<div class="empty-lookup-settings">Loading lookup values.</div>')
+    lookupSettings = await sendBridgeMessage('lookup.settings.get', {})
+    renderLookupSettings()
+  }
+
+  function getActiveLookupItems() {
+    return lookupSettings && lookupSettings[activeLookupSettingsGroup]
+      ? lookupSettings[activeLookupSettingsGroup]
+      : []
+  }
+
+  function findActiveLookupItem(code) {
+    return getActiveLookupItems().find(function (item) {
+      return item.code === code
+    }) || null
+  }
+
+  function renderLookupList() {
+    $('#lookup-list-title').text(lookupSettingsGroups[activeLookupSettingsGroup])
+    $('#lookup-list-new-button').text(`New ${lookupSettingsGroupNouns[activeLookupSettingsGroup]}`)
+
+    const items = getActiveLookupItems()
+    if (items.length === 0) {
+      $('#lookup-list-items').html('<div class="empty-lookup-settings">No lookup values.</div>')
+      return
+    }
+
+    $('#lookup-list-items').html(items.map(function (item) {
+      const backgroundColor = getColorInputValue(item.backgroundColor, '#6b7280')
+      const foregroundColor = getColorInputValue(item.foregroundColor, '#ffffff')
+      const activeText = item.isActive ? 'Active' : 'Inactive'
+      const selectedText = item.isSelected ? '<span class="lookup-state-pill">Default</span>' : ''
+      const systemText = item.isSystem ? '<span class="lookup-state-pill">System</span>' : ''
+
+      return `
+        <article class="lookup-list-row">
+          <div class="lookup-list-main">
+            <span class="lookup-preview">${renderBadge(item.name, backgroundColor, foregroundColor)}</span>
+            <span class="lookup-code">${encodeText(item.code)}</span>
+            <span class="lookup-list-description">${encodeText(item.description || '')}</span>
+          </div>
+          <div class="lookup-list-meta">
+            <span>${activeText}</span>
+            ${selectedText}
+            ${systemText}
+            <span>Sort ${item.sortOrder}</span>
+          </div>
+          <button class="lookup-list-edit-button secondary-button" type="button" data-code="${encodeAttribute(item.code)}">Edit</button>
+        </article>
+      `
+    }).join(''))
+  }
+
+  async function openLookupList(group) {
+    activeLookupSettingsGroup = group
+    if (!lookupSettings) {
+      lookupSettings = await sendBridgeMessage('lookup.settings.get', {})
+      renderLookupSettings()
+    }
+
+    renderLookupList()
+    $('#lookup-list-overlay').prop('hidden', false)
+    $('#lookup-list-new-button').trigger('focus')
+  }
+
+  function closeLookupList() {
+    $('#lookup-list-overlay').prop('hidden', true)
+    $('#lookup-settings-groups [data-lookup-group="' + activeLookupSettingsGroup + '"]').trigger('focus')
+  }
+
+  function openLookupEdit(code) {
+    editingLookupCode = code || null
+    const item = editingLookupCode ? findActiveLookupItem(editingLookupCode) : null
+    const fallbackSortOrder = getActiveLookupItems().reduce(function (maxSort, current) {
+      return Math.max(maxSort, Number(current.sortOrder) || 0)
+    }, 0) + 10
+
+    $('#lookup-edit-title').text(editingLookupCode
+      ? `Edit ${lookupSettingsGroupNouns[activeLookupSettingsGroup]}`
+      : `New ${lookupSettingsGroupNouns[activeLookupSettingsGroup]}`)
+    $('#lookup-edit-code')
+      .val(item ? item.code : '')
+      .prop('disabled', !!item)
+      .removeClass('is-invalid')
+    $('#lookup-edit-name').val(item ? item.name : '').removeClass('is-invalid')
+    $('#lookup-edit-description').val(item && item.description ? item.description : '')
+    $('#lookup-edit-sort-order').val(item ? item.sortOrder : fallbackSortOrder)
+    $('#lookup-edit-is-active')
+      .prop('checked', item ? item.isActive : true)
+      .prop('disabled', !!(item && activeLookupSettingsGroup === 'taskStatuses' && item.isSystem))
+    $('#lookup-edit-is-selected').prop('checked', item ? item.isSelected : false)
+    $('#lookup-edit-background-color').val(getColorInputValue(item && item.backgroundColor, '#6b7280'))
+    $('#lookup-edit-foreground-color').val(getColorInputValue(item && item.foregroundColor, '#ffffff'))
+    $('#lookup-edit-error').prop('hidden', true).text('')
+    $('#lookup-edit-save-button, #lookup-edit-cancel-button').prop('disabled', false)
+    updateLookupEditPreview()
+
+    $('#lookup-edit-overlay').prop('hidden', false)
+    window.setTimeout(function () {
+      const field = editingLookupCode ? $('#lookup-edit-name')[0] : $('#lookup-edit-code')[0]
+      field.focus()
+      field.select()
+    }, 0)
+  }
+
+  function closeLookupEdit() {
+    $('#lookup-edit-overlay').prop('hidden', true)
+    $('#lookup-list-new-button').trigger('focus')
+  }
+
+  function updateLookupEditPreview() {
+    const label = $('#lookup-edit-name').val().toString().trim()
+      || $('#lookup-edit-code').val().toString().trim()
+      || 'Preview'
+    $('#lookup-edit-preview').html(renderBadge(
+      label,
+      $('#lookup-edit-background-color').val().toString(),
+      $('#lookup-edit-foreground-color').val().toString()))
   }
 
   function getSupportedBodyFormatCode(code) {
@@ -1097,6 +1318,82 @@
     $('#waiting-text').prop('disabled', !canEditWaiting)
   }
 
+  function restoreCurrentLookupFieldValues() {
+    if (!currentTask) {
+      return
+    }
+
+    $('#task-type').val(currentTask.taskTypeCode || '')
+    $('#task-priority').val(currentTask.taskPriorityCode || '')
+    $('#task-source').val(currentTask.taskSourceCode || '')
+    $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
+  }
+
+  async function refreshLookupDependentUi() {
+    lookups = await sendBridgeMessage('task.lookups.get', {})
+    renderLookups()
+    restoreCurrentLookupFieldValues()
+
+    await loadTasks({ keepSelection: true })
+
+    if (currentTask && currentTask.id && !hasUnsavedChanges()) {
+      const task = await sendBridgeMessage('task.get', {
+        id: currentTask.id
+      })
+      refreshCurrentTaskWithoutEditor(task)
+    }
+  }
+
+  async function saveLookupEdit() {
+    const code = $('#lookup-edit-code').val().toString().trim()
+    const name = $('#lookup-edit-name').val().toString().trim()
+
+    $('#lookup-edit-code, #lookup-edit-name').removeClass('is-invalid')
+
+    if (!editingLookupCode && !code) {
+      $('#lookup-edit-code').addClass('is-invalid').trigger('focus')
+      $('#lookup-edit-error').text('Code is required.').prop('hidden', false)
+      setStatus('Lookup code is required', 'error')
+      return
+    }
+
+    if (!name) {
+      $('#lookup-edit-name').addClass('is-invalid').trigger('focus')
+      $('#lookup-edit-error').text('Name is required.').prop('hidden', false)
+      setStatus('Lookup name is required', 'error')
+      return
+    }
+
+    const $button = $('#lookup-edit-save-button')
+    $button.prop('disabled', true).text('Saving')
+    $('#lookup-edit-cancel-button').prop('disabled', true)
+
+    const payload = {
+      group: activeLookupSettingsGroup,
+      code: editingLookupCode || code,
+      name,
+      description: $('#lookup-edit-description').val().toString().trim() || null,
+      sortOrder: Number($('#lookup-edit-sort-order').val()),
+      isActive: $('#lookup-edit-is-active').prop('checked'),
+      isSelected: $('#lookup-edit-is-selected').prop('checked'),
+      backgroundColor: $('#lookup-edit-background-color').val().toString(),
+      foregroundColor: $('#lookup-edit-foreground-color').val().toString()
+    }
+
+    try {
+      lookupSettings = await sendBridgeMessage(editingLookupCode ? 'lookup.settings.update' : 'lookup.settings.create', payload)
+
+      renderLookupSettings()
+      renderLookupList()
+      closeLookupEdit()
+      await refreshLookupDependentUi()
+      setStatus('Lookup saved', 'saved')
+    } finally {
+      $button.prop('disabled', false).text('Save')
+      $('#lookup-edit-cancel-button').prop('disabled', false)
+    }
+  }
+
   function renderTaskHeaderAndActions(task) {
     const isSavedTask = !!task.id
     const isFinal = task.taskStatusCode === 'COMPLETED' || task.taskStatusCode === 'CANCELLED'
@@ -1405,6 +1702,10 @@
   function openSettings() {
     $('#settings-overlay').prop('hidden', false)
     $('#settings-close-button').trigger('focus')
+    loadLookupSettings().catch(function (error) {
+      setStatus(getErrorMessage(error, 'Could not load lookup settings'), 'error')
+      $('#lookup-settings-groups').html('<div class="empty-lookup-settings">Could not load lookup values.</div>')
+    })
   }
 
   function closeSettings() {
@@ -1481,6 +1782,50 @@
         closeSettings()
       }
     })
+    $('#settings-overlay').on('click', '.lookup-group-button', function () {
+      openLookupList($(this).attr('data-lookup-group')).catch(function (error) {
+        setStatus(getErrorMessage(error, 'Could not open lookup values'), 'error')
+      })
+    })
+    $('#lookup-list-close-button, #lookup-list-done-button').on('click', closeLookupList)
+    $('#lookup-list-overlay').on('click', function (event) {
+      if (event.target === this) {
+        closeLookupList()
+      }
+    })
+    $('#lookup-list-new-button').on('click', function () {
+      openLookupEdit(null)
+    })
+    $('#lookup-list-items').on('click', '.lookup-list-edit-button', function () {
+      openLookupEdit($(this).attr('data-code'))
+    })
+    $('#lookup-edit-cancel-button').on('click', closeLookupEdit)
+    $('#lookup-edit-overlay').on('click', function (event) {
+      if (event.target === this) {
+        closeLookupEdit()
+      }
+    })
+    $('#lookup-edit-code, #lookup-edit-name').on('input', function () {
+      $(this).removeClass('is-invalid')
+      $('#lookup-edit-error').prop('hidden', true).text('')
+      updateLookupEditPreview()
+    })
+    $('#lookup-edit-background-color, #lookup-edit-foreground-color').on('input', updateLookupEditPreview)
+    $('#lookup-edit-save-button').on('click', function () {
+      saveLookupEdit().catch(function (error) {
+        $('#lookup-edit-error').text(getErrorMessage(error, 'Could not save lookup')).prop('hidden', false)
+        setStatus(getErrorMessage(error, 'Could not save lookup'), 'error')
+      })
+    })
+    $('#lookup-edit-overlay').on('keydown', 'input', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        saveLookupEdit().catch(function (error) {
+          $('#lookup-edit-error').text(getErrorMessage(error, 'Could not save lookup')).prop('hidden', false)
+          setStatus(getErrorMessage(error, 'Could not save lookup'), 'error')
+        })
+      }
+    })
     $('#unsaved-save-button').on('click', function () {
       resolveUnsavedChangesDialog('save')
     })
@@ -1514,6 +1859,14 @@
       }
     })
     $(document).on('keydown', function (event) {
+      if (event.key === 'Escape' && !$('#lookup-edit-overlay').prop('hidden')) {
+        closeLookupEdit()
+        return
+      }
+      if (event.key === 'Escape' && !$('#lookup-list-overlay').prop('hidden')) {
+        closeLookupList()
+        return
+      }
       if (event.key === 'Escape' && !$('#unsaved-changes-overlay').prop('hidden')) {
         resolveUnsavedChangesDialog('cancel')
       }

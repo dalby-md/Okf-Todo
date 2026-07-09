@@ -72,6 +72,12 @@ public sealed class BridgeMessageHandler(IServiceProvider services, ILogger<Brid
                 .SaveLayoutPreferenceAsync(GetPayload<LayoutPreferenceSaveRequest>(request), cancellationToken),
             "task.lookups.get" => await scopedServices.GetRequiredService<TaskService>()
                 .GetLookupsAsync(cancellationToken),
+            "lookup.settings.get" => await scopedServices.GetRequiredService<TaskService>()
+                .GetLookupSettingsAsync(cancellationToken),
+            "lookup.settings.update" => await scopedServices.GetRequiredService<TaskService>()
+                .UpdateLookupAsync(GetPayload<LookupUpdateRequest>(request), cancellationToken),
+            "lookup.settings.create" => await scopedServices.GetRequiredService<TaskService>()
+                .CreateLookupAsync(GetPayload<LookupCreateRequest>(request), cancellationToken),
             "task.list" => await scopedServices.GetRequiredService<TaskService>()
                 .ListAsync(GetPayload<TaskListRequest>(request), cancellationToken),
             "task.get" => await scopedServices.GetRequiredService<TaskService>()

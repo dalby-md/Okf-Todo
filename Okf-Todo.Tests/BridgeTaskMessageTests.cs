@@ -38,6 +38,47 @@ public sealed class BridgeTaskMessageTests
         var activeList = await fixture.SendAsync("task.list", new { view = "active" });
         Assert.Contains(activeList.EnumerateArray(), task => task.GetProperty("id").GetInt32() == taskId);
 
+        var lookupSettings = await fixture.SendAsync("lookup.settings.get", new { });
+        Assert.Contains(
+            lookupSettings.GetProperty("taskTypes").EnumerateArray(),
+            item => item.GetProperty("code").GetString() == "ERROR");
+
+        var updatedLookupSettings = await fixture.SendAsync("lookup.settings.update", new
+        {
+            group = "taskPriorities",
+            code = "NORMAL",
+            name = "Standard",
+            description = "Normal priority",
+            sortOrder = 22,
+            isActive = true,
+            isSelected = true,
+            backgroundColor = "#112233",
+            foregroundColor = "#ddeeff"
+        });
+        Assert.Contains(
+            updatedLookupSettings.GetProperty("taskPriorities").EnumerateArray(),
+            item => item.GetProperty("code").GetString() == "NORMAL"
+                && item.GetProperty("name").GetString() == "Standard"
+                && item.GetProperty("backgroundColor").GetString() == "#112233");
+
+        var createdLookupSettings = await fixture.SendAsync("lookup.settings.create", new
+        {
+            group = "taskTypes",
+            code = "QUESTION",
+            name = "Question",
+            description = "Needs an answer",
+            sortOrder = 45,
+            isActive = true,
+            isSelected = false,
+            backgroundColor = "#e0f2fe",
+            foregroundColor = "#0f172a"
+        });
+        Assert.Contains(
+            createdLookupSettings.GetProperty("taskTypes").EnumerateArray(),
+            item => item.GetProperty("code").GetString() == "QUESTION"
+                && item.GetProperty("name").GetString() == "Question"
+                && item.GetProperty("foregroundColor").GetString() == "#0f172a");
+
         var loaded = await fixture.SendAsync("task.get", new { id = taskId });
         Assert.Equal("<p>Created through bridge</p>", loaded.GetProperty("body").GetString());
 

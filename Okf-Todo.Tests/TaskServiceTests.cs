@@ -118,6 +118,156 @@ public sealed class TaskServiceTests
     }
 
     [Fact]
+    public async Task LookupSettings_UpdateEditableFieldsAndSelectedDefaults()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+
+        var settings = await database.Tasks.GetLookupSettingsAsync(CancellationToken.None);
+        Assert.Contains(settings.TaskStatuses, status => status.Code == TaskStatusCodes.Active);
+
+        var updatedSettings = await database.Tasks.UpdateLookupAsync(new LookupUpdateRequest(
+            Group: "taskTypes",
+            Code: "ERROR",
+            Name: "Bug",
+            Description: "Work caused by a product error",
+            SortOrder: 15,
+            IsActive: true,
+            IsSelected: true,
+            BackgroundColor: "#123456",
+            ForegroundColor: "#abcdef"), CancellationToken.None);
+
+        var updatedType = Assert.Single(updatedSettings.TaskTypes, type => type.Code == "ERROR");
+        Assert.Equal("Bug", updatedType.Name);
+        Assert.Equal("Work caused by a product error", updatedType.Description);
+        Assert.Equal(15, updatedType.SortOrder);
+        Assert.True(updatedType.IsSelected);
+        Assert.Equal("#123456", updatedType.BackgroundColor);
+        Assert.Equal("#abcdef", updatedType.ForegroundColor);
+        Assert.DoesNotContain(updatedSettings.TaskTypes, type => type.Code == "REQUEST" && type.IsSelected);
+
+        var created = await database.Tasks.CreateAsync(new TaskSaveRequest(
+            Id: null,
+            Title: "Uses edited default",
+            TaskTypeCode: "",
+            Body: null,
+            BodyFormatCode: "HTML",
+            TaskPriorityCode: null,
+            TaskSourceCode: null,
+            SourceReference: null,
+            SourceUrl: null,
+            Deadline: null), CancellationToken.None);
+        Assert.Equal("ERROR", created.TaskTypeCode);
+
+        var activeTasks = await database.Tasks.ListAsync(new TaskListRequest("active"), CancellationToken.None);
+        var listed = Assert.Single(activeTasks, task => task.Id == created.Id);
+        Assert.Equal("Bug", listed.TaskTypeName);
+        Assert.Equal("#123456", listed.TaskTypeBackgroundColor);
+        Assert.Equal("#abcdef", listed.TaskTypeForegroundColor);
+    }
+
+    [Fact]
+    public async Task LookupSettings_CreateInsertsLookupAndCanBecomeSelectedDefault()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+
+        var settings = await database.Tasks.CreateLookupAsync(new LookupCreateRequest(
+            Group: "taskPriorities",
+            Code: "LOW_RISK",
+            Name: "Low risk",
+            Description: "Can wait",
+            SortOrder: 5,
+            IsActive: true,
+            IsSelected: true,
+            BackgroundColor: "#d1fae5",
+            ForegroundColor: "#064e3b"), CancellationToken.None);
+
+        var createdPriority = Assert.Single(settings.TaskPriorities, priority => priority.Code == "LOW_RISK");
+        Assert.Equal("Low risk", createdPriority.Name);
+        Assert.Equal("Can wait", createdPriority.Description);
+        Assert.Equal(5, createdPriority.SortOrder);
+        Assert.True(createdPriority.IsActive);
+        Assert.True(createdPriority.IsSelected);
+        Assert.False(createdPriority.IsSystem);
+        Assert.Equal("#d1fae5", createdPriority.BackgroundColor);
+        Assert.Equal("#064e3b", createdPriority.ForegroundColor);
+        Assert.DoesNotContain(settings.TaskPriorities, priority => priority.Code == "NORMAL" && priority.IsSelected);
+
+        var createdTask = await database.Tasks.CreateAsync(new TaskSaveRequest(
+            Id: null,
+            Title: "Uses created default",
+            TaskTypeCode: "",
+            Body: null,
+            BodyFormatCode: "HTML",
+            TaskPriorityCode: null,
+            TaskSourceCode: null,
+            SourceReference: null,
+            SourceUrl: null,
+            Deadline: null), CancellationToken.None);
+
+        Assert.Equal("LOW_RISK", createdTask.TaskPriorityCode);
+    }
+
+    [Fact]
+    public async Task LookupSettings_CreateRejectsDuplicateCode()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() =>
+            database.Tasks.CreateLookupAsync(new LookupCreateRequest(
+                Group: "taskTypes",
+                Code: "ERROR",
+                Name: "Duplicate",
+                Description: null,
+                SortOrder: 99,
+                IsActive: true,
+                IsSelected: false,
+                BackgroundColor: "#ffffff",
+                ForegroundColor: "#111827"), CancellationToken.None));
+
+        Assert.Equal("code", exception.Field);
+    }
+
+    [Fact]
+    public async Task LookupSettings_PreventRequiredStatusDeactivation()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() =>
+            database.Tasks.UpdateLookupAsync(new LookupUpdateRequest(
+                Group: "taskStatuses",
+                Code: TaskStatusCodes.Active,
+                Name: "Active",
+                Description: null,
+                SortOrder: 10,
+                IsActive: false,
+                IsSelected: false,
+                BackgroundColor: "#6b7280",
+                ForegroundColor: "#ffffff"), CancellationToken.None));
+
+        Assert.Equal("isActive", exception.Field);
+    }
+
+    [Fact]
+    public async Task LookupSettings_RejectInvalidColor()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() =>
+            database.Tasks.UpdateLookupAsync(new LookupUpdateRequest(
+                Group: "taskPriorities",
+                Code: "NORMAL",
+                Name: "Normal",
+                Description: null,
+                SortOrder: 20,
+                IsActive: true,
+                IsSelected: true,
+                BackgroundColor: "red",
+                ForegroundColor: "#ffffff"), CancellationToken.None));
+
+        Assert.Equal("BackgroundColor", exception.Field);
+    }
+
+    [Fact]
     public async Task LifecycleActionsThroughTaskService_ReturnUpdatedTaskDetails()
     {
         await using var database = await TestDatabase.CreateAsync();

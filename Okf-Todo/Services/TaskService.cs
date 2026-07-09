@@ -14,6 +14,64 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             await GetLookupItemsAsync(dbContext.BodyFormats, cancellationToken));
     }
 
+    public async Task<TaskLookupSettingsDto> GetLookupSettingsAsync(CancellationToken cancellationToken)
+    {
+        return new TaskLookupSettingsDto(
+            await GetLookupSettingsItemsAsync(dbContext.TaskTypes, cancellationToken),
+            await GetLookupSettingsItemsAsync(dbContext.TaskPriorities, cancellationToken),
+            await GetLookupSettingsItemsAsync(dbContext.TaskStatuses, cancellationToken));
+    }
+
+    public async Task<TaskLookupSettingsDto> UpdateLookupAsync(
+        LookupUpdateRequest request,
+        CancellationToken cancellationToken)
+    {
+        var group = request.Group.Trim();
+
+        switch (group)
+        {
+            case "taskTypes":
+                await UpdateLookupAsync(dbContext.TaskTypes, request, cancellationToken);
+                break;
+            case "taskPriorities":
+                await UpdateLookupAsync(dbContext.TaskPriorities, request, cancellationToken);
+                break;
+            case "taskStatuses":
+                await UpdateTaskStatusLookupAsync(request, cancellationToken);
+                break;
+            default:
+                throw new ValidationException("Lookup group is not supported.", "group");
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await GetLookupSettingsAsync(cancellationToken);
+    }
+
+    public async Task<TaskLookupSettingsDto> CreateLookupAsync(
+        LookupCreateRequest request,
+        CancellationToken cancellationToken)
+    {
+        var group = request.Group.Trim();
+
+        switch (group)
+        {
+            case "taskTypes":
+                await CreateLookupAsync(dbContext.TaskTypes, request, cancellationToken);
+                break;
+            case "taskPriorities":
+                await CreateLookupAsync(dbContext.TaskPriorities, request, cancellationToken);
+                break;
+            case "taskStatuses":
+                await CreateLookupAsync(dbContext.TaskStatuses, request, cancellationToken);
+                break;
+            default:
+                throw new ValidationException("Lookup group is not supported.", "group");
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await GetLookupSettingsAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyCollection<TaskListItemDto>> ListAsync(
         TaskListRequest request,
         CancellationToken cancellationToken)
@@ -216,6 +274,98 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             .ToListAsync(cancellationToken);
     }
 
+    private static async Task<IReadOnlyCollection<LookupSettingsItemDto>> GetLookupSettingsItemsAsync<TLookup>(
+        DbSet<TLookup> dbSet,
+        CancellationToken cancellationToken)
+        where TLookup : LookupEntity
+    {
+        return await dbSet
+            .AsNoTracking()
+            .OrderBy(lookup => lookup.SortOrder)
+            .ThenBy(lookup => lookup.Name)
+            .Select(lookup => new LookupSettingsItemDto(
+                lookup.Code,
+                lookup.Name,
+                lookup.Description,
+                lookup.SortOrder,
+                lookup.IsActive,
+                lookup.IsSystem,
+                lookup.IsSelected,
+                lookup.BackgroundColor,
+                lookup.ForegroundColor))
+            .ToListAsync(cancellationToken);
+    }
+
+    private async Task UpdateTaskStatusLookupAsync(
+        LookupUpdateRequest request,
+        CancellationToken cancellationToken)
+    {
+        var code = NormalizeLookupCode(request.Code);
+        if ((code == TaskStatusCodes.Active || code == TaskStatusCodes.Completed || code == TaskStatusCodes.Cancelled)
+            && !request.IsActive)
+        {
+            throw new ValidationException("Required task statuses cannot be deactivated.", "isActive");
+        }
+
+        await UpdateLookupAsync(dbContext.TaskStatuses, request, cancellationToken);
+    }
+
+    private static async Task CreateLookupAsync<TLookup>(
+        DbSet<TLookup> dbSet,
+        LookupCreateRequest request,
+        CancellationToken cancellationToken)
+        where TLookup : LookupEntity, new()
+    {
+        ValidateLookupName(request.Name);
+        var code = NormalizeNewLookupCode(request.Code);
+
+        if (await dbSet.AnyAsync(lookup => lookup.Code == code, cancellationToken))
+        {
+            throw new ValidationException("Lookup code already exists.", "code");
+        }
+
+        var now = DateTime.UtcNow;
+
+        dbSet.Add(new TLookup
+        {
+            Code = code,
+            Name = request.Name.Trim(),
+            Description = NormalizeOptional(request.Description),
+            SortOrder = request.SortOrder,
+            IsActive = request.IsActive,
+            IsSelected = request.IsSelected,
+            BackgroundColor = NormalizeColor(request.BackgroundColor, nameof(request.BackgroundColor)),
+            ForegroundColor = NormalizeColor(request.ForegroundColor, nameof(request.ForegroundColor)),
+            IsSystem = false,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+    }
+
+    private static async Task UpdateLookupAsync<TLookup>(
+        DbSet<TLookup> dbSet,
+        LookupUpdateRequest request,
+        CancellationToken cancellationToken)
+        where TLookup : LookupEntity
+    {
+        ValidateLookupName(request.Name);
+
+        var lookup = await dbSet.SingleOrDefaultAsync(
+            item => item.Code == NormalizeLookupCode(request.Code),
+            cancellationToken)
+            ?? throw new ValidationException("Lookup item was not found.", "code");
+        var now = DateTime.UtcNow;
+
+        lookup.Name = request.Name.Trim();
+        lookup.Description = NormalizeOptional(request.Description);
+        lookup.SortOrder = request.SortOrder;
+        lookup.IsActive = request.IsActive;
+        lookup.IsSelected = request.IsSelected;
+        lookup.BackgroundColor = NormalizeColor(request.BackgroundColor, nameof(request.BackgroundColor));
+        lookup.ForegroundColor = NormalizeColor(request.ForegroundColor, nameof(request.ForegroundColor));
+        lookup.UpdatedAt = now;
+    }
+
     private static async Task<TLookup> GetLookupByCodeAsync<TLookup>(
         DbSet<TLookup> dbSet,
         string code,
@@ -263,6 +413,45 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    private static string NormalizeLookupCode(string code)
+    {
+        return string.IsNullOrWhiteSpace(code)
+            ? throw new ValidationException("Lookup code is required.", "code")
+            : code.Trim().ToUpperInvariant();
+    }
+
+    private static string NormalizeNewLookupCode(string code)
+    {
+        var normalized = NormalizeLookupCode(code);
+        return System.Text.RegularExpressions.Regex.IsMatch(normalized, "^[A-Z0-9_]+$")
+            ? normalized
+            : throw new ValidationException("Lookup code can only contain letters, numbers, and underscores.", "code");
+    }
+
+    private static void ValidateLookupName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ValidationException("Name is required.", "name");
+        }
+    }
+
+    private static string? NormalizeColor(string? value, string field)
+    {
+        var normalized = NormalizeOptional(value);
+        if (normalized is null)
+        {
+            return null;
+        }
+
+        if (System.Text.RegularExpressions.Regex.IsMatch(normalized, "^#[0-9a-fA-F]{6}$"))
+        {
+            return normalized.ToLowerInvariant();
+        }
+
+        throw new ValidationException("Color must be a hex value.", field);
+    }
+
     private static string? NormalizeOptional(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
@@ -281,6 +470,44 @@ public sealed record LookupItemDto(
     string? BackgroundColor,
     string? ForegroundColor,
     bool IsSelected);
+
+public sealed record TaskLookupSettingsDto(
+    IReadOnlyCollection<LookupSettingsItemDto> TaskTypes,
+    IReadOnlyCollection<LookupSettingsItemDto> TaskPriorities,
+    IReadOnlyCollection<LookupSettingsItemDto> TaskStatuses);
+
+public sealed record LookupSettingsItemDto(
+    string Code,
+    string Name,
+    string? Description,
+    int SortOrder,
+    bool IsActive,
+    bool IsSystem,
+    bool IsSelected,
+    string? BackgroundColor,
+    string? ForegroundColor);
+
+public sealed record LookupUpdateRequest(
+    string Group,
+    string Code,
+    string Name,
+    string? Description,
+    int SortOrder,
+    bool IsActive,
+    bool IsSelected,
+    string? BackgroundColor,
+    string? ForegroundColor);
+
+public sealed record LookupCreateRequest(
+    string Group,
+    string Code,
+    string Name,
+    string? Description,
+    int SortOrder,
+    bool IsActive,
+    bool IsSelected,
+    string? BackgroundColor,
+    string? ForegroundColor);
 
 public sealed record TaskListRequest(string? View);
 
