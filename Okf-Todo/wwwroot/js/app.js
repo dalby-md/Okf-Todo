@@ -508,7 +508,7 @@
 
             <section class="waiting-panel" aria-labelledby="waiting-label">
               <label id="waiting-label" class="waiting-label" for="waiting-text">Waiting for</label>
-              <input id="waiting-text" type="text" autocomplete="off" placeholder="INC123456" disabled>
+              <input id="waiting-text" type="text" autocomplete="off" disabled>
               <button id="add-waiting-button" class="secondary-button" type="button" disabled>Set</button>
               <button id="clear-waiting-button" class="secondary-button danger-button" type="button" disabled>Clear</button>
             </section>
