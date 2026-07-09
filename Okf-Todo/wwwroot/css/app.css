@@ -537,6 +537,25 @@ h2 {
   border-radius: 8px 8px 0 0;
 }
 
+.tui-editor-defaultUI .te-mode-switch-section {
+  height: 25px;
+  min-height: 25px;
+  font-size: 0.72rem;
+  line-height: 25px;
+}
+
+.tui-editor-defaultUI .te-mode-switch {
+  height: 25px;
+}
+
+.tui-editor-defaultUI .te-switch-button {
+  height: 25px;
+  min-height: 25px;
+  padding: 0 10px;
+  font-size: 0.72rem;
+  line-height: 25px;
+}
+
 .toastui-editor-contents,
 .tui-editor-contents {
   font-family:
