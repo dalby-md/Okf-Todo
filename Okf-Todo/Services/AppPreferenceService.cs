@@ -11,6 +11,7 @@ public sealed class AppPreferenceService(
     ILogger<AppPreferenceService> logger)
 {
     private const string DefaultBodyFormatCode = "HTML";
+    private const string DefaultMarkdownEditType = MarkdownEditTypes.Markdown;
     private const string DefaultLayoutMode = LayoutPreferenceModes.Auto;
     private const double MinimumTaskListWidth = 160;
     private const double MaximumTaskListWidth = 2400;
@@ -34,22 +35,36 @@ public sealed class AppPreferenceService(
         var code = await NormalizeOrDefaultBodyFormatCodeAsync(
             preferences.EditorBodyFormatCode,
             cancellationToken);
+        var markdownEditType = NormalizeOrDefaultMarkdownEditType(preferences.MarkdownEditType);
 
-        return new EditorPreferenceDto(code);
+        return new EditorPreferenceDto(code, markdownEditType);
     }
 
     public async Task<EditorPreferenceDto> SaveEditorPreferenceAsync(
         EditorPreferenceSaveRequest request,
         CancellationToken cancellationToken)
     {
-        var code = await NormalizeBodyFormatCodeAsync(request.BodyFormatCode, cancellationToken);
         var preferences = await ReadPreferencesAsync(cancellationToken);
-        preferences = preferences with { EditorBodyFormatCode = code };
+        var code = request.BodyFormatCode is null
+            ? await NormalizeOrDefaultBodyFormatCodeAsync(preferences.EditorBodyFormatCode, cancellationToken)
+            : await NormalizeBodyFormatCodeAsync(request.BodyFormatCode, cancellationToken);
+        var markdownEditType = request.MarkdownEditType is null
+            ? NormalizeOrDefaultMarkdownEditType(preferences.MarkdownEditType)
+            : NormalizeMarkdownEditType(request.MarkdownEditType);
+
+        preferences = preferences with
+        {
+            EditorBodyFormatCode = code,
+            MarkdownEditType = markdownEditType
+        };
         await WritePreferencesAsync(preferences, cancellationToken);
 
-        logger.LogInformation("Saved editor body format preference {BodyFormatCode}.", code);
+        logger.LogInformation(
+            "Saved editor preference with body format {BodyFormatCode} and markdown edit type {MarkdownEditType}.",
+            code,
+            markdownEditType);
 
-        return new EditorPreferenceDto(code);
+        return new EditorPreferenceDto(code, markdownEditType);
     }
 
     public async Task<LayoutPreferenceDto> GetLayoutPreferenceAsync(CancellationToken cancellationToken)
@@ -254,6 +269,7 @@ public sealed class AppPreferenceService(
     {
         return new StoredPreferences(
             DefaultBodyFormatCode,
+            DefaultMarkdownEditType,
             null,
             null,
             DefaultLayoutMode,
@@ -274,6 +290,32 @@ public sealed class AppPreferenceService(
         {
             return DefaultLayoutMode;
         }
+    }
+
+    private static string NormalizeOrDefaultMarkdownEditType(string? markdownEditType)
+    {
+        try
+        {
+            return NormalizeMarkdownEditType(markdownEditType);
+        }
+        catch (ValidationException)
+        {
+            return DefaultMarkdownEditType;
+        }
+    }
+
+    private static string NormalizeMarkdownEditType(string? markdownEditType)
+    {
+        var normalizedMarkdownEditType = string.IsNullOrWhiteSpace(markdownEditType)
+            ? DefaultMarkdownEditType
+            : markdownEditType.Trim().ToUpperInvariant();
+
+        if (normalizedMarkdownEditType is MarkdownEditTypes.Markdown or MarkdownEditTypes.Wysiwyg)
+        {
+            return normalizedMarkdownEditType;
+        }
+
+        throw new ValidationException("Markdown edit type is invalid.", "markdownEditType");
     }
 
     private static string NormalizeLayoutMode(string? layoutMode)
@@ -356,9 +398,15 @@ public sealed class AppPreferencePathProvider : IAppPreferencePathProvider
     }
 }
 
-public sealed record EditorPreferenceDto(string BodyFormatCode);
+public sealed record EditorPreferenceDto(string BodyFormatCode, string MarkdownEditType);
 
-public sealed record EditorPreferenceSaveRequest(string? BodyFormatCode);
+public sealed record EditorPreferenceSaveRequest(string? BodyFormatCode, string? MarkdownEditType);
+
+public static class MarkdownEditTypes
+{
+    public const string Markdown = "MARKDOWN";
+    public const string Wysiwyg = "WYSIWYG";
+}
 
 public static class LayoutPreferenceModes
 {
@@ -377,6 +425,7 @@ public sealed record WindowPreferenceSaveRequest(int? Left, int? Top, int? Width
 
 internal sealed record StoredPreferences(
     string? EditorBodyFormatCode,
+    string? MarkdownEditType,
     double? TaskListWidth,
     double? TaskListHeight,
     string? LayoutMode,

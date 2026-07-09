@@ -327,7 +327,24 @@
 
   function createToastUiAdapter(options) {
     let editor = null
+    let suppressChangeUntil = 0
     const host = getHost(options)
+    const initialMarkdownEditType = String(options.markdownEditType || '').toLowerCase() === 'wysiwyg'
+      ? 'wysiwyg'
+      : 'markdown'
+
+    function suppressModeSwitchChanges() {
+      suppressChangeUntil = Date.now() + 2500
+      if (typeof options.onMarkdownEditTypeChanging === 'function') {
+        options.onMarkdownEditTypeChanging()
+      }
+    }
+
+    function handleModeSwitchIntent(event) {
+      if (event.target && event.target.closest && event.target.closest('.te-switch-button')) {
+        suppressModeSwitchChanges()
+      }
+    }
 
     host.innerHTML = `
       <div class="markdown-toolbar" aria-label="Markdown formatting">
@@ -433,7 +450,7 @@
         editor = new window.toastui.Editor({
           el: document.querySelector('#markdown-body'),
           height: `${options.minHeight || 420}px`,
-          initialEditType: 'markdown',
+          initialEditType: initialMarkdownEditType,
           previewStyle: 'vertical',
           initialValue: options.initialContent || '',
           hideModeSwitch: false,
@@ -456,11 +473,32 @@
           }
         })
 
+        host.addEventListener('pointerdown', handleModeSwitchIntent, true)
+        host.addEventListener('keydown', handleModeSwitchIntent, true)
+
         if (options.initialHtml) {
           editor.setHtml(options.initialHtml, false)
         }
 
-        editor.on('change', notifyChanged)
+        editor.on('changeModeBefore', function () {
+          suppressModeSwitchChanges()
+        })
+
+        editor.on('changeMode', function (mode) {
+          suppressModeSwitchChanges()
+          const markdownEditType = mode === 'wysiwyg' ? 'WYSIWYG' : 'MARKDOWN'
+          if (typeof options.onMarkdownEditTypeChanged === 'function') {
+            options.onMarkdownEditTypeChanged(markdownEditType)
+          }
+        })
+
+        editor.on('change', function () {
+          if (Date.now() < suppressChangeUntil) {
+            return
+          }
+
+          notifyChanged()
+        })
         bindToolbar()
       },
 
@@ -519,6 +557,8 @@
 
       destroy: function () {
         if (editor) {
+          host.removeEventListener('pointerdown', handleModeSwitchIntent, true)
+          host.removeEventListener('keydown', handleModeSwitchIntent, true)
           if (typeof editor.destroy === 'function') {
             editor.destroy()
           } else if (typeof editor.remove === 'function') {

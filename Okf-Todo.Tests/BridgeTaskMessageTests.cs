@@ -269,15 +269,19 @@ public sealed class BridgeTaskMessageTests
 
         var initial = await fixture.SendAsync("editor.preference.get", new { });
         Assert.Equal("HTML", initial.GetProperty("bodyFormatCode").GetString());
+        Assert.Equal("MARKDOWN", initial.GetProperty("markdownEditType").GetString());
 
         var saved = await fixture.SendAsync("editor.preference.save", new
         {
-            bodyFormatCode = "MARKDOWN"
+            bodyFormatCode = "MARKDOWN",
+            markdownEditType = "WYSIWYG"
         });
         Assert.Equal("MARKDOWN", saved.GetProperty("bodyFormatCode").GetString());
+        Assert.Equal("WYSIWYG", saved.GetProperty("markdownEditType").GetString());
 
         var loaded = await fixture.SendAsync("editor.preference.get", new { });
         Assert.Equal("MARKDOWN", loaded.GetProperty("bodyFormatCode").GetString());
+        Assert.Equal("WYSIWYG", loaded.GetProperty("markdownEditType").GetString());
     }
 
     [Fact]
@@ -312,6 +316,7 @@ public sealed class BridgeTaskMessageTests
 
         var editorPreference = await fixture.SendAsync("editor.preference.get", new { });
         Assert.Equal("MARKDOWN", editorPreference.GetProperty("bodyFormatCode").GetString());
+        Assert.Equal("MARKDOWN", editorPreference.GetProperty("markdownEditType").GetString());
     }
 
     [Fact]
@@ -327,6 +332,21 @@ public sealed class BridgeTaskMessageTests
         Assert.False(response.RootElement.GetProperty("ok").GetBoolean());
         Assert.Equal("ValidationFailed", response.RootElement.GetProperty("error").GetProperty("code").GetString());
         Assert.Equal("bodyFormatCode", response.RootElement.GetProperty("error").GetProperty("details").GetProperty("field").GetString());
+    }
+
+    [Fact]
+    public async Task Bridge_RejectsInvalidMarkdownEditTypePreference()
+    {
+        await using var fixture = await BridgeFixture.CreateAsync();
+
+        using var response = await fixture.SendRawAsync("editor.preference.save", new
+        {
+            markdownEditType = "SIDE_BY_SIDE"
+        });
+
+        Assert.False(response.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Equal("ValidationFailed", response.RootElement.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal("markdownEditType", response.RootElement.GetProperty("error").GetProperty("details").GetProperty("field").GetString());
     }
 
     [Fact]

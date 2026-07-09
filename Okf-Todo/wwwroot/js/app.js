@@ -33,7 +33,9 @@
   let currentView = 'active'
   let isEditorReady = false
   let isDirty = false
+  let cleanTaskSnapshot = null
   let preferredBodyFormatCode = 'HTML'
+  let preferredMarkdownEditType = 'MARKDOWN'
   let lookupSettings = null
   let activeLookupSettingsGroup = 'taskTypes'
   let editingLookupCode = null
@@ -46,6 +48,8 @@
   let unsavedChangesDialogResolve = null
   let completeWaitDialogResolve = null
   let dirtyTrackingSuppressions = 0
+  let markdownEditTypeSwitchCleanUntil = 0
+  let markdownEditTypeSwitchWasClean = false
 
   function createMessageId() {
     if (window.crypto && window.crypto.randomUUID) {
@@ -366,14 +370,99 @@
     }
   }
 
+  function suppressDirtyTrackingFor(durationMs) {
+    dirtyTrackingSuppressions += 1
+    window.setTimeout(function () {
+      dirtyTrackingSuppressions = Math.max(0, dirtyTrackingSuppressions - 1)
+    }, durationMs)
+  }
+
+  function normalizeSnapshotValue(value) {
+    return value == null ? '' : String(value)
+  }
+
+  function createCurrentTaskSnapshot() {
+    if (!currentTask || !isEditorReady) {
+      return null
+    }
+
+    const payload = getTaskPayload()
+    return {
+      title: normalizeSnapshotValue(payload.title),
+      taskTypeCode: normalizeSnapshotValue(payload.taskTypeCode),
+      body: normalizeSnapshotValue(payload.body),
+      bodyFormatCode: normalizeSnapshotValue(payload.bodyFormatCode),
+      taskPriorityCode: normalizeSnapshotValue(payload.taskPriorityCode),
+      taskSourceCode: normalizeSnapshotValue(payload.taskSourceCode),
+      sourceReference: normalizeSnapshotValue(payload.sourceReference),
+      sourceUrl: normalizeSnapshotValue(payload.sourceUrl),
+      deadline: normalizeSnapshotValue(payload.deadline),
+      activeWaitingForLabel: normalizeSnapshotValue(payload.activeWaitingForLabel)
+    }
+  }
+
+  function snapshotsMatch(left, right) {
+    return JSON.stringify(left) === JSON.stringify(right)
+  }
+
+  function setCleanTaskSnapshot() {
+    cleanTaskSnapshot = createCurrentTaskSnapshot()
+  }
+
   function markDirty() {
-    if (!isEditorReady || dirtyTrackingSuppressions > 0) {
+    if (!isEditorReady || dirtyTrackingSuppressions > 0 || Date.now() < markdownEditTypeSwitchCleanUntil) {
+      return
+    }
+
+    const currentSnapshot = createCurrentTaskSnapshot()
+    if (cleanTaskSnapshot && currentSnapshot && snapshotsMatch(cleanTaskSnapshot, currentSnapshot)) {
+      isDirty = false
+      setStatus(currentTask && currentTask.id ? 'Loaded' : 'Draft', 'ready')
       return
     }
 
     clearValidationState()
     isDirty = true
     setStatus('Unsaved changes', 'dirty')
+  }
+
+  function restoreCleanAfterMarkdownEditTypeSwitch() {
+    if (!markdownEditTypeSwitchWasClean || !currentTask) {
+      return
+    }
+
+    setCleanTaskSnapshot()
+    isDirty = false
+    window.Editor.markClean()
+    setStatus(currentTask.id ? 'Loaded' : 'Draft', 'ready')
+  }
+
+  function preserveCleanStateDuringMarkdownEditTypeSwitch() {
+    if (!currentTask) {
+      return
+    }
+
+    if (Date.now() < markdownEditTypeSwitchCleanUntil) {
+      markdownEditTypeSwitchCleanUntil = Date.now() + 5000
+      suppressDirtyTrackingFor(5000)
+      if (markdownEditTypeSwitchWasClean) {
+        restoreCleanAfterMarkdownEditTypeSwitch()
+      }
+      return
+    }
+
+    markdownEditTypeSwitchWasClean = !isDirty
+    markdownEditTypeSwitchCleanUntil = Date.now() + 5000
+    suppressDirtyTrackingFor(5000)
+
+    if (!markdownEditTypeSwitchWasClean) {
+      return
+    }
+
+    restoreCleanAfterMarkdownEditTypeSwitch()
+    ;[0, 250, 1000, 2500, 5000].forEach(function (delay) {
+      window.setTimeout(restoreCleanAfterMarkdownEditTypeSwitch, delay)
+    })
   }
 
   function hasUnsavedChanges() {
@@ -888,18 +977,40 @@
     return htmlFormat ? htmlFormat.code : (bodyFormats[0] ? bodyFormats[0].code : 'HTML')
   }
 
+  function getSupportedMarkdownEditType(value) {
+    return String(value || '').toUpperCase() === 'WYSIWYG' ? 'WYSIWYG' : 'MARKDOWN'
+  }
+
   async function loadEditorPreference() {
     const preference = await sendBridgeMessage('editor.preference.get', {})
     preferredBodyFormatCode = getSupportedBodyFormatCode(preference.bodyFormatCode)
+    preferredMarkdownEditType = getSupportedMarkdownEditType(preference.markdownEditType)
     $('#editor-mode').val(preferredBodyFormatCode)
     $('#editor-mode').prop('disabled', false)
   }
 
-  function saveEditorPreference(bodyFormatCode) {
-    preferredBodyFormatCode = getSupportedBodyFormatCode(bodyFormatCode)
+  function saveEditorPreference(bodyFormatCode, markdownEditType) {
+    preferredBodyFormatCode = getSupportedBodyFormatCode(bodyFormatCode || preferredBodyFormatCode)
+    preferredMarkdownEditType = getSupportedMarkdownEditType(markdownEditType || preferredMarkdownEditType)
 
     return sendBridgeMessage('editor.preference.save', {
-      bodyFormatCode: preferredBodyFormatCode
+      bodyFormatCode: preferredBodyFormatCode,
+      markdownEditType: preferredMarkdownEditType
+    })
+  }
+
+  function saveMarkdownEditTypePreference(markdownEditType) {
+    const nextMarkdownEditType = getSupportedMarkdownEditType(markdownEditType)
+
+    if (nextMarkdownEditType === preferredMarkdownEditType) {
+      return Promise.resolve()
+    }
+
+    preferredMarkdownEditType = nextMarkdownEditType
+
+    return sendBridgeMessage('editor.preference.save', {
+      bodyFormatCode: preferredBodyFormatCode,
+      markdownEditType: preferredMarkdownEditType
     })
   }
 
@@ -907,6 +1018,7 @@
     currentTask = null
     isDirty = false
     isEditorReady = false
+    cleanTaskSnapshot = null
     clearValidationState()
 
     if (window.Editor && typeof window.Editor.destroy === 'function') {
@@ -1322,11 +1434,14 @@
       hostSelector: '#editor-host',
       baseUrl: '/tinymce',
       minHeight: 360,
+      markdownEditType: preferredMarkdownEditType,
       initialContent: initialContent || '',
       initialHtml: initialHtml || '',
       contentStyle:
         'body { color: #202124; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.55; }',
-      onPickImage: pickEditorImage
+      onPickImage: pickEditorImage,
+      onMarkdownEditTypeChanging: handleMarkdownEditTypeChanging,
+      onMarkdownEditTypeChanged: handleMarkdownEditTypeChanged
     })
 
     window.Editor.markClean()
@@ -1502,6 +1617,7 @@
       $('#editor-mode').prop('disabled', false)
       renderTaskHeaderAndActions(task)
       renderTaskList()
+      setCleanTaskSnapshot()
     } finally {
       releaseDirtyTracking()
     }
@@ -1531,6 +1647,7 @@
 
       await initializeEditorForTask(task)
       isDirty = false
+      setCleanTaskSnapshot()
       window.Editor.markClean()
       setStatus(task.id ? 'Loaded' : 'Draft', 'ready')
       renderTaskList()
@@ -1606,6 +1723,17 @@
       isEditorReady = true
       setStatus(getErrorMessage(error, 'Could not switch editor'), 'error')
     }
+  }
+
+  function handleMarkdownEditTypeChanged(markdownEditType) {
+    preserveCleanStateDuringMarkdownEditTypeSwitch()
+    saveMarkdownEditTypePreference(markdownEditType).catch(function (error) {
+      setStatus(getErrorMessage(error, 'Could not save editor preference'), 'error')
+    })
+  }
+
+  function handleMarkdownEditTypeChanging() {
+    preserveCleanStateDuringMarkdownEditTypeSwitch()
   }
 
   async function loadTasks(options) {
