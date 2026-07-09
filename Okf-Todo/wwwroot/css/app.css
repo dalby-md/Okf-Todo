@@ -679,6 +679,13 @@ h2 {
   gap: 8px;
 }
 
+.lookup-preview .task-badge,
+.lookup-edit-preview .task-badge {
+  padding-right: 8px;
+  padding-left: 8px;
+  transform: translateY(1px);
+}
+
 .lookup-code {
   overflow: hidden;
   color: #5f6872;
