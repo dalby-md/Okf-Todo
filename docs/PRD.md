@@ -18,7 +18,8 @@ The app already has a Photino prototype demonstrating usage of an HTML/Markdown 
 - Prefer table-based lookup values over hardcoded enums.
 - Use configuration only to seed initial lookup values when tables are empty.
 - Do not overwrite user-customized lookup values after initial seeding.
-- Do not hard-delete lookup values; use deactivation.
+- Deactivate lookup values when they have been used.
+- Allow hard deletion only for non-system lookup values that have not been used.
 - Store attachments in SQLite as BLOBs.
 - Keep integrations out of the first version unless explicitly requested later.
 - The task editor decides whether the body is Markdown or HTML; the user should not have to care. User preference should be persisted
@@ -457,7 +458,15 @@ This gives good initial defaults while allowing local customization.
 
 Lookup values should be editable in the app UI.
 
-Lookup values must not be hard-deleted. Use deactivation only.
+Lookup values should normally be deactivated instead of deleted.
+
+Hard deletion is allowed only when all of these are true:
+
+- The lookup value is not a system value.
+- The lookup value is not referenced by any task or history row.
+- Deleting it will not break application logic.
+
+Used lookup values must remain in the database and can only be deactivated.
 
 System-critical lookup rows should be protected:
 
@@ -528,5 +537,5 @@ Waiting tasks should not disappear. They should be easy to review.
 - Deep integrations with ServiceDesk, TFS/Azure DevOps, Teams, or email.
 - Automatic opening behavior for source URLs.
 - Advanced workflow states like Resolved, Verified, Closed.
-- Hard deletion of lookup values.
+- Hard deletion of lookup values that are system values or already used.
 - Checklist items as full tasks.

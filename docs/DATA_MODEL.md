@@ -32,7 +32,8 @@ Rules:
 - `SortOrder` is editable.
 - `IsActive` controls whether the value can be selected for new data.
 - `IsSystem` protects application-critical values.
-- Lookup values are never hard-deleted.
+- Lookup values that have been used are not hard-deleted.
+- Non-system lookup values that have not been used may be hard-deleted.
 - Inactive values remain valid for existing tasks and history.
 
 ## Lookup tables

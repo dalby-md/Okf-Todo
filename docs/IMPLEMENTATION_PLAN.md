@@ -62,7 +62,8 @@ Acceptance criteria:
 - App starts with SQLite database.
 - Empty lookup tables are seeded from config.
 - Non-empty lookup tables are not changed.
-- Lookup rows are not hard-deleted.
+- Used lookup rows are not hard-deleted.
+- Unused non-system lookup rows can be hard-deleted.
 - System lookup codes are stable.
 
 Suggested Codex prompt:
@@ -76,7 +77,8 @@ Scope:
 - Add lookup tables with common fields: Id, Code, Name, Description, SortOrder, IsActive, IsSystem, CreatedAt, UpdatedAt.
 - Add TaskItem, TaskWaitingFor, TaskComment, TaskLogEntry, TaskChecklistItem, TaskAttachment, TaskStakeholder, TaskTag, TaskTaskTag, TaskRelation, TaskRelationType.
 - Add startup seeding from configuration: only seed a lookup table if it is empty.
-- Do not hard-delete lookup rows. Use deactivation only.
+- Do not hard-delete used lookup rows. Use deactivation for values that have existing references.
+- Allow hard deletion only for unused non-system lookup rows.
 - Do not build UI in this step except what is necessary to compile.
 
 After implementation:
@@ -308,7 +310,8 @@ Acceptance criteria:
 - User can add/remove tags on a task.
 - User can create/deactivate tags.
 - Inactive tags remain visible on existing tasks.
-- Tags are not hard-deleted.
+- Used tags are not hard-deleted.
+- Unused non-system tags can be hard-deleted.
 
 Suggested Codex prompt:
 
@@ -319,7 +322,8 @@ Requirements:
 - TaskTag table is used.
 - TaskTaskTag many-to-many table is used.
 - Tags can be created and deactivated.
-- Tags are not hard-deleted.
+- Used tags are not hard-deleted.
+- Unused non-system tags can be hard-deleted.
 - Inactive tags remain visible on existing tasks but are not offered as normal new selections.
 - Add log entries for tag added/removed.
 ```
@@ -336,7 +340,6 @@ Acceptance criteria:
 
 - User can add/edit/deactivate/remove stakeholder association from a task.
 - Stakeholders are separate from tags.
-- Stakeholder can optionally be selected as the current waiting target.
 
 Suggested Codex prompt:
 
@@ -442,7 +445,8 @@ Scope:
 Acceptance criteria:
 
 - Lookup values can be edited in the app.
-- Lookup values are never hard-deleted.
+- Used lookup values are not hard-deleted.
+- Unused non-system lookup values can be hard-deleted.
 - System lookup codes cannot be changed in normal UI.
 - System values required by lifecycle cannot be deactivated.
 - Inactive values are not offered for new selections.
@@ -454,8 +458,9 @@ Add lookup management UI.
 
 Requirements:
 - Lookup rows are editable.
-- Do not allow hard delete.
-- Allow deactivation only.
+- Do not allow hard delete for used or system lookup rows.
+- Allow hard deletion only for unused non-system lookup rows.
+- Allow deactivation for used non-system lookup rows.
 - Protect Code and IsSystem for system rows.
 - Prevent deactivation of system values required by application logic.
 - Inactive values remain visible on existing tasks.
@@ -514,4 +519,5 @@ This creates the foundation before the UI grows.
 - Avoid introducing integrations before the local core works.
 - Use stable lookup `Code` values for application logic.
 - Use editable lookup `Name` values for display.
-- Use deactivation instead of deletion for lookup values.
+- Use deactivation for lookup values that have existing references.
+- Allow hard deletion only for unused non-system lookup values.
