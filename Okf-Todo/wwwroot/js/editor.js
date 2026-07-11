@@ -201,8 +201,30 @@
     activeAdapter = null
   }
 
+  function observeEditorHeight(element, callback) {
+    if (!element || typeof callback !== 'function' || !window.ResizeObserver) {
+      return null
+    }
+
+    let lastHeight = 0
+    const observer = new window.ResizeObserver(function (entries) {
+      const entry = entries && entries[0]
+      const rect = entry ? entry.contentRect : element.getBoundingClientRect()
+      const height = Math.round(rect.height || 0)
+
+      if (height > 0 && Math.abs(height - lastHeight) >= 2) {
+        lastHeight = height
+        callback(height)
+      }
+    })
+
+    observer.observe(element)
+    return observer
+  }
+
   function createTinyMceAdapter(options) {
     let editor = null
+    let heightObserver = null
     const selector = options.selector || defaultSelector
     const elementId = getElementId(selector)
     const host = getHost(options)
@@ -262,6 +284,9 @@
         if (loading) {
           loading.remove()
         }
+
+        const container = editor.getContainer ? editor.getContainer() : null
+        heightObserver = observeEditorHeight(container, options.onHeightChanged)
       },
 
       load: function (html) {
@@ -316,6 +341,11 @@
       },
 
       destroy: function () {
+        if (heightObserver) {
+          heightObserver.disconnect()
+          heightObserver = null
+        }
+
         if (editor) {
           if (typeof editor.destroy === 'function') {
             editor.destroy()
@@ -331,6 +361,7 @@
 
   function createToastUiAdapter(options) {
     let editor = null
+    let heightObserver = null
     let suppressChangeUntil = 0
     const host = getHost(options)
     const initialMarkdownEditType = String(options.markdownEditType || '').toLowerCase() === 'wysiwyg'
@@ -545,6 +576,9 @@
           notifyChanged()
         })
         bindToolbar()
+
+        const editorElement = host.querySelector('.toastui-editor-defaultUI') || host.querySelector('#markdown-body')
+        heightObserver = observeEditorHeight(editorElement, options.onHeightChanged)
       },
 
       load: function (markdown) {
@@ -605,6 +639,11 @@
       },
 
       destroy: function () {
+        if (heightObserver) {
+          heightObserver.disconnect()
+          heightObserver = null
+        }
+
         if (editor) {
           host.removeEventListener('pointerdown', handleModeSwitchIntent, true)
           host.removeEventListener('keydown', handleModeSwitchIntent, true)

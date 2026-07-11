@@ -295,6 +295,26 @@ public sealed class TaskLifecycleServiceTests
         Assert.Equal(TaskStatusCodes.Completed, savedTask.TaskStatus?.Code);
         Assert.Null(savedTask.WaitingSince);
         Assert.NotNull(target.ResolvedAt);
+        AssertHasLog(savedTask, TaskLogTypeCodes.WaitingForCleared, "Waiting for INC123456 was cleared");
+        AssertHasLog(savedTask, TaskLogTypeCodes.TaskCompleted, "Task completed");
+    }
+
+    [Fact]
+    public async Task CancelTask_WithActiveWaitingTargetClearsWaitingStateAndLogs()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var task = await database.CreateWaitingTaskAsync();
+
+        await database.Lifecycle.CancelTaskAsync(task.Id);
+
+        var savedTask = await database.LoadTaskAsync(task.Id);
+        var target = await database.DbContext.TaskWaitingFors.SingleAsync(waitingFor => waitingFor.TaskId == task.Id);
+
+        Assert.Equal(TaskStatusCodes.Cancelled, savedTask.TaskStatus?.Code);
+        Assert.Null(savedTask.WaitingSince);
+        Assert.NotNull(target.ResolvedAt);
+        AssertHasLog(savedTask, TaskLogTypeCodes.WaitingForCleared, "Waiting for INC123456 was cleared");
+        AssertHasLog(savedTask, TaskLogTypeCodes.TaskCancelled, "Task cancelled");
     }
 
     private static void AssertHasLog(TaskItem task, string code, string message)

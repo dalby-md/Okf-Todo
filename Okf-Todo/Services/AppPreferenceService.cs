@@ -13,6 +13,9 @@ public sealed class AppPreferenceService(
     private const string DefaultBodyFormatCode = "HTML";
     private const string DefaultMarkdownEditType = MarkdownEditTypes.Markdown;
     private const string DefaultLayoutMode = LayoutPreferenceModes.Auto;
+    private const double DefaultEditorHeight = 360;
+    private const double MinimumEditorHeight = 240;
+    private const double MaximumEditorHeight = 1800;
     private const double MinimumTaskListWidth = 160;
     private const double MaximumTaskListWidth = 2400;
     private const double MinimumTaskListHeight = 120;
@@ -36,8 +39,9 @@ public sealed class AppPreferenceService(
             preferences.EditorBodyFormatCode,
             cancellationToken);
         var markdownEditType = NormalizeOrDefaultMarkdownEditType(preferences.MarkdownEditType);
+        var editorHeight = NormalizeOrDefaultEditorHeight(preferences.EditorHeight);
 
-        return new EditorPreferenceDto(code, markdownEditType);
+        return new EditorPreferenceDto(code, markdownEditType, editorHeight);
     }
 
     public async Task<EditorPreferenceDto> SaveEditorPreferenceAsync(
@@ -51,20 +55,25 @@ public sealed class AppPreferenceService(
         var markdownEditType = request.MarkdownEditType is null
             ? NormalizeOrDefaultMarkdownEditType(preferences.MarkdownEditType)
             : NormalizeMarkdownEditType(request.MarkdownEditType);
+        var editorHeight = request.EditorHeight is null
+            ? NormalizeOrDefaultEditorHeight(preferences.EditorHeight)
+            : NormalizeEditorHeight(request.EditorHeight, "editorHeight");
 
         preferences = preferences with
         {
             EditorBodyFormatCode = code,
-            MarkdownEditType = markdownEditType
+            MarkdownEditType = markdownEditType,
+            EditorHeight = editorHeight
         };
         await WritePreferencesAsync(preferences, cancellationToken);
 
         logger.LogInformation(
-            "Saved editor preference with body format {BodyFormatCode} and markdown edit type {MarkdownEditType}.",
+            "Saved editor preference with body format {BodyFormatCode}, markdown edit type {MarkdownEditType}, and editor height {EditorHeight}.",
             code,
-            markdownEditType);
+            markdownEditType,
+            editorHeight);
 
-        return new EditorPreferenceDto(code, markdownEditType);
+        return new EditorPreferenceDto(code, markdownEditType, editorHeight);
     }
 
     public async Task<LayoutPreferenceDto> GetLayoutPreferenceAsync(CancellationToken cancellationToken)
@@ -270,6 +279,7 @@ public sealed class AppPreferenceService(
         return new StoredPreferences(
             DefaultBodyFormatCode,
             DefaultMarkdownEditType,
+            DefaultEditorHeight,
             null,
             null,
             DefaultLayoutMode,
@@ -302,6 +312,27 @@ public sealed class AppPreferenceService(
         {
             return DefaultMarkdownEditType;
         }
+    }
+
+    private static double NormalizeOrDefaultEditorHeight(double? editorHeight)
+    {
+        try
+        {
+            return NormalizeEditorHeight(editorHeight, "editorHeight");
+        }
+        catch (ValidationException)
+        {
+            return DefaultEditorHeight;
+        }
+    }
+
+    private static double NormalizeEditorHeight(double? editorHeight, string field)
+    {
+        return NormalizeLayoutValue(
+            editorHeight,
+            MinimumEditorHeight,
+            MaximumEditorHeight,
+            field);
     }
 
     private static string NormalizeMarkdownEditType(string? markdownEditType)
@@ -398,9 +429,9 @@ public sealed class AppPreferencePathProvider : IAppPreferencePathProvider
     }
 }
 
-public sealed record EditorPreferenceDto(string BodyFormatCode, string MarkdownEditType);
+public sealed record EditorPreferenceDto(string BodyFormatCode, string MarkdownEditType, double EditorHeight);
 
-public sealed record EditorPreferenceSaveRequest(string? BodyFormatCode, string? MarkdownEditType);
+public sealed record EditorPreferenceSaveRequest(string? BodyFormatCode, string? MarkdownEditType, double? EditorHeight);
 
 public static class MarkdownEditTypes
 {
@@ -426,6 +457,7 @@ public sealed record WindowPreferenceSaveRequest(int? Left, int? Top, int? Width
 internal sealed record StoredPreferences(
     string? EditorBodyFormatCode,
     string? MarkdownEditType,
+    double? EditorHeight,
     double? TaskListWidth,
     double? TaskListHeight,
     string? LayoutMode,

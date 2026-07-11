@@ -20,6 +20,9 @@
   const supportedEditorImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
   const maxEditorImageBytes = 5 * 1024 * 1024
   const wideLayoutMediaQuery = window.matchMedia('(min-width: 901px)')
+  const defaultEditorHeight = 360
+  const minimumEditorHeight = 240
+  const maximumEditorHeight = 1800
   const defaultTaskListWidth = 320
   const layoutModeCodes = {
     auto: 'AUTO',
@@ -36,6 +39,8 @@
   let cleanTaskSnapshot = null
   let preferredBodyFormatCode = 'HTML'
   let preferredMarkdownEditType = 'MARKDOWN'
+  let preferredEditorHeight = defaultEditorHeight
+  let editorHeightPreferenceSaveTimer = null
   let lookupSettings = null
   let activeLookupSettingsGroup = 'taskTypes'
   let editingLookupCode = null
@@ -1029,21 +1034,33 @@
     return String(value || '').toUpperCase() === 'WYSIWYG' ? 'WYSIWYG' : 'MARKDOWN'
   }
 
+  function getSupportedEditorHeight(value) {
+    const height = Math.round(Number(value))
+    if (!Number.isFinite(height)) {
+      return defaultEditorHeight
+    }
+
+    return Math.min(maximumEditorHeight, Math.max(minimumEditorHeight, height))
+  }
+
   async function loadEditorPreference() {
     const preference = await sendBridgeMessage('editor.preference.get', {})
     preferredBodyFormatCode = getSupportedBodyFormatCode(preference.bodyFormatCode)
     preferredMarkdownEditType = getSupportedMarkdownEditType(preference.markdownEditType)
+    preferredEditorHeight = getSupportedEditorHeight(preference.editorHeight)
     $('#editor-mode').val(preferredBodyFormatCode)
     $('#editor-mode').prop('disabled', false)
   }
 
-  function saveEditorPreference(bodyFormatCode, markdownEditType) {
+  function saveEditorPreference(bodyFormatCode, markdownEditType, editorHeight) {
     preferredBodyFormatCode = getSupportedBodyFormatCode(bodyFormatCode || preferredBodyFormatCode)
     preferredMarkdownEditType = getSupportedMarkdownEditType(markdownEditType || preferredMarkdownEditType)
+    preferredEditorHeight = getSupportedEditorHeight(editorHeight || preferredEditorHeight)
 
     return sendBridgeMessage('editor.preference.save', {
       bodyFormatCode: preferredBodyFormatCode,
-      markdownEditType: preferredMarkdownEditType
+      markdownEditType: preferredMarkdownEditType,
+      editorHeight: preferredEditorHeight
     })
   }
 
@@ -1054,8 +1071,28 @@
 
     return sendBridgeMessage('editor.preference.save', {
       bodyFormatCode: preferredBodyFormatCode,
-      markdownEditType: preferredMarkdownEditType
+      markdownEditType: preferredMarkdownEditType,
+      editorHeight: preferredEditorHeight
     })
+  }
+
+  function saveEditorHeightPreference(height) {
+    const nextHeight = getSupportedEditorHeight(height)
+    if (nextHeight === preferredEditorHeight) {
+      return
+    }
+
+    preferredEditorHeight = nextHeight
+    window.clearTimeout(editorHeightPreferenceSaveTimer)
+    editorHeightPreferenceSaveTimer = window.setTimeout(function () {
+      sendBridgeMessage('editor.preference.save', {
+        bodyFormatCode: preferredBodyFormatCode,
+        markdownEditType: preferredMarkdownEditType,
+        editorHeight: preferredEditorHeight
+      }).catch(function (error) {
+        setStatus(getErrorMessage(error, 'Could not save editor height'), 'error')
+      })
+    }, 350)
   }
 
   function renderEmptyEditor() {
@@ -1477,7 +1514,7 @@
       selector: '#text-body',
       hostSelector: '#editor-host',
       baseUrl: '/tinymce',
-      minHeight: 360,
+      minHeight: preferredEditorHeight,
       markdownEditType: preferredMarkdownEditType,
       initialContent: initialContent || '',
       initialHtml: initialHtml || '',
@@ -1485,7 +1522,8 @@
         'body { color: #202124; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.55; }',
       onPickImage: pickEditorImage,
       onMarkdownEditTypeChanging: handleMarkdownEditTypeChanging,
-      onMarkdownEditTypeChanged: handleMarkdownEditTypeChanged
+      onMarkdownEditTypeChanged: handleMarkdownEditTypeChanged,
+      onHeightChanged: handleEditorHeightChanged
     })
 
     window.Editor.markClean()
@@ -1763,6 +1801,8 @@
       return
     }
 
+    const wasDirty = isDirty
+    const releaseDirtyTracking = suppressDirtyTracking()
     isEditorReady = false
     $('#save-button, #editor-mode').prop('disabled', true)
     setStatus('Switching editor', 'ready')
@@ -1778,14 +1818,25 @@
       preferredBodyFormatCode = targetModeCode
       $('#editor-mode').val(targetModeCode)
       $('#editor-mode').prop('disabled', false)
-      markDirty()
       await saveEditorPreference(targetModeCode).catch(function (error) {
         setStatus(getErrorMessage(error, 'Could not save editor preference'), 'error')
       })
+
+      if (wasDirty) {
+        isDirty = true
+        setStatus('Unsaved changes', 'dirty')
+      } else {
+        isDirty = false
+        setCleanTaskSnapshot()
+        window.Editor.markClean()
+        setStatus(currentTask.id ? 'Loaded' : 'Draft', 'ready')
+      }
     } catch (error) {
       $('#editor-mode').val(activeModeCode).prop('disabled', false)
       isEditorReady = true
       setStatus(getErrorMessage(error, 'Could not switch editor'), 'error')
+    } finally {
+      releaseDirtyTracking()
     }
   }
 
@@ -1798,6 +1849,11 @@
 
   function handleMarkdownEditTypeChanging() {
     preserveCleanStateDuringMarkdownEditTypeSwitch()
+  }
+
+  function handleEditorHeightChanged(height) {
+    suppressDirtyTrackingFor(1000)
+    saveEditorHeightPreference(height)
   }
 
   async function loadTasks(options) {

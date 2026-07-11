@@ -351,6 +351,14 @@ public sealed class TaskLifecycleService(
 
         waitingFor.ResolvedAt = now;
         waitingFor.UpdatedAt = now;
+
+        var targetText = waitingFor.Label ?? string.Empty;
+        AddLog(
+            task,
+            await GetLogTypeAsync(TaskLogTypeCodes.WaitingForCleared, cancellationToken),
+            $"Waiting for {targetText} was cleared",
+            now,
+            oldValue: targetText);
     }
 
     private async Task<TaskItem> GetTaskWithStatusAsync(int taskId, CancellationToken cancellationToken)

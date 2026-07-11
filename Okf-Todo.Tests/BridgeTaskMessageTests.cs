@@ -286,18 +286,22 @@ public sealed class BridgeTaskMessageTests
         var initial = await fixture.SendAsync("editor.preference.get", new { });
         Assert.Equal("HTML", initial.GetProperty("bodyFormatCode").GetString());
         Assert.Equal("MARKDOWN", initial.GetProperty("markdownEditType").GetString());
+        Assert.Equal(360, initial.GetProperty("editorHeight").GetDouble());
 
         var saved = await fixture.SendAsync("editor.preference.save", new
         {
             bodyFormatCode = "MARKDOWN",
-            markdownEditType = "WYSIWYG"
+            markdownEditType = "WYSIWYG",
+            editorHeight = 640
         });
         Assert.Equal("MARKDOWN", saved.GetProperty("bodyFormatCode").GetString());
         Assert.Equal("WYSIWYG", saved.GetProperty("markdownEditType").GetString());
+        Assert.Equal(640, saved.GetProperty("editorHeight").GetDouble());
 
         var loaded = await fixture.SendAsync("editor.preference.get", new { });
         Assert.Equal("MARKDOWN", loaded.GetProperty("bodyFormatCode").GetString());
         Assert.Equal("WYSIWYG", loaded.GetProperty("markdownEditType").GetString());
+        Assert.Equal(640, loaded.GetProperty("editorHeight").GetDouble());
     }
 
     [Fact]
@@ -307,7 +311,8 @@ public sealed class BridgeTaskMessageTests
 
         await fixture.SendAsync("editor.preference.save", new
         {
-            bodyFormatCode = "MARKDOWN"
+            bodyFormatCode = "MARKDOWN",
+            editorHeight = 512
         });
 
         var saved = await fixture.SendAsync("editor.preference.save", new
@@ -317,10 +322,12 @@ public sealed class BridgeTaskMessageTests
 
         Assert.Equal("MARKDOWN", saved.GetProperty("bodyFormatCode").GetString());
         Assert.Equal("WYSIWYG", saved.GetProperty("markdownEditType").GetString());
+        Assert.Equal(512, saved.GetProperty("editorHeight").GetDouble());
 
         var loaded = await fixture.SendAsync("editor.preference.get", new { });
         Assert.Equal("MARKDOWN", loaded.GetProperty("bodyFormatCode").GetString());
         Assert.Equal("WYSIWYG", loaded.GetProperty("markdownEditType").GetString());
+        Assert.Equal(512, loaded.GetProperty("editorHeight").GetDouble());
     }
 
     [Fact]
@@ -386,6 +393,21 @@ public sealed class BridgeTaskMessageTests
         Assert.False(response.RootElement.GetProperty("ok").GetBoolean());
         Assert.Equal("ValidationFailed", response.RootElement.GetProperty("error").GetProperty("code").GetString());
         Assert.Equal("markdownEditType", response.RootElement.GetProperty("error").GetProperty("details").GetProperty("field").GetString());
+    }
+
+    [Fact]
+    public async Task Bridge_RejectsInvalidEditorHeightPreference()
+    {
+        await using var fixture = await BridgeFixture.CreateAsync();
+
+        using var response = await fixture.SendRawAsync("editor.preference.save", new
+        {
+            editorHeight = 120
+        });
+
+        Assert.False(response.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Equal("ValidationFailed", response.RootElement.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal("editorHeight", response.RootElement.GetProperty("error").GetProperty("details").GetProperty("field").GetString());
     }
 
     [Fact]
