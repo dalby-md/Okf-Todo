@@ -201,30 +201,8 @@
     activeAdapter = null
   }
 
-  function observeEditorHeight(element, callback) {
-    if (!element || typeof callback !== 'function' || !window.ResizeObserver) {
-      return null
-    }
-
-    let lastHeight = 0
-    const observer = new window.ResizeObserver(function (entries) {
-      const entry = entries && entries[0]
-      const rect = entry ? entry.contentRect : element.getBoundingClientRect()
-      const height = Math.round(rect.height || 0)
-
-      if (height > 0 && Math.abs(height - lastHeight) >= 2) {
-        lastHeight = height
-        callback(height)
-      }
-    })
-
-    observer.observe(element)
-    return observer
-  }
-
   function createTinyMceAdapter(options) {
     let editor = null
-    let heightObserver = null
     const selector = options.selector || defaultSelector
     const elementId = getElementId(selector)
     const host = getHost(options)
@@ -267,7 +245,7 @@
             return image.src
           },
           height: options.minHeight || 420,
-          resize: true,
+          resize: false,
           content_style: options.contentStyle || '',
           setup: function (tinyEditor) {
             editor = tinyEditor
@@ -284,9 +262,6 @@
         if (loading) {
           loading.remove()
         }
-
-        const container = editor.getContainer ? editor.getContainer() : null
-        heightObserver = observeEditorHeight(container, options.onHeightChanged)
       },
 
       load: function (html) {
@@ -336,16 +311,36 @@
         editor.focus()
       },
 
+      setHeight: function (height) {
+        const nextHeight = Math.round(Number(height))
+        if (!Number.isFinite(nextHeight) || nextHeight <= 0 || !editor) {
+          return
+        }
+
+        const container = typeof editor.getContainer === 'function'
+          ? editor.getContainer()
+          : null
+        const contentArea = typeof editor.getContentAreaContainer === 'function'
+          ? editor.getContentAreaContainer()
+          : null
+        const chromeHeight = container && contentArea
+          ? Math.max(0, container.offsetHeight - contentArea.offsetHeight)
+          : 0
+
+        if (container) {
+          container.style.height = `${nextHeight}px`
+        }
+
+        if (contentArea) {
+          contentArea.style.height = `${Math.max(80, nextHeight - chromeHeight)}px`
+        }
+      },
+
       markClean: function () {
         editor.setDirty(false)
       },
 
       destroy: function () {
-        if (heightObserver) {
-          heightObserver.disconnect()
-          heightObserver = null
-        }
-
         if (editor) {
           if (typeof editor.destroy === 'function') {
             editor.destroy()
@@ -361,7 +356,6 @@
 
   function createToastUiAdapter(options) {
     let editor = null
-    let heightObserver = null
     let suppressChangeUntil = 0
     const host = getHost(options)
     const initialMarkdownEditType = String(options.markdownEditType || '').toLowerCase() === 'wysiwyg'
@@ -576,9 +570,6 @@
           notifyChanged()
         })
         bindToolbar()
-
-        const editorElement = host.querySelector('.toastui-editor-defaultUI') || host.querySelector('#markdown-body')
-        heightObserver = observeEditorHeight(editorElement, options.onHeightChanged)
       },
 
       load: function (markdown) {
@@ -634,16 +625,29 @@
         editor.focus()
       },
 
+      setHeight: function (height) {
+        const nextHeight = Math.round(Number(height))
+        if (!Number.isFinite(nextHeight) || nextHeight <= 0 || !editor) {
+          return
+        }
+
+        if (typeof editor.setHeight === 'function') {
+          editor.setHeight(nextHeight)
+          return
+        }
+
+        const editorElement = host.querySelector('.toastui-editor-defaultUI')
+          || host.querySelector('#markdown-body')
+        if (editorElement) {
+          editorElement.style.height = `${nextHeight}px`
+        }
+      },
+
       markClean: function () {
         // The application tracks dirty state through change notifications.
       },
 
       destroy: function () {
-        if (heightObserver) {
-          heightObserver.disconnect()
-          heightObserver = null
-        }
-
         if (editor) {
           host.removeEventListener('pointerdown', handleModeSwitchIntent, true)
           host.removeEventListener('keydown', handleModeSwitchIntent, true)
@@ -733,6 +737,10 @@
 
     setReadOnly: function (readOnly) {
       requireAdapter().setReadOnly(readOnly)
+    },
+
+    setHeight: function (height) {
+      requireAdapter().setHeight(height)
     },
 
     focus: function () {

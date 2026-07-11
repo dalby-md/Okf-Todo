@@ -40,7 +40,6 @@
   let preferredBodyFormatCode = 'HTML'
   let preferredMarkdownEditType = 'MARKDOWN'
   let preferredEditorHeight = defaultEditorHeight
-  let editorHeightPreferenceSaveTimer = null
   let lookupSettings = null
   let activeLookupSettingsGroup = 'taskTypes'
   let editingLookupCode = null
@@ -671,6 +670,11 @@
 
             <p class="settings-help">If you do not understand this option, choose HTML.</p>
 
+            <label class="settings-field" for="editor-height">
+              <span>Editor height (px)</span>
+              <input id="editor-height" type="number" min="${minimumEditorHeight}" max="${maximumEditorHeight}" step="1" disabled>
+            </label>
+
             <label class="settings-field" for="layout-mode">
               <span>Task layout</span>
               <select id="layout-mode">
@@ -1050,12 +1054,14 @@
     preferredEditorHeight = getSupportedEditorHeight(preference.editorHeight)
     $('#editor-mode').val(preferredBodyFormatCode)
     $('#editor-mode').prop('disabled', false)
+    $('#editor-height').val(preferredEditorHeight)
+    $('#editor-height').prop('disabled', false)
   }
 
   function saveEditorPreference(bodyFormatCode, markdownEditType, editorHeight) {
     preferredBodyFormatCode = getSupportedBodyFormatCode(bodyFormatCode || preferredBodyFormatCode)
     preferredMarkdownEditType = getSupportedMarkdownEditType(markdownEditType || preferredMarkdownEditType)
-    preferredEditorHeight = getSupportedEditorHeight(editorHeight || preferredEditorHeight)
+    preferredEditorHeight = getSupportedEditorHeight(editorHeight == null ? preferredEditorHeight : editorHeight)
 
     return sendBridgeMessage('editor.preference.save', {
       bodyFormatCode: preferredBodyFormatCode,
@@ -1079,23 +1085,33 @@
     })
   }
 
-  function saveEditorHeightPreference(height) {
+  function saveEditorHeightPreferenceFromSettings() {
+    const heightInput = $('#editor-height')
+    if (heightInput.prop('disabled')) {
+      return Promise.resolve()
+    }
+
+    const height = heightInput.val()
     const nextHeight = getSupportedEditorHeight(height)
+    heightInput.val(nextHeight)
+
     if (nextHeight === preferredEditorHeight) {
+      return Promise.resolve()
+    }
+
+    return saveEditorPreference(preferredBodyFormatCode, preferredMarkdownEditType, nextHeight)
+      .then(function () {
+        applyEditorHeightPreference()
+        setStatus('Editor height preference saved', 'saved')
+      })
+  }
+
+  function applyEditorHeightPreference() {
+    if (!window.Editor || typeof window.Editor.setHeight !== 'function' || !isEditorReady) {
       return
     }
 
-    preferredEditorHeight = nextHeight
-    window.clearTimeout(editorHeightPreferenceSaveTimer)
-    editorHeightPreferenceSaveTimer = window.setTimeout(function () {
-      sendBridgeMessage('editor.preference.save', {
-        bodyFormatCode: preferredBodyFormatCode,
-        markdownEditType: preferredMarkdownEditType,
-        editorHeight: preferredEditorHeight
-      }).catch(function (error) {
-        setStatus(getErrorMessage(error, 'Could not save editor height'), 'error')
-      })
-    }, 350)
+    window.Editor.setHeight(preferredEditorHeight)
   }
 
   function renderEmptyEditor() {
@@ -1525,9 +1541,12 @@
         'body { color: #202124; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.55; }',
       onPickImage: pickEditorImage,
       onMarkdownEditTypeChanging: handleMarkdownEditTypeChanging,
-      onMarkdownEditTypeChanged: handleMarkdownEditTypeChanged,
-      onHeightChanged: handleEditorHeightChanged
+      onMarkdownEditTypeChanged: handleMarkdownEditTypeChanged
     })
+
+    if (typeof window.Editor.setHeight === 'function') {
+      window.Editor.setHeight(preferredEditorHeight)
+    }
 
     window.Editor.markClean()
     isEditorReady = true
@@ -1852,11 +1871,6 @@
 
   function handleMarkdownEditTypeChanging() {
     preserveCleanStateDuringMarkdownEditTypeSwitch()
-  }
-
-  function handleEditorHeightChanged(height) {
-    suppressDirtyTrackingFor(1000)
-    saveEditorHeightPreference(height)
   }
 
   async function loadTasks(options) {
@@ -2262,6 +2276,19 @@
       switchEditorMode().catch(function (error) {
         setStatus(getErrorMessage(error, 'Could not switch editor'), 'error')
       })
+    })
+    $('#editor-height').on('change', function () {
+      saveEditorHeightPreferenceFromSettings().catch(function (error) {
+        setStatus(getErrorMessage(error, 'Could not save editor height'), 'error')
+      })
+    })
+    $('#editor-height').on('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        saveEditorHeightPreferenceFromSettings().catch(function (error) {
+          setStatus(getErrorMessage(error, 'Could not save editor height'), 'error')
+        })
+      }
     })
     $('#layout-mode').on('change', switchLayoutMode)
     $('#save-button').on('click', function () {

@@ -286,7 +286,7 @@ public sealed class BridgeTaskMessageTests
         var initial = await fixture.SendAsync("editor.preference.get", new { });
         Assert.Equal("HTML", initial.GetProperty("bodyFormatCode").GetString());
         Assert.Equal("MARKDOWN", initial.GetProperty("markdownEditType").GetString());
-        Assert.Equal(360, initial.GetProperty("editorHeight").GetDouble());
+        Assert.Equal(360, initial.GetProperty("editorHeight").GetInt32());
 
         var saved = await fixture.SendAsync("editor.preference.save", new
         {
@@ -296,12 +296,12 @@ public sealed class BridgeTaskMessageTests
         });
         Assert.Equal("MARKDOWN", saved.GetProperty("bodyFormatCode").GetString());
         Assert.Equal("WYSIWYG", saved.GetProperty("markdownEditType").GetString());
-        Assert.Equal(640, saved.GetProperty("editorHeight").GetDouble());
+        Assert.Equal(640, saved.GetProperty("editorHeight").GetInt32());
 
         var loaded = await fixture.SendAsync("editor.preference.get", new { });
         Assert.Equal("MARKDOWN", loaded.GetProperty("bodyFormatCode").GetString());
         Assert.Equal("WYSIWYG", loaded.GetProperty("markdownEditType").GetString());
-        Assert.Equal(640, loaded.GetProperty("editorHeight").GetDouble());
+        Assert.Equal(640, loaded.GetProperty("editorHeight").GetInt32());
     }
 
     [Fact]
@@ -322,12 +322,12 @@ public sealed class BridgeTaskMessageTests
 
         Assert.Equal("MARKDOWN", saved.GetProperty("bodyFormatCode").GetString());
         Assert.Equal("WYSIWYG", saved.GetProperty("markdownEditType").GetString());
-        Assert.Equal(512, saved.GetProperty("editorHeight").GetDouble());
+        Assert.Equal(512, saved.GetProperty("editorHeight").GetInt32());
 
         var loaded = await fixture.SendAsync("editor.preference.get", new { });
         Assert.Equal("MARKDOWN", loaded.GetProperty("bodyFormatCode").GetString());
         Assert.Equal("WYSIWYG", loaded.GetProperty("markdownEditType").GetString());
-        Assert.Equal(512, loaded.GetProperty("editorHeight").GetDouble());
+        Assert.Equal(512, loaded.GetProperty("editorHeight").GetInt32());
     }
 
     [Fact]
