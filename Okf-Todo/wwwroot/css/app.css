@@ -711,6 +711,7 @@ h2 {
 .lookup-list-order {
   display: flex;
   align-items: center;
+  justify-self: end;
   gap: 4px;
 }
 

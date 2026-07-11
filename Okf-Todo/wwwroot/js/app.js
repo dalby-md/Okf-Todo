@@ -877,10 +877,6 @@
             <span class="lookup-code">${encodeText(item.code)}</span>
             <span class="lookup-list-description">${encodeText(item.description || '')}</span>
           </div>
-          <div class="lookup-list-order" aria-label="Order ${encodedName}">
-            <button class="lookup-reorder-button" type="button" data-code="${encodedCode}" data-direction="up" title="Move up" aria-label="Move ${encodedName} up"${index === 0 ? ' disabled' : ''}>&uarr;</button>
-            <button class="lookup-reorder-button" type="button" data-code="${encodedCode}" data-direction="down" title="Move down" aria-label="Move ${encodedName} down"${index === items.length - 1 ? ' disabled' : ''}>&darr;</button>
-          </div>
           <div class="lookup-list-meta">
             <span>${activeText}</span>
             ${selectedText}
@@ -888,6 +884,10 @@
             ${usedText}
           </div>
           <button class="lookup-list-edit-button secondary-button" type="button" data-code="${encodedCode}">Edit</button>
+          <div class="lookup-list-order" aria-label="Order ${encodedName}">
+            <button class="lookup-reorder-button" type="button" data-code="${encodedCode}" data-direction="up" title="Move up" aria-label="Move ${encodedName} up"${index === 0 ? ' disabled' : ''}>&uarr;</button>
+            <button class="lookup-reorder-button" type="button" data-code="${encodedCode}" data-direction="down" title="Move down" aria-label="Move ${encodedName} down"${index === items.length - 1 ? ' disabled' : ''}>&darr;</button>
+          </div>
         </article>
       `
     }).join(''))
