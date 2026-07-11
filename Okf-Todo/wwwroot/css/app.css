@@ -715,9 +715,26 @@ h2 {
 }
 
 .lookup-reorder-button {
-  min-height: 28px;
-  padding: 5px 8px;
-  font-size: 0.72rem;
+  width: 22px;
+  min-height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  color: #53606c;
+  background: transparent;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.lookup-reorder-button:hover:not(:disabled),
+.lookup-reorder-button:focus-visible {
+  color: #153f3b;
+  background: #e8f2ef;
+}
+
+.lookup-reorder-button:disabled {
+  color: #c4ccd4;
+  cursor: default;
 }
 
 .lookup-list-meta {
