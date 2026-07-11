@@ -734,7 +734,7 @@
               </label>
               <label class="lookup-check">
                 <input id="lookup-edit-is-selected" type="checkbox">
-                <span>Selected</span>
+                <span>Default</span>
               </label>
               <span id="lookup-edit-preview" class="lookup-edit-preview"></span>
             </div>
