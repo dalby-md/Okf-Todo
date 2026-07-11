@@ -80,6 +80,8 @@ public sealed class BridgeMessageHandler(IServiceProvider services, ILogger<Brid
                 .CreateLookupAsync(GetPayload<LookupCreateRequest>(request), cancellationToken),
             "lookup.settings.delete" => await scopedServices.GetRequiredService<TaskService>()
                 .DeleteLookupAsync(GetPayload<LookupDeleteRequest>(request), cancellationToken),
+            "lookup.settings.reorder" => await scopedServices.GetRequiredService<TaskService>()
+                .ReorderLookupAsync(GetPayload<LookupReorderRequest>(request), cancellationToken),
             "task.list" => await scopedServices.GetRequiredService<TaskService>()
                 .ListAsync(GetPayload<TaskListRequest>(request), cancellationToken),
             "task.get" => await scopedServices.GetRequiredService<TaskService>()

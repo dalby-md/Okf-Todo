@@ -296,6 +296,49 @@ public sealed class TaskServiceTests
     }
 
     [Fact]
+    public async Task LookupSettings_ReorderAssignsNormalizedSortOrder()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+
+        var settings = await database.Tasks.GetLookupSettingsAsync(CancellationToken.None);
+        var orderedCodes = settings.TaskTypes
+            .Select(type => type.Code)
+            .Reverse()
+            .ToArray();
+
+        var reordered = await database.Tasks.ReorderLookupAsync(new LookupReorderRequest(
+            Group: "taskTypes",
+            OrderedCodes: orderedCodes), CancellationToken.None);
+        var reorderedTypes = reordered.TaskTypes.ToArray();
+
+        Assert.Equal(orderedCodes, reorderedTypes.Select(type => type.Code));
+        Assert.Equal(10, reorderedTypes[0].SortOrder);
+        Assert.Equal(20, reorderedTypes[1].SortOrder);
+        Assert.Equal(30, reorderedTypes[2].SortOrder);
+
+        var lookups = await database.Tasks.GetLookupsAsync(CancellationToken.None);
+        Assert.Equal(orderedCodes, lookups.TaskTypes.Select(type => type.Code));
+    }
+
+    [Fact]
+    public async Task LookupSettings_ReorderRejectsMissingOrDuplicateCodes()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+
+        var duplicateException = await Assert.ThrowsAsync<ValidationException>(() =>
+            database.Tasks.ReorderLookupAsync(new LookupReorderRequest(
+                Group: "taskTypes",
+                OrderedCodes: ["ERROR", "ERROR"]), CancellationToken.None));
+        Assert.Equal("orderedCodes", duplicateException.Field);
+
+        var missingException = await Assert.ThrowsAsync<ValidationException>(() =>
+            database.Tasks.ReorderLookupAsync(new LookupReorderRequest(
+                Group: "taskTypes",
+                OrderedCodes: ["ERROR"]), CancellationToken.None));
+        Assert.Equal("orderedCodes", missingException.Field);
+    }
+
+    [Fact]
     public async Task LookupSettings_PreventRequiredStatusDeactivation()
     {
         await using var database = await TestDatabase.CreateAsync();

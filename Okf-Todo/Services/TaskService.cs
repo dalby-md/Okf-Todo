@@ -104,6 +104,31 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
         return await GetLookupSettingsAsync(cancellationToken);
     }
 
+    public async Task<TaskLookupSettingsDto> ReorderLookupAsync(
+        LookupReorderRequest request,
+        CancellationToken cancellationToken)
+    {
+        var group = request.Group.Trim();
+
+        switch (group)
+        {
+            case "taskTypes":
+                await ReorderLookupAsync(dbContext.TaskTypes, request, cancellationToken);
+                break;
+            case "taskPriorities":
+                await ReorderLookupAsync(dbContext.TaskPriorities, request, cancellationToken);
+                break;
+            case "taskStatuses":
+                await ReorderLookupAsync(dbContext.TaskStatuses, request, cancellationToken);
+                break;
+            default:
+                throw new ValidationException("Lookup group is not supported.", "group");
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await GetLookupSettingsAsync(cancellationToken);
+    }
+
     public async Task<TaskLookupSettingsDto> CreateLookupAsync(
         LookupCreateRequest request,
         CancellationToken cancellationToken)
@@ -470,6 +495,50 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
         dbSet.Remove(lookup);
     }
 
+    private static async Task ReorderLookupAsync<TLookup>(
+        DbSet<TLookup> dbSet,
+        LookupReorderRequest request,
+        CancellationToken cancellationToken)
+        where TLookup : LookupEntity
+    {
+        var orderedCodes = request.OrderedCodes
+            .Select(NormalizeLookupCode)
+            .ToList();
+
+        if (orderedCodes.Count == 0)
+        {
+            throw new ValidationException("Lookup order is required.", "orderedCodes");
+        }
+
+        if (orderedCodes.Distinct(StringComparer.Ordinal).Count() != orderedCodes.Count)
+        {
+            throw new ValidationException("Lookup order contains duplicate codes.", "orderedCodes");
+        }
+
+        var lookups = await dbSet.ToListAsync(cancellationToken);
+        var lookupCodes = lookups
+            .Select(lookup => lookup.Code)
+            .OrderBy(code => code, StringComparer.Ordinal)
+            .ToList();
+        var sortedOrderedCodes = orderedCodes
+            .OrderBy(code => code, StringComparer.Ordinal)
+            .ToList();
+
+        if (!lookupCodes.SequenceEqual(sortedOrderedCodes, StringComparer.Ordinal))
+        {
+            throw new ValidationException("Lookup order must include every lookup code exactly once.", "orderedCodes");
+        }
+
+        var now = DateTime.UtcNow;
+        var lookupsByCode = lookups.ToDictionary(lookup => lookup.Code, StringComparer.Ordinal);
+        for (var index = 0; index < orderedCodes.Count; index++)
+        {
+            var lookup = lookupsByCode[orderedCodes[index]];
+            lookup.SortOrder = (index + 1) * 10;
+            lookup.UpdatedAt = now;
+        }
+    }
+
     private static async Task<TLookup> GetLookupByCodeAsync<TLookup>(
         DbSet<TLookup> dbSet,
         string code,
@@ -646,6 +715,10 @@ public sealed record LookupCreateRequest(
 public sealed record LookupDeleteRequest(
     string Group,
     string Code);
+
+public sealed record LookupReorderRequest(
+    string Group,
+    IReadOnlyList<string> OrderedCodes);
 
 public sealed record TaskListRequest(string? View);
 

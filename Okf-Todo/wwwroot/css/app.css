@@ -668,7 +668,7 @@ h2 {
 
 .lookup-list-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 10px;
   padding: 8px;
@@ -706,6 +706,18 @@ h2 {
   font-size: 0.76rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.lookup-list-order {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lookup-reorder-button {
+  min-height: 28px;
+  padding: 5px 8px;
+  font-size: 0.72rem;
 }
 
 .lookup-list-meta {
@@ -899,6 +911,7 @@ h2 {
   }
 
   .lookup-list-main,
+  .lookup-list-order,
   .lookup-list-meta {
     flex-wrap: wrap;
   }

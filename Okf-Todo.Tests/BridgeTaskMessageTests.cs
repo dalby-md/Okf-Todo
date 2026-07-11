@@ -80,6 +80,22 @@ public sealed class BridgeTaskMessageTests
                 && item.GetProperty("foregroundColor").GetString() == "#0f172a"
                 && item.GetProperty("canDelete").GetBoolean());
 
+        var orderedTypeCodes = createdLookupSettings
+            .GetProperty("taskTypes")
+            .EnumerateArray()
+            .Select(item => item.GetProperty("code").GetString()!)
+            .ToList();
+        orderedTypeCodes.Remove("QUESTION");
+        orderedTypeCodes.Insert(0, "QUESTION");
+        var reorderedLookupSettings = await fixture.SendAsync("lookup.settings.reorder", new
+        {
+            group = "taskTypes",
+            orderedCodes = orderedTypeCodes
+        });
+        Assert.Equal(
+            "QUESTION",
+            reorderedLookupSettings.GetProperty("taskTypes").EnumerateArray().First().GetProperty("code").GetString());
+
         var deletedLookupSettings = await fixture.SendAsync("lookup.settings.delete", new
         {
             group = "taskTypes",

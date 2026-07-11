@@ -717,10 +717,6 @@
                 <span>Description</span>
                 <input id="lookup-edit-description" type="text" autocomplete="off">
               </label>
-              <label class="settings-field" for="lookup-edit-sort-order">
-                <span>Sort</span>
-                <input id="lookup-edit-sort-order" type="number" step="1">
-              </label>
               <label class="settings-field" for="lookup-edit-background-color">
                 <span>Background</span>
                 <input id="lookup-edit-background-color" type="color">
@@ -864,13 +860,15 @@
       return
     }
 
-    $('#lookup-list-items').html(items.map(function (item) {
+    $('#lookup-list-items').html(items.map(function (item, index) {
       const backgroundColor = getColorInputValue(item.backgroundColor, '#6b7280')
       const foregroundColor = getColorInputValue(item.foregroundColor, '#ffffff')
       const activeText = item.isActive ? 'Active' : 'Inactive'
       const selectedText = item.isSelected ? '<span class="lookup-state-pill">Default</span>' : ''
       const systemText = item.isSystem ? '<span class="lookup-state-pill">System</span>' : ''
       const usedText = !item.canDelete && !item.isSystem ? '<span class="lookup-state-pill">Used</span>' : ''
+      const encodedCode = encodeAttribute(item.code)
+      const encodedName = encodeAttribute(item.name)
 
       return `
         <article class="lookup-list-row">
@@ -879,17 +877,65 @@
             <span class="lookup-code">${encodeText(item.code)}</span>
             <span class="lookup-list-description">${encodeText(item.description || '')}</span>
           </div>
+          <div class="lookup-list-order" aria-label="Order ${encodedName}">
+            <button class="lookup-reorder-button secondary-button" type="button" data-code="${encodedCode}" data-direction="up" title="Move up" aria-label="Move ${encodedName} up"${index === 0 ? ' disabled' : ''}>Up</button>
+            <button class="lookup-reorder-button secondary-button" type="button" data-code="${encodedCode}" data-direction="down" title="Move down" aria-label="Move ${encodedName} down"${index === items.length - 1 ? ' disabled' : ''}>Down</button>
+          </div>
           <div class="lookup-list-meta">
             <span>${activeText}</span>
             ${selectedText}
             ${systemText}
             ${usedText}
-            <span>Sort ${item.sortOrder}</span>
           </div>
-          <button class="lookup-list-edit-button secondary-button" type="button" data-code="${encodeAttribute(item.code)}">Edit</button>
+          <button class="lookup-list-edit-button secondary-button" type="button" data-code="${encodedCode}">Edit</button>
         </article>
       `
     }).join(''))
+  }
+
+  async function reorderLookupItem(code, direction) {
+    const items = getActiveLookupItems()
+    const currentIndex = items.findIndex(function (item) {
+      return item.code === code
+    })
+    const offset = direction === 'up' ? -1 : 1
+    const nextIndex = currentIndex + offset
+
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= items.length) {
+      return
+    }
+
+    const orderedCodes = items.map(function (item) {
+      return item.code
+    })
+    const movedCode = orderedCodes[currentIndex]
+    orderedCodes[currentIndex] = orderedCodes[nextIndex]
+    orderedCodes[nextIndex] = movedCode
+
+    $('.lookup-reorder-button').prop('disabled', true)
+    setStatus('Saving lookup order', 'ready')
+
+    try {
+      lookupSettings = await sendBridgeMessage('lookup.settings.reorder', {
+        group: activeLookupSettingsGroup,
+        orderedCodes
+      })
+
+      renderLookupSettings()
+      renderLookupList()
+      await refreshLookupDependentUi()
+      setStatus('Lookup order saved', 'saved')
+      window.setTimeout(function () {
+        $('#lookup-list-items .lookup-reorder-button')
+          .filter(function () {
+            return $(this).attr('data-code') === code && $(this).attr('data-direction') === direction
+          })
+          .trigger('focus')
+      }, 0)
+    } catch (error) {
+      renderLookupList()
+      setStatus(getErrorMessage(error, 'Could not save lookup order'), 'error')
+    }
   }
 
   async function openLookupList(group) {
@@ -912,9 +958,6 @@
   function openLookupEdit(code) {
     editingLookupCode = code || null
     const item = editingLookupCode ? findActiveLookupItem(editingLookupCode) : null
-    const fallbackSortOrder = getActiveLookupItems().reduce(function (maxSort, current) {
-      return Math.max(maxSort, Number(current.sortOrder) || 0)
-    }, 0) + 10
 
     $('#lookup-edit-title').text(editingLookupCode
       ? `Edit ${lookupSettingsGroupNouns[activeLookupSettingsGroup]}`
@@ -925,7 +968,6 @@
       .removeClass('is-invalid')
     $('#lookup-edit-name').val(item ? item.name : '').removeClass('is-invalid')
     $('#lookup-edit-description').val(item && item.description ? item.description : '')
-    $('#lookup-edit-sort-order').val(item ? item.sortOrder : fallbackSortOrder)
     $('#lookup-edit-is-active')
       .prop('checked', item ? item.isActive : true)
       .prop('disabled', !!(item && activeLookupSettingsGroup === 'taskStatuses' && item.isSystem))
@@ -975,6 +1017,12 @@
     })
 
     return htmlFormat ? htmlFormat.code : (bodyFormats[0] ? bodyFormats[0].code : 'HTML')
+  }
+
+  function getNextLookupSortOrder() {
+    return getActiveLookupItems().reduce(function (maxSort, current) {
+      return Math.max(maxSort, Number(current.sortOrder) || 0)
+    }, 0) + 10
   }
 
   function getSupportedMarkdownEditType(value) {
@@ -1523,6 +1571,7 @@
   async function saveLookupEdit() {
     const code = $('#lookup-edit-code').val().toString().trim()
     const name = $('#lookup-edit-name').val().toString().trim()
+    const item = editingLookupCode ? findActiveLookupItem(editingLookupCode) : null
 
     $('#lookup-edit-code, #lookup-edit-name').removeClass('is-invalid')
 
@@ -1549,7 +1598,7 @@
       code: editingLookupCode || code,
       name,
       description: $('#lookup-edit-description').val().toString().trim() || null,
-      sortOrder: Number($('#lookup-edit-sort-order').val()),
+      sortOrder: item ? item.sortOrder : getNextLookupSortOrder(),
       isActive: $('#lookup-edit-is-active').prop('checked'),
       isSelected: $('#lookup-edit-is-selected').prop('checked'),
       backgroundColor: $('#lookup-edit-background-color').val().toString(),
@@ -1987,6 +2036,11 @@
     })
     $('#lookup-list-items').on('click', '.lookup-list-edit-button', function () {
       openLookupEdit($(this).attr('data-code'))
+    })
+    $('#lookup-list-items').on('click', '.lookup-reorder-button', function () {
+      reorderLookupItem($(this).attr('data-code'), $(this).attr('data-direction')).catch(function (error) {
+        setStatus(getErrorMessage(error, 'Could not save lookup order'), 'error')
+      })
     })
     $('#lookup-edit-cancel-button').on('click', closeLookupEdit)
     $('#lookup-edit-overlay').on('click', function (event) {
