@@ -108,6 +108,32 @@ public sealed class BridgeTaskMessageTests
         var loaded = await fixture.SendAsync("task.get", new { id = taskId });
         Assert.Equal("<p>Created through bridge</p>", loaded.GetProperty("body").GetString());
 
+        var initialTimeline = await fixture.SendAsync("task.timeline.get", new { taskId });
+        Assert.Contains(
+            initialTimeline.EnumerateArray(),
+            item => item.GetProperty("kind").GetString() == "log"
+                && item.GetProperty("logTypeCode").GetString() == TaskLogTypeCodes.TaskCreated);
+
+        var timelineWithComment = await fixture.SendAsync("task.comment.create", new
+        {
+            taskId,
+            commentText = "Bridge comment"
+        });
+        var comment = Assert.Single(
+            timelineWithComment.EnumerateArray(),
+            item => item.GetProperty("kind").GetString() == "comment");
+        Assert.Equal("Bridge comment", comment.GetProperty("text").GetString());
+        Assert.True(comment.GetProperty("canDelete").GetBoolean());
+
+        var timelineAfterCommentDelete = await fixture.SendAsync("task.comment.delete", new
+        {
+            taskId,
+            commentId = comment.GetProperty("id").GetInt32()
+        });
+        Assert.DoesNotContain(
+            timelineAfterCommentDelete.EnumerateArray(),
+            item => item.GetProperty("kind").GetString() == "comment");
+
         var updated = await fixture.SendAsync("task.update", new
         {
             id = taskId,

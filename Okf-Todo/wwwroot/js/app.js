@@ -214,6 +214,19 @@
     return formatted || ''
   }
 
+  function formatDateTime(value) {
+    if (!value) {
+      return ''
+    }
+
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) {
+      return String(value)
+    }
+
+    return date.toLocaleString()
+  }
+
   function setStatus(message, state) {
     $('#save-status')
       .removeClass('is-ready is-dirty is-saved is-error')
@@ -653,6 +666,20 @@
                 <input id="task-source-url" type="url" autocomplete="off" disabled>
               </label>
             </div>
+
+            <section class="timeline-section" aria-labelledby="timeline-title">
+              <div class="timeline-header">
+                <h3 id="timeline-title">Timeline</h3>
+              </div>
+              <div id="timeline-list" class="timeline-list" aria-live="polite">
+                <div class="empty-timeline">No timeline.</div>
+              </div>
+              <div id="comment-form" class="comment-form">
+                <label class="sr-only" for="comment-text">Comment</label>
+                <textarea id="comment-text" rows="2" placeholder="Comment" disabled></textarea>
+                <button id="comment-add-button" class="secondary-button" type="button" disabled>Add</button>
+              </div>
+            </section>
           </form>
         </section>
 
@@ -1143,6 +1170,9 @@
     $('#complete-button, #cancel-button, #save-button').prop('disabled', true)
     $('#editor-mode').prop('disabled', !lookups)
     $('#editor-host').html('<div class="empty-editor">Select a task to edit the body.</div>')
+    $('#comment-text').val('').removeClass('is-invalid')
+    setCommentControlsEnabled(false)
+    renderTimeline([])
     setStatus('Ready', 'ready')
     renderTaskList()
   }
@@ -1605,6 +1635,96 @@
     $('#waiting-text').prop('disabled', !canEditWaiting)
   }
 
+  function setCommentControlsEnabled(isEnabled) {
+    $('#comment-text, #comment-add-button').prop('disabled', !isEnabled)
+  }
+
+  function renderTimeline(items) {
+    const timelineItems = Array.isArray(items) ? items : []
+
+    if (timelineItems.length === 0) {
+      $('#timeline-list').html('<div class="empty-timeline">No timeline.</div>')
+      return
+    }
+
+    $('#timeline-list').html(timelineItems.map(function (item) {
+      const kindLabel = item.kind === 'comment' ? 'Comment' : 'Log'
+      const deleteButton = item.canDelete
+        ? `<button class="timeline-delete-comment-button" type="button" data-comment-id="${item.id}" aria-label="Delete comment">Delete</button>`
+        : ''
+
+      return `
+        <article class="timeline-entry timeline-entry-${encodeAttribute(item.kind)}">
+          <span class="timeline-kind">${encodeText(kindLabel)}</span>
+          <div class="timeline-entry-main">
+            <p>${encodeText(item.text)}</p>
+            <time datetime="${encodeAttribute(item.createdAt)}">${encodeText(formatDateTime(item.createdAt))}</time>
+          </div>
+          ${deleteButton}
+        </article>
+      `
+    }).join(''))
+  }
+
+  async function loadTimeline(taskId) {
+    if (!taskId) {
+      renderTimeline([])
+      setCommentControlsEnabled(false)
+      return
+    }
+
+    const items = await sendBridgeMessage('task.timeline.get', {
+      taskId
+    })
+    renderTimeline(items)
+    setCommentControlsEnabled(true)
+  }
+
+  async function addComment() {
+    if (!currentTask || !currentTask.id) {
+      return
+    }
+
+    const commentText = $('#comment-text').val().toString().trim()
+    if (!commentText) {
+      $('#comment-text').addClass('is-invalid').trigger('focus')
+      setStatus('Comment is required', 'error')
+      return
+    }
+
+    $('#comment-text').removeClass('is-invalid')
+    $('#comment-add-button').prop('disabled', true).text('Adding')
+    const wasDirty = isDirty
+
+    try {
+      const items = await sendBridgeMessage('task.comment.create', {
+        taskId: currentTask.id,
+        commentText
+      })
+      $('#comment-text').val('')
+      renderTimeline(items)
+      await loadTasks({ keepSelection: true })
+      setStatus(wasDirty ? 'Unsaved changes' : 'Comment added', wasDirty ? 'dirty' : 'saved')
+    } finally {
+      $('#comment-add-button').prop('disabled', false).text('Add')
+    }
+  }
+
+  async function deleteComment(commentId) {
+    if (!currentTask || !currentTask.id || !commentId) {
+      return
+    }
+
+    const wasDirty = isDirty
+    const items = await sendBridgeMessage('task.comment.delete', {
+      taskId: currentTask.id,
+      commentId
+    })
+    renderTimeline(items)
+    await loadTasks({ keepSelection: true })
+    setStatus(wasDirty ? 'Unsaved changes' : 'Comment deleted', wasDirty ? 'dirty' : 'saved')
+  }
+
   function restoreCurrentLookupFieldValues() {
     if (!currentTask) {
       return
@@ -1773,6 +1893,7 @@
       renderTaskHeaderAndActions(task)
 
       await initializeEditorForTask(task)
+      await loadTimeline(task.id)
       isDirty = false
       setCleanTaskSnapshot()
       window.Editor.markClean()
@@ -1946,6 +2067,7 @@
       const savedTask = await sendBridgeMessage(currentTask.id ? 'task.update' : 'task.create', payload)
       if (currentTask.id) {
         refreshCurrentTaskWithoutEditor(savedTask)
+        await loadTimeline(savedTask.id)
       } else {
         await renderTaskEditor(savedTask)
       }
@@ -1977,6 +2099,7 @@
       id: currentTask.id
     })
     refreshCurrentTaskWithoutEditor(task)
+    await loadTimeline(task.id)
     selectViewForTask(task)
     await loadTasks({ keepSelection: true })
     setStatus('Updated', 'saved')
@@ -2275,6 +2398,27 @@
 
     $('#task-search').on('input', renderTaskList)
     $('#task-form').on('input change', '#task-title, #task-type, #task-priority, #task-deadline, #task-source, #task-source-reference, #task-source-url, #waiting-text', markDirty)
+    $('#comment-add-button').on('click', function () {
+      addComment().catch(function (error) {
+        setStatus(getErrorMessage(error, 'Could not add comment'), 'error')
+      })
+    })
+    $('#comment-text').on('input', function () {
+      $(this).removeClass('is-invalid')
+    })
+    $('#comment-text').on('keydown', function (event) {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault()
+        addComment().catch(function (error) {
+          setStatus(getErrorMessage(error, 'Could not add comment'), 'error')
+        })
+      }
+    })
+    $('#timeline-list').on('click', '.timeline-delete-comment-button', function () {
+      deleteComment(Number($(this).attr('data-comment-id'))).catch(function (error) {
+        setStatus(getErrorMessage(error, 'Could not delete comment'), 'error')
+      })
+    })
     $('#editor-mode').on('change', function () {
       switchEditorMode().catch(function (error) {
         setStatus(getErrorMessage(error, 'Could not switch editor'), 'error')

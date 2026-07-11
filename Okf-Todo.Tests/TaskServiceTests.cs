@@ -118,6 +118,37 @@ public sealed class TaskServiceTests
     }
 
     [Fact]
+    public async Task Timeline_AddsCommentsBesideAutomaticLogsAndDeletesOnlyComments()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var created = await database.Tasks.CreateAsync(CreateRequest("Task with comments"), CancellationToken.None);
+
+        var initialTimeline = await database.Tasks.GetTimelineAsync(
+            new TaskTimelineRequest(created.Id),
+            CancellationToken.None);
+        Assert.Contains(initialTimeline, item =>
+            item.Kind == "log" && item.LogTypeCode == TaskLogTypeCodes.TaskCreated && !item.CanDelete);
+
+        var timelineWithComment = await database.Tasks.AddCommentAsync(new TaskCommentCreateRequest(
+            created.Id,
+            "  Checked logs and found the failing deployment step.  "), CancellationToken.None);
+
+        var comment = Assert.Single(timelineWithComment, item => item.Kind == "comment");
+        Assert.Equal("Checked logs and found the failing deployment step.", comment.Text);
+        Assert.True(comment.CanDelete);
+        Assert.Contains(timelineWithComment, item =>
+            item.Kind == "log" && item.LogTypeCode == TaskLogTypeCodes.CommentAdded && item.Text == "Comment added");
+
+        var timelineAfterDelete = await database.Tasks.DeleteCommentAsync(new TaskCommentDeleteRequest(
+            created.Id,
+            comment.Id), CancellationToken.None);
+
+        Assert.DoesNotContain(timelineAfterDelete, item => item.Kind == "comment");
+        Assert.Contains(timelineAfterDelete, item =>
+            item.Kind == "log" && item.LogTypeCode == TaskLogTypeCodes.CommentAdded);
+    }
+
+    [Fact]
     public async Task LookupSettings_UpdateEditableFieldsAndSelectedDefaults()
     {
         await using var database = await TestDatabase.CreateAsync();

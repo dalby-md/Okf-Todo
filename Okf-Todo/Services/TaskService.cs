@@ -341,6 +341,74 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
         return await GetAsync(id, cancellationToken);
     }
 
+    public async Task<IReadOnlyCollection<TaskTimelineItemDto>> GetTimelineAsync(
+        TaskTimelineRequest request,
+        CancellationToken cancellationToken)
+    {
+        await EnsureTaskExistsAsync(request.TaskId, cancellationToken);
+        return await LoadTimelineAsync(request.TaskId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<TaskTimelineItemDto>> AddCommentAsync(
+        TaskCommentCreateRequest request,
+        CancellationToken cancellationToken)
+    {
+        var commentText = NormalizeOptional(request.CommentText);
+        if (commentText is null)
+        {
+            throw new ValidationException("Comment is required.", "commentText");
+        }
+
+        var task = await dbContext.TaskItems
+            .SingleOrDefaultAsync(item => item.Id == request.TaskId, cancellationToken)
+            ?? throw new ValidationException("Task was not found.", "taskId");
+
+        var now = DateTime.UtcNow;
+        dbContext.TaskComments.Add(new TaskComment
+        {
+            TaskId = task.Id,
+            CommentText = commentText,
+            CreatedAt = now
+        });
+
+        var commentLogType = await dbContext.TaskLogTypes
+            .SingleOrDefaultAsync(logType => logType.Code == TaskLogTypeCodes.CommentAdded, cancellationToken);
+        if (commentLogType is not null)
+        {
+            dbContext.TaskLogEntries.Add(new TaskLogEntry
+            {
+                TaskId = task.Id,
+                TaskLogTypeId = commentLogType.Id,
+                Message = "Comment added",
+                CreatedAt = now
+            });
+        }
+
+        task.UpdatedAt = now;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return await LoadTimelineAsync(task.Id, cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<TaskTimelineItemDto>> DeleteCommentAsync(
+        TaskCommentDeleteRequest request,
+        CancellationToken cancellationToken)
+    {
+        var comment = await dbContext.TaskComments
+            .SingleOrDefaultAsync(item => item.Id == request.CommentId && item.TaskId == request.TaskId, cancellationToken)
+            ?? throw new ValidationException("Comment was not found.", "commentId");
+
+        var task = await dbContext.TaskItems
+            .SingleOrDefaultAsync(item => item.Id == request.TaskId, cancellationToken)
+            ?? throw new ValidationException("Task was not found.", "taskId");
+
+        task.UpdatedAt = DateTime.UtcNow;
+        dbContext.TaskComments.Remove(comment);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return await LoadTimelineAsync(request.TaskId, cancellationToken);
+    }
+
     private static async Task<IReadOnlyCollection<LookupItemDto>> GetLookupItemsAsync<TLookup>(
         DbSet<TLookup> dbSet,
         CancellationToken cancellationToken)
@@ -658,6 +726,51 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
+
+    private async Task EnsureTaskExistsAsync(int taskId, CancellationToken cancellationToken)
+    {
+        if (!await dbContext.TaskItems.AnyAsync(task => task.Id == taskId, cancellationToken))
+        {
+            throw new ValidationException("Task was not found.", "taskId");
+        }
+    }
+
+    private async Task<IReadOnlyCollection<TaskTimelineItemDto>> LoadTimelineAsync(
+        int taskId,
+        CancellationToken cancellationToken)
+    {
+        var comments = await dbContext.TaskComments
+            .AsNoTracking()
+            .Where(comment => comment.TaskId == taskId)
+            .Select(comment => new TaskTimelineItemDto(
+                "comment",
+                comment.Id,
+                comment.CommentText,
+                null,
+                comment.CreatedAt,
+                true))
+            .ToListAsync(cancellationToken);
+
+        var logs = await dbContext.TaskLogEntries
+            .AsNoTracking()
+            .Include(log => log.TaskLogType)
+            .Where(log => log.TaskId == taskId)
+            .Select(log => new TaskTimelineItemDto(
+                "log",
+                log.Id,
+                log.Message,
+                log.TaskLogType == null ? null : log.TaskLogType.Code,
+                log.CreatedAt,
+                false))
+            .ToListAsync(cancellationToken);
+
+        return comments
+            .Concat(logs)
+            .OrderByDescending(item => item.CreatedAt)
+            .ThenBy(item => item.Kind)
+            .ThenByDescending(item => item.Id)
+            .ToList();
+    }
 }
 
 public sealed record TaskLookupsDto(
@@ -729,6 +842,16 @@ public sealed record TaskIdRequest(int Id);
 public sealed record TaskWaitingForSaveRequest(
     int TaskId,
     string? Label);
+
+public sealed record TaskTimelineRequest(int TaskId);
+
+public sealed record TaskCommentCreateRequest(
+    int TaskId,
+    string CommentText);
+
+public sealed record TaskCommentDeleteRequest(
+    int TaskId,
+    int CommentId);
 
 public sealed record TaskSaveRequest(
     int? Id,
@@ -820,3 +943,11 @@ public sealed record TaskWaitingForDto(
             waitingFor.WaitingSince);
     }
 }
+
+public sealed record TaskTimelineItemDto(
+    string Kind,
+    int Id,
+    string Text,
+    string? LogTypeCode,
+    DateTime CreatedAt,
+    bool CanDelete);

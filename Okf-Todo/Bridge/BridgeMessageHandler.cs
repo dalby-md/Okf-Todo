@@ -104,6 +104,12 @@ public sealed class BridgeMessageHandler(IServiceProvider services, ILogger<Brid
                 .AddWaitingForAsync(GetPayload<TaskWaitingForSaveRequest>(request), cancellationToken),
             "task.waiting.clear" => await scopedServices.GetRequiredService<TaskService>()
                 .ClearWaitingForAsync(GetPayload<TaskIdRequest>(request).Id, cancellationToken),
+            "task.timeline.get" => await scopedServices.GetRequiredService<TaskService>()
+                .GetTimelineAsync(GetPayload<TaskTimelineRequest>(request), cancellationToken),
+            "task.comment.create" => await scopedServices.GetRequiredService<TaskService>()
+                .AddCommentAsync(GetPayload<TaskCommentCreateRequest>(request), cancellationToken),
+            "task.comment.delete" => await scopedServices.GetRequiredService<TaskService>()
+                .DeleteCommentAsync(GetPayload<TaskCommentDeleteRequest>(request), cancellationToken),
             _ => throw new BridgeException("InvalidMessage", $"Unsupported bridge message type '{request.Type}'.")
         };
     }
