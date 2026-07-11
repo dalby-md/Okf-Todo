@@ -1066,6 +1066,9 @@
 
   function saveMarkdownEditTypePreference(markdownEditType) {
     const nextMarkdownEditType = getSupportedMarkdownEditType(markdownEditType)
+    if (nextMarkdownEditType === preferredMarkdownEditType) {
+      return Promise.resolve()
+    }
 
     preferredMarkdownEditType = nextMarkdownEditType
 
