@@ -51,6 +51,7 @@
   let layoutPreferenceSaveTimer = null
   let unsavedChangesDialogResolve = null
   let completeWaitDialogResolve = null
+  let confirmationDialogResolve = null
   let dirtyTrackingSuppressions = 0
   let markdownEditTypeSwitchCleanUntil = 0
   let markdownEditTypeSwitchWasClean = false
@@ -680,6 +681,19 @@
               </label>
             </div>
 
+            <section class="checklist-section" aria-labelledby="checklist-title">
+              <div class="checklist-header">
+                <h3 id="checklist-title">Checklist</h3>
+                <span id="checklist-progress"></span>
+              </div>
+              <div id="checklist-list" class="checklist-list"><span class="empty-checklist">No checklist items.</span></div>
+              <div class="checklist-add-form">
+                <label class="sr-only" for="checklist-new-text">New checklist item</label>
+                <input id="checklist-new-text" type="text" placeholder="Add checklist item" autocomplete="off" disabled>
+                <button id="checklist-add-button" class="secondary-button" type="button" disabled>Add</button>
+              </div>
+            </section>
+
             <section class="attachments-section" aria-labelledby="attachments-title">
               <div class="attachments-header">
                 <h3 id="attachments-title">Attachments</h3>
@@ -862,6 +876,19 @@
             </div>
           </section>
         </div>
+
+        <div id="confirmation-overlay" class="modal-overlay" hidden>
+          <section class="settings-dialog confirmation-dialog" role="dialog" aria-modal="true" aria-labelledby="confirmation-title" aria-describedby="confirmation-message">
+            <header class="settings-header">
+              <h2 id="confirmation-title">Confirm deletion</h2>
+            </header>
+            <p id="confirmation-message" class="settings-help"></p>
+            <div class="modal-actions">
+              <button id="confirmation-cancel-button" class="secondary-button" type="button">Cancel</button>
+              <button id="confirmation-confirm-button" class="danger-button" type="button">Delete</button>
+            </div>
+          </section>
+        </div>
       </main>
     `)
   }
@@ -886,6 +913,127 @@
     renderLookupOptions('#task-source', lookups.taskSources, true)
     renderLookupOptions('#editor-mode', lookups.bodyFormats, false)
     renderTagOptions(lookups.tags || [])
+  }
+
+  function resolveConfirmationDialog(isConfirmed) {
+    if (!confirmationDialogResolve) return
+    const resolve = confirmationDialogResolve
+    confirmationDialogResolve = null
+    $('#confirmation-overlay').prop('hidden', true)
+    resolve(isConfirmed)
+  }
+
+  function showConfirmationDialog(title, message, confirmText) {
+    $('#confirmation-title').text(title)
+    $('#confirmation-message').text(message)
+    $('#confirmation-confirm-button').text(confirmText || 'Delete')
+    $('#confirmation-overlay').prop('hidden', false)
+    window.setTimeout(function () { $('#confirmation-cancel-button').trigger('focus') }, 0)
+    return new Promise(function (resolve) {
+      confirmationDialogResolve = resolve
+    })
+  }
+
+  function renderChecklist(items) {
+    const checklistItems = Array.isArray(items) ? items : []
+    const completedCount = checklistItems.filter(function (item) { return item.isCompleted }).length
+    $('#checklist-progress').text(checklistItems.length ? `${completedCount}/${checklistItems.length}` : '')
+
+    if (checklistItems.length === 0) {
+      $('#checklist-list').html('<span class="empty-checklist">No checklist items.</span>')
+      return
+    }
+
+    $('#checklist-list').html(checklistItems.map(function (item, index) {
+      return `
+        <div class="checklist-row${item.isCompleted ? ' is-completed' : ''}" data-checklist-item-id="${item.id}">
+          <input class="checklist-completed" type="checkbox" aria-label="Complete ${encodeAttribute(item.text)}"${item.isCompleted ? ' checked' : ''}>
+          <input class="checklist-text" type="text" value="${encodeAttribute(item.text)}" aria-label="Checklist item text">
+          <button class="checklist-move-up" type="button" title="Move up" aria-label="Move ${encodeAttribute(item.text)} up"${index === 0 ? ' disabled' : ''}>&uarr;</button>
+          <button class="checklist-move-down" type="button" title="Move down" aria-label="Move ${encodeAttribute(item.text)} down"${index === checklistItems.length - 1 ? ' disabled' : ''}>&darr;</button>
+          <button class="checklist-delete secondary-button danger-button" type="button" aria-label="Delete ${encodeAttribute(item.text)}">Delete</button>
+        </div>
+      `
+    }).join(''))
+  }
+
+  async function loadChecklist(taskId) {
+    if (!taskId) {
+      renderChecklist([])
+      $('#checklist-new-text, #checklist-add-button').prop('disabled', true)
+      return
+    }
+
+    renderChecklist(await sendBridgeMessage('task.checklist.list', { taskId }))
+    $('#checklist-new-text, #checklist-add-button').prop('disabled', false)
+  }
+
+  async function refreshAfterChecklistChange(items, statusText, reloadTimeline) {
+    const wasDirty = isDirty
+    renderChecklist(items)
+    await loadTasks({ keepSelection: true })
+    if (reloadTimeline) await loadTimeline(currentTask.id)
+    setStatus(wasDirty ? 'Unsaved changes' : statusText, wasDirty ? 'dirty' : 'saved')
+  }
+
+  async function addChecklistItem() {
+    if (!currentTask || !currentTask.id) return
+    const text = $('#checklist-new-text').val().toString().trim()
+    if (!text) {
+      $('#checklist-new-text').trigger('focus')
+      return
+    }
+
+    const items = await sendBridgeMessage('task.checklist.create', { taskId: currentTask.id, text })
+    $('#checklist-new-text').val('')
+    await refreshAfterChecklistChange(items, 'Checklist item added', true)
+  }
+
+  async function updateChecklistItem(checklistItemId, text) {
+    const normalizedText = text.trim()
+    if (!normalizedText) {
+      await loadChecklist(currentTask.id)
+      return
+    }
+    const items = await sendBridgeMessage('task.checklist.update', {
+      taskId: currentTask.id,
+      checklistItemId,
+      text: normalizedText
+    })
+    await refreshAfterChecklistChange(items, 'Checklist item updated', false)
+  }
+
+  async function setChecklistItemCompleted(checklistItemId, isCompleted) {
+    const items = await sendBridgeMessage('task.checklist.complete', {
+      taskId: currentTask.id,
+      checklistItemId,
+      isCompleted
+    })
+    await refreshAfterChecklistChange(items, isCompleted ? 'Checklist item completed' : 'Checklist item reopened', true)
+  }
+
+  async function moveChecklistItem(checklistItemId, offset) {
+    const ids = $('#checklist-list .checklist-row').map(function () {
+      return Number($(this).attr('data-checklist-item-id'))
+    }).get()
+    const index = ids.indexOf(checklistItemId)
+    const targetIndex = index + offset
+    if (index < 0 || targetIndex < 0 || targetIndex >= ids.length) return
+    ;[ids[index], ids[targetIndex]] = [ids[targetIndex], ids[index]]
+
+    const items = await sendBridgeMessage('task.checklist.reorder', {
+      taskId: currentTask.id,
+      orderedChecklistItemIds: ids
+    })
+    await refreshAfterChecklistChange(items, 'Checklist reordered', false)
+  }
+
+  async function deleteChecklistItem(checklistItemId) {
+    const items = await sendBridgeMessage('task.checklist.delete', {
+      taskId: currentTask.id,
+      checklistItemId
+    })
+    await refreshAfterChecklistChange(items, 'Checklist item deleted', false)
   }
 
   function formatFileSize(size) {
@@ -1310,6 +1458,7 @@
     $('#editor-host').html('<div class="empty-editor">Select a task to edit the body.</div>')
     $('#comment-text').val('').removeClass('is-invalid')
     setCommentControlsEnabled(false)
+    renderChecklist([])
     renderAttachments([])
     renderTimeline([])
     setStatus('Ready', 'ready')
@@ -1568,6 +1717,9 @@
       const waiting = task.activeWaitingForLabel
         ? `<span class="task-badge task-badge-waiting">Waiting: ${encodeText(task.activeWaitingForLabel)}</span>`
         : ''
+      const checklistProgress = task.checklistCount > 0
+        ? `<span class="task-badge">${task.completedChecklistCount}/${task.checklistCount}</span>`
+        : ''
 
       return `
         <button class="task-row${selectedClass}${waitingClass}" type="button" data-task-id="${task.id}">
@@ -1578,6 +1730,7 @@
             ${priority}
             ${deadline}
             ${waiting}
+            ${checklistProgress}
           </span>
         </button>
       `
@@ -1978,6 +2131,13 @@
       return
     }
 
+    if (!await showConfirmationDialog(
+      'Delete lookup value?',
+      `Delete “${item.name}”? This cannot be undone.`,
+      'Delete lookup')) {
+      return
+    }
+
     $('#lookup-edit-delete-button, #lookup-edit-save-button, #lookup-edit-cancel-button').prop('disabled', true)
 
     try {
@@ -2060,6 +2220,7 @@
       renderTaskHeaderAndActions(task)
 
       await initializeEditorForTask(task)
+      await loadChecklist(task.id)
       await loadAttachments(task.id)
       await loadTimeline(task.id)
       isDirty = false
@@ -2464,6 +2625,11 @@
         resolveCompleteWaitDialog('cancel')
       }
     })
+    $('#confirmation-cancel-button').on('click', function () { resolveConfirmationDialog(false) })
+    $('#confirmation-confirm-button').on('click', function () { resolveConfirmationDialog(true) })
+    $('#confirmation-overlay').on('click', function (event) {
+      if (event.target === this) resolveConfirmationDialog(false)
+    })
     $('#new-task-cancel-button').on('click', closeNewTaskDialog)
     $('#new-task-save-button').on('click', function () {
       createTaskFromDialog().catch(function (error) {
@@ -2483,6 +2649,10 @@
       }
     })
     $(document).on('keydown', function (event) {
+      if (event.key === 'Escape' && !$('#confirmation-overlay').prop('hidden')) {
+        resolveConfirmationDialog(false)
+        return
+      }
       if (event.key === 'Escape' && !$('#lookup-edit-overlay').prop('hidden')) {
         closeLookupEdit()
         return
@@ -2562,6 +2732,37 @@
     })
 
     $('#task-search').on('input', renderTaskList)
+    $('#checklist-add-button').on('click', function () {
+      addChecklistItem().catch(function (error) { setStatus(getErrorMessage(error, 'Could not add checklist item'), 'error') })
+    })
+    $('#checklist-new-text').on('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        addChecklistItem().catch(function (error) { setStatus(getErrorMessage(error, 'Could not add checklist item'), 'error') })
+      }
+    })
+    $('#checklist-list').on('change', '.checklist-completed', function () {
+      const row = $(this).closest('.checklist-row')
+      setChecklistItemCompleted(Number(row.attr('data-checklist-item-id')), $(this).prop('checked'))
+        .catch(function (error) { setStatus(getErrorMessage(error, 'Could not update checklist item'), 'error') })
+    })
+    $('#checklist-list').on('change', '.checklist-text', function () {
+      const row = $(this).closest('.checklist-row')
+      updateChecklistItem(Number(row.attr('data-checklist-item-id')), $(this).val().toString())
+        .catch(function (error) { setStatus(getErrorMessage(error, 'Could not update checklist item'), 'error') })
+    })
+    $('#checklist-list').on('click', '.checklist-move-up, .checklist-move-down', function () {
+      const row = $(this).closest('.checklist-row')
+      moveChecklistItem(Number(row.attr('data-checklist-item-id')), $(this).hasClass('checklist-move-up') ? -1 : 1)
+        .catch(function (error) { setStatus(getErrorMessage(error, 'Could not reorder checklist'), 'error') })
+    })
+    $('#checklist-list').on('click', '.checklist-delete', async function () {
+      const row = $(this).closest('.checklist-row')
+      const text = row.find('.checklist-text').val().toString()
+      if (!await showConfirmationDialog('Delete checklist item?', `Delete “${text}”? This cannot be undone.`, 'Delete item')) return
+      deleteChecklistItem(Number(row.attr('data-checklist-item-id')))
+        .catch(function (error) { setStatus(getErrorMessage(error, 'Could not delete checklist item'), 'error') })
+    })
     $('#attachment-add-button').on('click', function () { $('#attachment-file').trigger('click') })
     $('#attachment-file').on('change', function () {
       addAttachment().catch(function (error) { setStatus(getErrorMessage(error, 'Could not add attachment'), 'error') })
@@ -2569,7 +2770,9 @@
     $('#attachment-list').on('click', '.attachment-download-button', function () {
       downloadAttachment(Number($(this).attr('data-attachment-id'))).catch(function (error) { setStatus(getErrorMessage(error, 'Could not download attachment'), 'error') })
     })
-    $('#attachment-list').on('click', '.attachment-delete-button', function () {
+    $('#attachment-list').on('click', '.attachment-delete-button', async function () {
+      const fileName = $(this).closest('.attachment-row').find('.attachment-name').text()
+      if (!await showConfirmationDialog('Remove attachment?', `Remove “${fileName}”? This cannot be undone.`, 'Remove file')) return
       deleteAttachment(Number($(this).attr('data-attachment-id'))).catch(function (error) { setStatus(getErrorMessage(error, 'Could not remove attachment'), 'error') })
     })
     $('#task-form').on('input change', '#task-title, #task-type, #task-priority, #task-deadline, #task-tags, #task-source, #task-source-reference, #task-source-url, #waiting-text', markDirty)
@@ -2589,7 +2792,8 @@
         })
       }
     })
-    $('#timeline-list').on('click', '.timeline-delete-comment-button', function () {
+    $('#timeline-list').on('click', '.timeline-delete-comment-button', async function () {
+      if (!await showConfirmationDialog('Delete comment?', 'Delete this comment? This cannot be undone.', 'Delete comment')) return
       deleteComment(Number($(this).attr('data-comment-id'))).catch(function (error) {
         setStatus(getErrorMessage(error, 'Could not delete comment'), 'error')
       })

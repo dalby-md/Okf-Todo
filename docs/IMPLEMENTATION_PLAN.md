@@ -266,6 +266,8 @@ Requirements:
 
 ## Milestone 8 — Checklist items
 
+Status: implemented.
+
 Scope:
 
 - Add checklist item CRUD.

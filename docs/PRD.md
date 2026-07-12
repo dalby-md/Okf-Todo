@@ -23,6 +23,7 @@ The app already has a Photino prototype demonstrating usage of an HTML/Markdown 
 - Store attachments in SQLite as BLOBs.
 - Keep integrations out of the first version unless explicitly requested later.
 - The task editor decides whether the body is Markdown or HTML; the user should not have to care. User preference should be persisted
+- Permanent delete actions require confirmation in an application HTML dialog; do not use the browser-native confirmation dialog.
 
 ## Target platform
 
@@ -285,11 +286,13 @@ Checklist:
 [ ] Update deployment note
 ```
 
-The task list may show progress:
+The task list shows progress when a task has checklist items:
 
 ```text
 Fix failed deployment    3/5 done
 ```
+
+The task editor supports adding, editing, deleting, reordering, completing, and reopening checklist items. Added, completed, and reopened items create automatic timeline logs. The checklist appears above attachments and the timeline.
 
 ## Attachments
 

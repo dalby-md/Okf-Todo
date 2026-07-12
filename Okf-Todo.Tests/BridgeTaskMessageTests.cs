@@ -127,6 +127,53 @@ public sealed class BridgeTaskMessageTests
         attachments = await fixture.SendAsync("task.attachment.delete", new { taskId, attachmentId });
         Assert.Empty(attachments.EnumerateArray());
 
+        var checklist = await fixture.SendAsync("task.checklist.create", new { taskId, text = "Check logs" });
+        var firstChecklistId = Assert.Single(checklist.EnumerateArray()).GetProperty("id").GetInt32();
+        checklist = await fixture.SendAsync("task.checklist.create", new { taskId, text = "Verify deployment" });
+        var checklistItems = checklist.EnumerateArray().ToList();
+        var secondChecklistId = checklistItems.Single(item => item.GetProperty("text").GetString() == "Verify deployment").GetProperty("id").GetInt32();
+
+        checklist = await fixture.SendAsync("task.checklist.complete", new
+        {
+            taskId,
+            checklistItemId = firstChecklistId,
+            isCompleted = true
+        });
+        var completedChecklistItem = checklist.EnumerateArray().Single(item => item.GetProperty("id").GetInt32() == firstChecklistId);
+        Assert.True(completedChecklistItem.GetProperty("isCompleted").GetBoolean());
+        Assert.NotEqual(JsonValueKind.Null, completedChecklistItem.GetProperty("completedAt").ValueKind);
+
+        checklist = await fixture.SendAsync("task.checklist.reorder", new
+        {
+            taskId,
+            orderedChecklistItemIds = new[] { secondChecklistId, firstChecklistId }
+        });
+        Assert.Equal(secondChecklistId, checklist.EnumerateArray().First().GetProperty("id").GetInt32());
+
+        checklist = await fixture.SendAsync("task.checklist.update", new
+        {
+            taskId,
+            checklistItemId = secondChecklistId,
+            text = "Verify production deployment"
+        });
+        Assert.Contains(checklist.EnumerateArray(), item => item.GetProperty("text").GetString() == "Verify production deployment");
+
+        activeList = await fixture.SendAsync("task.list", new { view = "active" });
+        var checklistTask = Assert.Single(activeList.EnumerateArray(), task => task.GetProperty("id").GetInt32() == taskId);
+        Assert.Equal(1, checklistTask.GetProperty("completedChecklistCount").GetInt32());
+        Assert.Equal(2, checklistTask.GetProperty("checklistCount").GetInt32());
+
+        checklist = await fixture.SendAsync("task.checklist.complete", new
+        {
+            taskId,
+            checklistItemId = firstChecklistId,
+            isCompleted = false
+        });
+        Assert.False(checklist.EnumerateArray().Single(item => item.GetProperty("id").GetInt32() == firstChecklistId).GetProperty("isCompleted").GetBoolean());
+
+        checklist = await fixture.SendAsync("task.checklist.delete", new { taskId, checklistItemId = secondChecklistId });
+        Assert.Single(checklist.EnumerateArray());
+
         var initialTimeline = await fixture.SendAsync("task.timeline.get", new { taskId });
         Assert.Contains(
             initialTimeline.EnumerateArray(),
@@ -134,6 +181,9 @@ public sealed class BridgeTaskMessageTests
                 && item.GetProperty("logTypeCode").GetString() == TaskLogTypeCodes.TaskCreated);
         Assert.Contains(initialTimeline.EnumerateArray(), item => item.GetProperty("logTypeCode").GetString() == "ATTACHMENT_ADDED");
         Assert.Contains(initialTimeline.EnumerateArray(), item => item.GetProperty("logTypeCode").GetString() == "ATTACHMENT_REMOVED");
+        Assert.Contains(initialTimeline.EnumerateArray(), item => item.GetProperty("logTypeCode").GetString() == "CHECKLIST_ITEM_ADDED");
+        Assert.Contains(initialTimeline.EnumerateArray(), item => item.GetProperty("logTypeCode").GetString() == "CHECKLIST_ITEM_COMPLETED");
+        Assert.Contains(initialTimeline.EnumerateArray(), item => item.GetProperty("logTypeCode").GetString() == "CHECKLIST_ITEM_REOPENED");
 
         var timelineWithComment = await fixture.SendAsync("task.comment.create", new
         {
@@ -524,6 +574,7 @@ public sealed class BridgeTaskMessageTests
             serviceCollection.AddScoped<TaskLifecycleService>();
             serviceCollection.AddScoped<TaskService>();
             serviceCollection.AddScoped<TaskAttachmentService>();
+            serviceCollection.AddScoped<TaskChecklistService>();
             serviceCollection.AddScoped<AppPreferenceService>();
             serviceCollection.AddScoped<ImageService>();
 

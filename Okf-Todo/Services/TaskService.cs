@@ -201,6 +201,8 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
                     .Where(waitingFor => waitingFor.ResolvedAt == null)
                     .Select(waitingFor => waitingFor.Label)
                     .SingleOrDefault(),
+                task.ChecklistItems.Count(item => item.IsCompleted),
+                task.ChecklistItems.Count,
                 task.UpdatedAt))
             .ToListAsync(cancellationToken);
     }
@@ -1067,6 +1069,8 @@ public sealed record TaskListItemDto(
     string? TaskPriorityForegroundColor,
     DateTime? Deadline,
     string? ActiveWaitingForLabel,
+    int CompletedChecklistCount,
+    int ChecklistCount,
     DateTime UpdatedAt);
 
 public sealed record TaskDetailDto(

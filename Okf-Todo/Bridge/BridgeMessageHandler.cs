@@ -110,6 +110,18 @@ public sealed class BridgeMessageHandler(IServiceProvider services, ILogger<Brid
                 .AddCommentAsync(GetPayload<TaskCommentCreateRequest>(request), cancellationToken),
             "task.comment.delete" => await scopedServices.GetRequiredService<TaskService>()
                 .DeleteCommentAsync(GetPayload<TaskCommentDeleteRequest>(request), cancellationToken),
+            "task.checklist.list" => await scopedServices.GetRequiredService<TaskChecklistService>()
+                .ListAsync(GetPayload<TaskChecklistListRequest>(request).TaskId, cancellationToken),
+            "task.checklist.create" => await scopedServices.GetRequiredService<TaskChecklistService>()
+                .CreateAsync(GetPayload<TaskChecklistCreateRequest>(request), cancellationToken),
+            "task.checklist.update" => await scopedServices.GetRequiredService<TaskChecklistService>()
+                .UpdateAsync(GetPayload<TaskChecklistUpdateRequest>(request), cancellationToken),
+            "task.checklist.complete" => await scopedServices.GetRequiredService<TaskChecklistService>()
+                .SetCompletedAsync(GetPayload<TaskChecklistCompleteRequest>(request), cancellationToken),
+            "task.checklist.reorder" => await scopedServices.GetRequiredService<TaskChecklistService>()
+                .ReorderAsync(GetPayload<TaskChecklistReorderRequest>(request), cancellationToken),
+            "task.checklist.delete" => await scopedServices.GetRequiredService<TaskChecklistService>()
+                .DeleteAsync(GetPayload<TaskChecklistDeleteRequest>(request), cancellationToken),
             "task.attachment.list" => await scopedServices.GetRequiredService<TaskAttachmentService>()
                 .ListAsync(GetPayload<TaskAttachmentListRequest>(request).TaskId, cancellationToken),
             "task.attachment.create" => await scopedServices.GetRequiredService<TaskAttachmentService>()

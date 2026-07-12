@@ -522,12 +522,79 @@ h2 {
   border-top: 1px solid #e0e5ea;
 }
 
+.checklist-section,
 .attachments-section {
   display: grid;
   gap: 6px;
   margin-top: 8px;
   padding-top: 10px;
   border-top: 1px solid #e0e5ea;
+}
+
+.checklist-header,
+.checklist-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.checklist-header {
+  justify-content: space-between;
+}
+
+.checklist-header h3 {
+  margin: 0;
+  color: #3f4852;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+#checklist-progress,
+.empty-checklist {
+  color: #5f6872;
+  font-size: 0.72rem;
+}
+
+.checklist-list {
+  display: grid;
+  gap: 3px;
+}
+
+.checklist-row {
+  min-height: 30px;
+}
+
+.checklist-completed {
+  width: 16px;
+  min-height: 16px;
+}
+
+.checklist-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.checklist-row.is-completed .checklist-text {
+  color: #6b7280;
+  text-decoration: line-through;
+}
+
+.checklist-move-up,
+.checklist-move-down {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+}
+
+.checklist-delete {
+  min-height: 28px;
+  padding: 0 6px;
+}
+
+.checklist-add-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
 }
 
 .attachments-header,
@@ -991,6 +1058,10 @@ h2 {
 
 .lookup-edit-dialog {
   width: min(620px, 100%);
+}
+
+.confirmation-dialog {
+  width: min(430px, 100%);
 }
 
 .lookup-edit-grid {
