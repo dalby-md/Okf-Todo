@@ -391,6 +391,8 @@ Add log entries for relation added/removed.
 
 ## Milestone 12 — Lookup management UI
 
+Status: implemented.
+
 Scope:
 
 - Add settings screens for lookup tables.

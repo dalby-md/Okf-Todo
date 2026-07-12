@@ -10,12 +10,20 @@
   const lookupSettingsGroups = {
     taskTypes: 'Task types',
     taskPriorities: 'Priorities',
-    taskStatuses: 'Statuses'
+    taskStatuses: 'Statuses',
+    taskSources: 'Sources',
+    taskRelationTypes: 'Relationship types',
+    bodyFormats: 'Body formats',
+    taskLogTypes: 'Log types'
   }
   const lookupSettingsGroupNouns = {
     taskTypes: 'task type',
     taskPriorities: 'priority',
-    taskStatuses: 'status'
+    taskStatuses: 'status',
+    taskSources: 'source',
+    taskRelationTypes: 'relationship type',
+    bodyFormats: 'body format',
+    taskLogTypes: 'log type'
   }
   const supportedEditorImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
   const maxEditorImageBytes = 5 * 1024 * 1024
@@ -804,6 +812,10 @@
                 <span>Description</span>
                 <input id="lookup-edit-description" type="text" autocomplete="off">
               </label>
+              <label id="lookup-edit-reverse-field" class="settings-field" for="lookup-edit-reverse-name" hidden>
+                <span>Reverse name</span>
+                <input id="lookup-edit-reverse-name" type="text" autocomplete="off">
+              </label>
               <label class="settings-field" for="lookup-edit-background-color">
                 <span>Background</span>
                 <input id="lookup-edit-background-color" type="color">
@@ -1242,7 +1254,8 @@
 
   function renderLookupList() {
     $('#lookup-list-title').text(lookupSettingsGroups[activeLookupSettingsGroup])
-    $('#lookup-list-new-button').text(`New ${lookupSettingsGroupNouns[activeLookupSettingsGroup]}`)
+    const isReadOnlyGroup = activeLookupSettingsGroup === 'bodyFormats' || activeLookupSettingsGroup === 'taskLogTypes'
+    $('#lookup-list-new-button').text(`New ${lookupSettingsGroupNouns[activeLookupSettingsGroup]}`).prop('hidden', isReadOnlyGroup)
 
     const items = getActiveLookupItems()
     if (items.length === 0) {
@@ -1256,6 +1269,7 @@
       const activeText = item.isActive ? 'Active' : 'Inactive'
       const selectedText = item.isSelected ? '<span class="lookup-state-pill">Default</span>' : ''
       const systemText = item.isSystem ? '<span class="lookup-state-pill">System</span>' : ''
+      const readOnlyText = item.isReadOnly ? '<span class="lookup-state-pill">Read only</span>' : ''
       const usedText = !item.canDelete && !item.isSystem ? '<span class="lookup-state-pill">Used</span>' : ''
       const encodedCode = encodeAttribute(item.code)
       const encodedName = encodeAttribute(item.name)
@@ -1271,12 +1285,13 @@
             <span>${activeText}</span>
             ${selectedText}
             ${systemText}
+            ${readOnlyText}
             ${usedText}
           </div>
-          <button class="lookup-list-edit-button secondary-button" type="button" data-code="${encodedCode}">Edit</button>
+          <button class="lookup-list-edit-button secondary-button" type="button" data-code="${encodedCode}">${item.isReadOnly ? 'View' : 'Edit'}</button>
           <div class="lookup-list-order" aria-label="Order ${encodedName}">
-            <button class="lookup-reorder-button" type="button" data-code="${encodedCode}" data-direction="up" title="Move up" aria-label="Move ${encodedName} up"${index === 0 ? ' disabled' : ''}>&uarr;</button>
-            <button class="lookup-reorder-button" type="button" data-code="${encodedCode}" data-direction="down" title="Move down" aria-label="Move ${encodedName} down"${index === items.length - 1 ? ' disabled' : ''}>&darr;</button>
+            <button class="lookup-reorder-button" type="button" data-code="${encodedCode}" data-direction="up" title="Move up" aria-label="Move ${encodedName} up"${item.isReadOnly || index === 0 ? ' disabled' : ''}>&uarr;</button>
+            <button class="lookup-reorder-button" type="button" data-code="${encodedCode}" data-direction="down" title="Move down" aria-label="Move ${encodedName} down"${item.isReadOnly || index === items.length - 1 ? ' disabled' : ''}>&darr;</button>
           </div>
         </article>
       `
@@ -1348,6 +1363,8 @@
   function openLookupEdit(code) {
     editingLookupCode = code || null
     const item = editingLookupCode ? findActiveLookupItem(editingLookupCode) : null
+    const isReadOnly = !!(item && item.isReadOnly)
+    const hasReverseName = activeLookupSettingsGroup === 'taskRelationTypes'
 
     $('#lookup-edit-title').text(editingLookupCode
       ? `Edit ${lookupSettingsGroupNouns[activeLookupSettingsGroup]}`
@@ -1356,19 +1373,22 @@
       .val(item ? item.code : '')
       .prop('disabled', !!item)
       .removeClass('is-invalid')
-    $('#lookup-edit-name').val(item ? item.name : '').removeClass('is-invalid')
-    $('#lookup-edit-description').val(item && item.description ? item.description : '')
+    $('#lookup-edit-name').val(item ? item.name : '').prop('disabled', isReadOnly).removeClass('is-invalid')
+    $('#lookup-edit-description').val(item && item.description ? item.description : '').prop('disabled', isReadOnly)
+    $('#lookup-edit-reverse-field').prop('hidden', !hasReverseName)
+    $('#lookup-edit-reverse-name').val(item && item.reverseName ? item.reverseName : '').prop('disabled', isReadOnly).removeClass('is-invalid')
     $('#lookup-edit-is-active')
       .prop('checked', item ? item.isActive : true)
-      .prop('disabled', !!(item && activeLookupSettingsGroup === 'taskStatuses' && item.isSystem))
-    $('#lookup-edit-is-selected').prop('checked', item ? item.isSelected : false)
-    $('#lookup-edit-background-color').val(getColorInputValue(item && item.backgroundColor, '#6b7280'))
-    $('#lookup-edit-foreground-color').val(getColorInputValue(item && item.foregroundColor, '#ffffff'))
+      .prop('disabled', isReadOnly || !!(item && activeLookupSettingsGroup === 'taskStatuses' && item.isSystem))
+    $('#lookup-edit-is-selected').prop('checked', item ? item.isSelected : false).prop('disabled', isReadOnly)
+    $('#lookup-edit-background-color').val(getColorInputValue(item && item.backgroundColor, '#6b7280')).prop('disabled', isReadOnly)
+    $('#lookup-edit-foreground-color').val(getColorInputValue(item && item.foregroundColor, '#ffffff')).prop('disabled', isReadOnly)
     $('#lookup-edit-error').prop('hidden', true).text('')
     $('#lookup-edit-delete-button')
       .prop('hidden', !(item && item.canDelete))
       .prop('disabled', false)
-    $('#lookup-edit-save-button, #lookup-edit-cancel-button').prop('disabled', false)
+    $('#lookup-edit-save-button').prop('hidden', isReadOnly).prop('disabled', false)
+    $('#lookup-edit-cancel-button').prop('disabled', false).text(isReadOnly ? 'Close' : 'Cancel')
     updateLookupEditPreview()
 
     $('#lookup-edit-overlay').prop('hidden', false)
@@ -2128,6 +2148,10 @@
 
     await loadTasks({ keepSelection: true })
 
+    if (currentTask && currentTask.id) {
+      await loadRelationships(currentTask.id)
+    }
+
     if (currentTask && currentTask.id && !hasUnsavedChanges()) {
       const task = await sendBridgeMessage('task.get', {
         id: currentTask.id
@@ -2157,6 +2181,13 @@
       return
     }
 
+    const reverseName = $('#lookup-edit-reverse-name').val().toString().trim()
+    if (activeLookupSettingsGroup === 'taskRelationTypes' && !reverseName) {
+      $('#lookup-edit-reverse-name').addClass('is-invalid').trigger('focus')
+      $('#lookup-edit-error').text('Reverse name is required.').prop('hidden', false)
+      return
+    }
+
     const $button = $('#lookup-edit-save-button')
     $button.prop('disabled', true).text('Saving')
     $('#lookup-edit-cancel-button').prop('disabled', true)
@@ -2170,7 +2201,8 @@
       isActive: $('#lookup-edit-is-active').prop('checked'),
       isSelected: $('#lookup-edit-is-selected').prop('checked'),
       backgroundColor: $('#lookup-edit-background-color').val().toString(),
-      foregroundColor: $('#lookup-edit-foreground-color').val().toString()
+      foregroundColor: $('#lookup-edit-foreground-color').val().toString(),
+      reverseName: reverseName || null
     }
 
     try {

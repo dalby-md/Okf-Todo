@@ -36,11 +36,23 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             .Distinct()
             .ToListAsync(cancellationToken))
             .ToHashSet();
+        var usedTaskSourceIds = (await dbContext.TaskItems.AsNoTracking().Where(task => task.TaskSourceId.HasValue)
+            .Select(task => task.TaskSourceId!.Value).Distinct().ToListAsync(cancellationToken)).ToHashSet();
+        var usedRelationTypeIds = (await dbContext.TaskRelations.AsNoTracking()
+            .Select(relation => relation.TaskRelationTypeId).Distinct().ToListAsync(cancellationToken)).ToHashSet();
+        var usedBodyFormatIds = (await dbContext.TaskItems.AsNoTracking().Where(task => task.BodyFormatId.HasValue)
+            .Select(task => task.BodyFormatId!.Value).Distinct().ToListAsync(cancellationToken)).ToHashSet();
+        var usedLogTypeIds = (await dbContext.TaskLogEntries.AsNoTracking()
+            .Select(log => log.TaskLogTypeId).Distinct().ToListAsync(cancellationToken)).ToHashSet();
 
         return new TaskLookupSettingsDto(
             await GetLookupSettingsItemsAsync(dbContext.TaskTypes, usedTaskTypeIds, cancellationToken),
             await GetLookupSettingsItemsAsync(dbContext.TaskPriorities, usedTaskPriorityIds, cancellationToken),
-            await GetLookupSettingsItemsAsync(dbContext.TaskStatuses, usedTaskStatusIds, cancellationToken));
+            await GetLookupSettingsItemsAsync(dbContext.TaskStatuses, usedTaskStatusIds, cancellationToken),
+            await GetLookupSettingsItemsAsync(dbContext.TaskSources, usedTaskSourceIds, cancellationToken),
+            await GetRelationTypeSettingsAsync(usedRelationTypeIds, cancellationToken),
+            await GetLookupSettingsItemsAsync(dbContext.BodyFormats, usedBodyFormatIds, cancellationToken, isReadOnly: true),
+            await GetLookupSettingsItemsAsync(dbContext.TaskLogTypes, usedLogTypeIds, cancellationToken, isReadOnly: true));
     }
 
     public async Task<TaskLookupSettingsDto> UpdateLookupAsync(
@@ -59,6 +71,12 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
                 break;
             case "taskStatuses":
                 await UpdateTaskStatusLookupAsync(request, cancellationToken);
+                break;
+            case "taskSources":
+                await UpdateLookupAsync(dbContext.TaskSources, request, cancellationToken);
+                break;
+            case "taskRelationTypes":
+                await UpdateRelationTypeAsync(request, cancellationToken);
                 break;
             default:
                 throw new ValidationException("Lookup group is not supported.", "group");
@@ -97,6 +115,14 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
                     (id, token) => dbContext.TaskItems.AnyAsync(task => task.TaskStatusId == id, token),
                     cancellationToken);
                 break;
+            case "taskSources":
+                await DeleteLookupAsync(dbContext.TaskSources, request.Code,
+                    (id, token) => dbContext.TaskItems.AnyAsync(task => task.TaskSourceId == id, token), cancellationToken);
+                break;
+            case "taskRelationTypes":
+                await DeleteLookupAsync(dbContext.TaskRelationTypes, request.Code,
+                    (id, token) => dbContext.TaskRelations.AnyAsync(relation => relation.TaskRelationTypeId == id, token), cancellationToken);
+                break;
             default:
                 throw new ValidationException("Lookup group is not supported.", "group");
         }
@@ -122,6 +148,12 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             case "taskStatuses":
                 await ReorderLookupAsync(dbContext.TaskStatuses, request, cancellationToken);
                 break;
+            case "taskSources":
+                await ReorderLookupAsync(dbContext.TaskSources, request, cancellationToken);
+                break;
+            case "taskRelationTypes":
+                await ReorderLookupAsync(dbContext.TaskRelationTypes, request, cancellationToken);
+                break;
             default:
                 throw new ValidationException("Lookup group is not supported.", "group");
         }
@@ -146,6 +178,12 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
                 break;
             case "taskStatuses":
                 await CreateLookupAsync(dbContext.TaskStatuses, request, cancellationToken);
+                break;
+            case "taskSources":
+                await CreateLookupAsync(dbContext.TaskSources, request, cancellationToken);
+                break;
+            case "taskRelationTypes":
+                await CreateRelationTypeAsync(request, cancellationToken);
                 break;
             default:
                 throw new ValidationException("Lookup group is not supported.", "group");
@@ -454,7 +492,8 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
     private static async Task<IReadOnlyCollection<LookupSettingsItemDto>> GetLookupSettingsItemsAsync<TLookup>(
         DbSet<TLookup> dbSet,
         IReadOnlySet<int> usedLookupIds,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool isReadOnly = false)
         where TLookup : LookupEntity
     {
         var rows = await dbSet
@@ -487,8 +526,41 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
                 lookup.IsSelected,
                 lookup.BackgroundColor,
                 lookup.ForegroundColor,
-                !lookup.IsSystem && !usedLookupIds.Contains(lookup.Id)))
+                !isReadOnly && !lookup.IsSystem && !usedLookupIds.Contains(lookup.Id),
+                null,
+                isReadOnly))
             .ToList();
+    }
+
+    private async Task<IReadOnlyCollection<LookupSettingsItemDto>> GetRelationTypeSettingsAsync(
+        IReadOnlySet<int> usedLookupIds, CancellationToken cancellationToken)
+    {
+        return await dbContext.TaskRelationTypes.AsNoTracking()
+            .OrderBy(item => item.SortOrder).ThenBy(item => item.Name)
+            .Select(item => new LookupSettingsItemDto(
+                item.Code, item.Name, item.Description, item.SortOrder, item.IsActive, item.IsSystem,
+                item.IsSelected, item.BackgroundColor, item.ForegroundColor,
+                !item.IsSystem && !usedLookupIds.Contains(item.Id), item.ReverseName, false))
+            .ToListAsync(cancellationToken);
+    }
+
+    private async Task UpdateRelationTypeAsync(LookupUpdateRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.ReverseName))
+            throw new ValidationException("Reverse name is required.", "reverseName");
+        await UpdateLookupAsync(dbContext.TaskRelationTypes, request, cancellationToken);
+        var item = await dbContext.TaskRelationTypes.SingleAsync(
+            relationType => relationType.Code == NormalizeLookupCode(request.Code), cancellationToken);
+        item.ReverseName = request.ReverseName.Trim();
+    }
+
+    private async Task CreateRelationTypeAsync(LookupCreateRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.ReverseName))
+            throw new ValidationException("Reverse name is required.", "reverseName");
+        await CreateLookupAsync(dbContext.TaskRelationTypes, request, cancellationToken);
+        var item = dbContext.ChangeTracker.Entries<TaskRelationType>().Last().Entity;
+        item.ReverseName = request.ReverseName.Trim();
     }
 
     private async Task UpdateTaskStatusLookupAsync(
@@ -976,7 +1048,11 @@ public sealed record LookupItemDto(
 public sealed record TaskLookupSettingsDto(
     IReadOnlyCollection<LookupSettingsItemDto> TaskTypes,
     IReadOnlyCollection<LookupSettingsItemDto> TaskPriorities,
-    IReadOnlyCollection<LookupSettingsItemDto> TaskStatuses);
+    IReadOnlyCollection<LookupSettingsItemDto> TaskStatuses,
+    IReadOnlyCollection<LookupSettingsItemDto> TaskSources,
+    IReadOnlyCollection<LookupSettingsItemDto> TaskRelationTypes,
+    IReadOnlyCollection<LookupSettingsItemDto> BodyFormats,
+    IReadOnlyCollection<LookupSettingsItemDto> TaskLogTypes);
 
 public sealed record LookupSettingsItemDto(
     string Code,
@@ -988,7 +1064,9 @@ public sealed record LookupSettingsItemDto(
     bool IsSelected,
     string? BackgroundColor,
     string? ForegroundColor,
-    bool CanDelete);
+    bool CanDelete,
+    string? ReverseName,
+    bool IsReadOnly);
 
 public sealed record LookupUpdateRequest(
     string Group,
@@ -999,7 +1077,8 @@ public sealed record LookupUpdateRequest(
     bool IsActive,
     bool IsSelected,
     string? BackgroundColor,
-    string? ForegroundColor);
+    string? ForegroundColor,
+    string? ReverseName = null);
 
 public sealed record LookupCreateRequest(
     string Group,
@@ -1010,7 +1089,8 @@ public sealed record LookupCreateRequest(
     bool IsActive,
     bool IsSelected,
     string? BackgroundColor,
-    string? ForegroundColor);
+    string? ForegroundColor,
+    string? ReverseName = null);
 
 public sealed record LookupDeleteRequest(
     string Group,

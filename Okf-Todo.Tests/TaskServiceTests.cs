@@ -6,6 +6,35 @@ namespace Okf_Todo.Tests;
 public sealed class TaskServiceTests
 {
     [Fact]
+    public async Task LookupSettings_ExposeSourcesRelationsAndReadOnlySystemGroups()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+
+        var settings = await database.Tasks.GetLookupSettingsAsync(CancellationToken.None);
+
+        Assert.Contains(settings.TaskSources, item => item.Code == "EMAIL" && !item.IsReadOnly);
+        Assert.Contains(settings.TaskRelationTypes, item => item.Code == "BLOCKS" && item.ReverseName == "Blocked by" && !item.IsReadOnly);
+        Assert.All(settings.BodyFormats, item => Assert.True(item.IsReadOnly));
+        Assert.All(settings.TaskLogTypes, item => Assert.True(item.IsReadOnly));
+
+        settings = await database.Tasks.UpdateLookupAsync(new LookupUpdateRequest(
+            "taskRelationTypes", "BLOCKS", "Prevents", null, 10, true, false,
+            null, null, "Prevented by"), CancellationToken.None);
+        Assert.Contains(settings.TaskRelationTypes, item => item.Code == "BLOCKS"
+            && item.Name == "Prevents" && item.ReverseName == "Prevented by");
+
+        settings = await database.Tasks.CreateLookupAsync(new LookupCreateRequest(
+            "taskSources", "PHONE", "Phone", null, 110, true, false,
+            null, null), CancellationToken.None);
+        Assert.Contains(settings.TaskSources, item => item.Code == "PHONE" && item.CanDelete);
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => database.Tasks.UpdateLookupAsync(
+            new LookupUpdateRequest("bodyFormats", "HTML", "Rich HTML", null, 20, true, false, null, null),
+            CancellationToken.None));
+        Assert.Equal("group", exception.Field);
+    }
+
+    [Fact]
     public async Task GetLookups_ReturnsActiveLookupValuesForBasicTaskUi()
     {
         await using var database = await TestDatabase.CreateAsync();

@@ -415,6 +415,8 @@ Add a settings/admin area for lookup values:
 - Body formats
 - Log types
 
+Task sources and relationship types are editable and reorderable. Relationship types include editable forward and reverse names. Body formats and log types are visible as read-only system-managed values.
+
 ## First useful views
 
 Suggested first views:
