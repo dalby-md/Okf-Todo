@@ -240,8 +240,8 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             request.SourceUrl,
             request.Deadline), cancellationToken);
 
-        await ApplyWaitingForAsync(task.Id, request.ActiveWaitingForLabel, cancellationToken);
-        await ApplyTagsAsync(task.Id, request.Tags, cancellationToken);
+        await ApplyInitialWaitingForAsync(task.Id, request.ActiveWaitingForLabel, cancellationToken);
+        await ApplyTagsAsync(task.Id, request.Tags, logChanges: false, cancellationToken);
 
         return await GetAsync(task.Id, cancellationToken);
     }
@@ -280,12 +280,28 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             ? null
             : await GetLookupByCodeAsync(dbContext.TaskSources, request.TaskSourceCode, cancellationToken);
 
-        task.Title = request.Title.Trim();
+        var newTitle = request.Title.Trim();
+        var newSourceReference = NormalizeOptional(request.SourceReference);
+        var newSourceUrl = NormalizeOptional(request.SourceUrl);
+        var updateLogType = await GetOrCreateTaskUpdatedLogTypeAsync(cancellationToken);
+
+        AddFieldChangeLog(task, updateLogType, "Title", task.Title, newTitle, now);
+        AddFieldChangeLog(task, updateLogType, "Source", task.TaskSource?.Name, source?.Name, now);
+        AddFieldChangeLog(task, updateLogType, "Source reference", task.SourceReference, newSourceReference, now);
+        AddFieldChangeLog(task, updateLogType, "Source URL", task.SourceUrl, newSourceUrl, now);
+
+        if (!string.Equals(task.Body, request.Body, StringComparison.Ordinal)
+            || task.BodyFormatId != bodyFormat?.Id)
+        {
+            AddUpdateLog(task, updateLogType, "Editor changed", now);
+        }
+
+        task.Title = newTitle;
         task.Body = request.Body;
         task.BodyFormatId = bodyFormat?.Id;
         task.TaskSourceId = source?.Id;
-        task.SourceReference = NormalizeOptional(request.SourceReference);
-        task.SourceUrl = NormalizeOptional(request.SourceUrl);
+        task.SourceReference = newSourceReference;
+        task.SourceUrl = newSourceUrl;
         task.UpdatedAt = now;
 
         await lifecycleService.ChangeTypeAsync(task.Id, request.TaskTypeCode, cancellationToken);
@@ -294,7 +310,7 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
 
         await dbContext.SaveChangesAsync(cancellationToken);
         await ApplyWaitingForAsync(task.Id, request.ActiveWaitingForLabel, cancellationToken);
-        await ApplyTagsAsync(task.Id, request.Tags, cancellationToken);
+        await ApplyTagsAsync(task.Id, request.Tags, logChanges: true, cancellationToken);
 
         return await GetAsync(task.Id, cancellationToken);
     }
@@ -660,6 +676,34 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    private async Task ApplyInitialWaitingForAsync(
+        int taskId,
+        string? requestedLabel,
+        CancellationToken cancellationToken)
+    {
+        var normalizedLabel = NormalizeOptional(requestedLabel);
+        if (normalizedLabel is null)
+        {
+            return;
+        }
+
+        var task = await dbContext.TaskItems
+            .SingleAsync(item => item.Id == taskId, cancellationToken);
+        var now = task.CreatedAt;
+
+        dbContext.TaskWaitingFors.Add(new TaskWaitingFor
+        {
+            TaskId = task.Id,
+            Label = normalizedLabel,
+            WaitingSince = now,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        task.WaitingSince = now;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     private async Task ApplyWaitingForAsync(int taskId, string? requestedLabel, CancellationToken cancellationToken)
     {
         var normalizedLabel = NormalizeOptional(requestedLabel);
@@ -692,6 +736,7 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
     private async Task ApplyTagsAsync(
         int taskId,
         IReadOnlyCollection<string>? requestedValues,
+        bool logChanges,
         CancellationToken cancellationToken)
     {
         var values = (requestedValues ?? [])
@@ -707,6 +752,11 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             .SingleAsync(item => item.Id == taskId, cancellationToken);
 
         var requested = values.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var oldValues = task.Tags
+            .Where(taskTag => taskTag.TaskTag is not null)
+            .Select(taskTag => taskTag.TaskTag!.Value)
+            .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .ToList();
         var removed = task.Tags
             .Where(taskTag => taskTag.TaskTag is not null && !requested.Contains(taskTag.TaskTag.Value))
             .ToList();
@@ -731,9 +781,88 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             task.Tags.Add(new TaskTaskTag { TaskTag = tag });
         }
 
+        var newValues = values.OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToList();
+        if (logChanges && !oldValues.SequenceEqual(newValues, StringComparer.OrdinalIgnoreCase))
+        {
+            var updateLogType = await GetOrCreateTaskUpdatedLogTypeAsync(cancellationToken);
+            AddFieldChangeLog(
+                task,
+                updateLogType,
+                "Tags",
+                oldValues.Count == 0 ? null : string.Join(", ", oldValues),
+                newValues.Count == 0 ? null : string.Join(", ", newValues),
+                DateTime.UtcNow);
+        }
+
         task.UpdatedAt = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    private async Task<TaskLogType> GetOrCreateTaskUpdatedLogTypeAsync(CancellationToken cancellationToken)
+    {
+        var logType = await dbContext.TaskLogTypes
+            .SingleOrDefaultAsync(item => item.Code == TaskLogTypeCodes.TaskUpdated, cancellationToken);
+        if (logType is not null)
+        {
+            return logType;
+        }
+
+        var now = DateTime.UtcNow;
+        logType = new TaskLogType
+        {
+            Code = TaskLogTypeCodes.TaskUpdated,
+            Name = "Task updated",
+            SortOrder = 230,
+            IsActive = true,
+            IsSystem = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        dbContext.TaskLogTypes.Add(logType);
+        return logType;
+    }
+
+    private static void AddFieldChangeLog(
+        TaskItem task,
+        TaskLogType logType,
+        string fieldName,
+        string? oldValue,
+        string? newValue,
+        DateTime now)
+    {
+        if (string.Equals(oldValue, newValue, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        AddUpdateLog(
+            task,
+            logType,
+            $"{fieldName}: Changed '{DisplayLogValue(oldValue)}' to '{DisplayLogValue(newValue)}'",
+            now,
+            oldValue,
+            newValue);
+    }
+
+    private static void AddUpdateLog(
+        TaskItem task,
+        TaskLogType logType,
+        string message,
+        DateTime now,
+        string? oldValue = null,
+        string? newValue = null)
+    {
+        task.LogEntries.Add(new TaskLogEntry
+        {
+            TaskLogType = logType,
+            Message = message,
+            OldValue = oldValue,
+            NewValue = newValue,
+            CreatedAt = now
+        });
+    }
+
+    private static string DisplayLogValue(string? value) => value ?? "(none)";
 
     private static string NormalizeLookupCode(string code)
     {

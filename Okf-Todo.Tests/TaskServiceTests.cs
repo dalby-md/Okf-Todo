@@ -40,7 +40,9 @@ public sealed class TaskServiceTests
             TaskSourceCode: "EMAIL",
             SourceReference: "  INC123456  ",
             SourceUrl: "  https://example.test/inc/123456  ",
-            Deadline: deadline), CancellationToken.None);
+            Deadline: deadline,
+            ActiveWaitingForLabel: "Initial wait",
+            Tags: ["Initial"]), CancellationToken.None);
 
         Assert.Equal("Fix failed deployment", created.Title);
         Assert.Equal(TaskStatusCodes.Active, created.TaskStatusCode);
@@ -49,6 +51,10 @@ public sealed class TaskServiceTests
         Assert.Equal("EMAIL", created.TaskSourceCode);
         Assert.Equal("INC123456", created.SourceReference);
         Assert.Equal("https://example.test/inc/123456", created.SourceUrl);
+        Assert.Equal("Initial wait", created.ActiveWaitingFor?.Label);
+        var creationTimeline = await database.Tasks.GetTimelineAsync(new TaskTimelineRequest(created.Id), CancellationToken.None);
+        Assert.Single(creationTimeline);
+        Assert.Equal(TaskLogTypeCodes.TaskCreated, creationTimeline.Single().LogTypeCode);
 
         var activeTasks = await database.Tasks.ListAsync(new TaskListRequest("active"), CancellationToken.None);
         var listed = Assert.Single(activeTasks);
@@ -77,7 +83,9 @@ public sealed class TaskServiceTests
             TaskSourceCode: "TEAMS",
             SourceReference: "Release room",
             SourceUrl: null,
-            Deadline: updatedDeadline), CancellationToken.None);
+            Deadline: updatedDeadline,
+            ActiveWaitingForLabel: "Initial wait",
+            Tags: ["Support"]), CancellationToken.None);
 
         Assert.Equal("Investigate failed deployment", updated.Title);
         Assert.Equal("<p>Updated body</p>", updated.Body);
@@ -94,6 +102,12 @@ public sealed class TaskServiceTests
         Assert.Contains(savedTask.LogEntries, log => log.TaskLogType?.Code == TaskLogTypeCodes.TypeChanged);
         Assert.Contains(savedTask.LogEntries, log => log.TaskLogType?.Code == TaskLogTypeCodes.PriorityChanged);
         Assert.Contains(savedTask.LogEntries, log => log.TaskLogType?.Code == TaskLogTypeCodes.DeadlineChanged);
+        Assert.Contains(savedTask.LogEntries, log => log.Message == "Title: Changed 'Fix failed deployment' to 'Investigate failed deployment'");
+        Assert.Contains(savedTask.LogEntries, log => log.Message == "Source: Changed 'Email' to 'Teams'");
+        Assert.Contains(savedTask.LogEntries, log => log.Message == "Source reference: Changed 'INC123456' to 'Release room'");
+        Assert.Contains(savedTask.LogEntries, log => log.Message == "Source URL: Changed 'https://example.test/inc/123456' to '(none)'");
+        Assert.Contains(savedTask.LogEntries, log => log.Message == "Editor changed");
+        Assert.Contains(savedTask.LogEntries, log => log.Message == "Tags: Changed 'Initial' to 'Support'");
     }
 
     [Fact]

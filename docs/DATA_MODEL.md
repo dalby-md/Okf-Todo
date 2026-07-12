@@ -157,6 +157,7 @@ TASK_COMPLETED               Task completed
 TASK_REOPENED                Task reopened
 TASK_CANCELLED               Task cancelled
 COMMENT_ADDED                Comment added
+TASK_UPDATED                 Task updated
 ```
 
 ### BodyFormat

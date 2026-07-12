@@ -1680,7 +1680,10 @@
       sourceReference: '',
       sourceUrl: '',
       deadline: null,
-      activeWaitingFor: null
+      activeWaitingFor: null,
+      tags: [],
+      taskStatusCode: 'ACTIVE',
+      taskStatusName: 'Draft'
     }
   }
 
@@ -1771,7 +1774,7 @@
 
   function renderWaitingPanel(task) {
     const waitingFor = task.activeWaitingFor
-    const canEditWaiting = !!(task.id && task.taskStatusCode === 'ACTIVE')
+    const canEditWaiting = !task.id || task.taskStatusCode === 'ACTIVE'
 
     $('#waiting-text').val(waitingFor ? describeWaiting(waitingFor) : '')
 
@@ -2356,17 +2359,13 @@
     }
 
     $('#new-task-save-button, #new-task-cancel-button').prop('disabled', true)
-    setStatus('Saving', 'ready')
 
     try {
-      const savedTask = await sendBridgeMessage('task.create', payload)
       closeNewTaskDialog()
-      selectViewForTask(savedTask)
-      await renderTaskEditor(savedTask)
-      await loadTasks({ keepSelection: true })
-      isDirty = false
+      await renderTaskEditor(payload)
+      isDirty = true
       window.Editor.markClean()
-      setStatus('Saved', 'saved')
+      setStatus('Unsaved changes', 'dirty')
     } catch (error) {
       $('#new-task-save-button, #new-task-cancel-button').prop('disabled', false)
       throw error

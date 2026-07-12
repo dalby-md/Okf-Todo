@@ -254,6 +254,8 @@ Logs should store both:
 - Readable message
 - Structured old/new values where useful
 
+New tasks log only `Task created`. For an existing task, every changed field must create a log entry. Fields with dedicated lifecycle logs keep those messages. Other fields use `Field: Changed 'old value' to 'new value'`. Editor body or format changes use only `Editor changed`. Tag changes log the old and new tag lists.
+
 ## Checklist items
 
 Tasks can have lightweight checklist items.

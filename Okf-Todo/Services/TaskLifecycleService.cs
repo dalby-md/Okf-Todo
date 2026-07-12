@@ -443,4 +443,5 @@ public static class TaskLogTypeCodes
     public const string TaskReopened = "TASK_REOPENED";
     public const string TaskCancelled = "TASK_CANCELLED";
     public const string CommentAdded = "COMMENT_ADDED";
+    public const string TaskUpdated = "TASK_UPDATED";
 }

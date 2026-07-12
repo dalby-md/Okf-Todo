@@ -66,7 +66,8 @@
     { "code": "TASK_COMPLETED", "name": "Task completed", "sortOrder": 190, "isSystem": true },
     { "code": "TASK_REOPENED", "name": "Task reopened", "sortOrder": 200, "isSystem": true },
     { "code": "TASK_CANCELLED", "name": "Task cancelled", "sortOrder": 210, "isSystem": true },
-    { "code": "COMMENT_ADDED", "name": "Comment added", "sortOrder": 220, "isSystem": true }
+    { "code": "COMMENT_ADDED", "name": "Comment added", "sortOrder": 220, "isSystem": true },
+    { "code": "TASK_UPDATED", "name": "Task updated", "sortOrder": 230, "isSystem": true }
   ],
   "bodyFormats": [
     { "code": "MARKDOWN", "name": "Markdown", "sortOrder": 10, "isSystem": true },
