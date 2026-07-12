@@ -343,6 +343,8 @@ Initial relation types:
 
 Relationships are mainly for navigation and overview in the first version.
 
+The task editor supports adding and removing relationships, shows the correct forward or reverse name, and navigates directly to the related task. Duplicate and self relationships are rejected. Relationship removal uses the application HTML confirmation dialog.
+
 Only `Blocks` / `Depends on` may affect sorting later.
 
 ## Owner/responsible person

@@ -360,6 +360,8 @@ Consider a configurable soft file size warning.
 
 ## Milestone 11 — Task relationships
 
+Status: implemented.
+
 Scope:
 
 - Add task relation CRUD.

@@ -681,6 +681,16 @@
               </label>
             </div>
 
+            <section class="relationships-section" aria-labelledby="relationships-title">
+              <div class="relationships-header"><h3 id="relationships-title">Relationships</h3></div>
+              <div id="relationships-list" class="relationships-list"><span class="empty-relationships">No relationships.</span></div>
+              <div class="relationship-add-form">
+                <select id="relationship-type" aria-label="Relationship type" disabled></select>
+                <select id="relationship-task" aria-label="Related task" disabled></select>
+                <button id="relationship-add-button" class="secondary-button" type="button" disabled>Add</button>
+              </div>
+            </section>
+
             <section class="checklist-section" aria-labelledby="checklist-title">
               <div class="checklist-header">
                 <h3 id="checklist-title">Checklist</h3>
@@ -932,6 +942,62 @@
     return new Promise(function (resolve) {
       confirmationDialogResolve = resolve
     })
+  }
+
+  function renderRelationships(items) {
+    const rows = Array.isArray(items) ? items : []
+    if (!rows.length) {
+      $('#relationships-list').html('<span class="empty-relationships">No relationships.</span>')
+      return
+    }
+    $('#relationships-list').html(rows.map(function (item) {
+      return `<div class="relationship-row" data-relation-id="${item.id}">
+        <span class="relationship-name">${encodeText(item.relationName)}</span>
+        <button class="relationship-open" type="button" data-task-id="${item.relatedTaskId}">${encodeText(item.relatedTaskTitle)}</button>
+        <button class="relationship-delete secondary-button danger-button" type="button" aria-label="Remove relationship to ${encodeAttribute(item.relatedTaskTitle)}">Remove</button>
+      </div>`
+    }).join(''))
+  }
+
+  async function loadRelationships(taskId) {
+    if (!taskId) {
+      renderRelationships([])
+      $('#relationship-type, #relationship-task, #relationship-add-button').prop('disabled', true)
+      return
+    }
+    const result = await Promise.all([
+      sendBridgeMessage('task.relation.list', { taskId }),
+      sendBridgeMessage('task.relation.options', { taskId })
+    ])
+    renderRelationships(result[0])
+    $('#relationship-type').html(result[1].relationTypes.map(function (type) {
+      return `<option value="${encodeAttribute(type.code)}">${encodeText(type.name)}</option>`
+    }).join(''))
+    $('#relationship-task').html('<option value="">Select task</option>' + result[1].tasks.map(function (task) {
+      return `<option value="${task.id}">${encodeText(task.title)}</option>`
+    }).join(''))
+    $('#relationship-type, #relationship-task, #relationship-add-button').prop('disabled', false)
+  }
+
+  async function addRelationship() {
+    const targetTaskId = Number($('#relationship-task').val())
+    if (!currentTask || !currentTask.id || !targetTaskId) return
+    const items = await sendBridgeMessage('task.relation.create', {
+      taskId: currentTask.id,
+      targetTaskId,
+      relationTypeCode: $('#relationship-type').val().toString()
+    })
+    renderRelationships(items)
+    $('#relationship-task').val('')
+    await loadTimeline(currentTask.id)
+    setStatus(isDirty ? 'Unsaved changes' : 'Relationship added', isDirty ? 'dirty' : 'saved')
+  }
+
+  async function deleteRelationship(relationId) {
+    const items = await sendBridgeMessage('task.relation.delete', { taskId: currentTask.id, relationId })
+    renderRelationships(items)
+    await loadTimeline(currentTask.id)
+    setStatus(isDirty ? 'Unsaved changes' : 'Relationship removed', isDirty ? 'dirty' : 'saved')
   }
 
   function renderChecklist(items) {
@@ -1458,6 +1524,8 @@
     $('#editor-host').html('<div class="empty-editor">Select a task to edit the body.</div>')
     $('#comment-text').val('').removeClass('is-invalid')
     setCommentControlsEnabled(false)
+    renderRelationships([])
+    $('#relationship-type, #relationship-task, #relationship-add-button').prop('disabled', true)
     renderChecklist([])
     renderAttachments([])
     renderTimeline([])
@@ -2220,6 +2288,7 @@
       renderTaskHeaderAndActions(task)
 
       await initializeEditorForTask(task)
+      await loadRelationships(task.id)
       await loadChecklist(task.id)
       await loadAttachments(task.id)
       await loadTimeline(task.id)
@@ -2732,6 +2801,19 @@
     })
 
     $('#task-search').on('input', renderTaskList)
+    $('#relationship-add-button').on('click', function () {
+      addRelationship().catch(function (error) { setStatus(getErrorMessage(error, 'Could not add relationship'), 'error') })
+    })
+    $('#relationships-list').on('click', '.relationship-open', function () {
+      selectTaskWithUnsavedCheck(Number($(this).attr('data-task-id')))
+    })
+    $('#relationships-list').on('click', '.relationship-delete', async function () {
+      const row = $(this).closest('.relationship-row')
+      const title = row.find('.relationship-open').text()
+      if (!await showConfirmationDialog('Remove relationship?', `Remove the relationship to “${title}”?`, 'Remove relationship')) return
+      deleteRelationship(Number(row.attr('data-relation-id')))
+        .catch(function (error) { setStatus(getErrorMessage(error, 'Could not remove relationship'), 'error') })
+    })
     $('#checklist-add-button').on('click', function () {
       addChecklistItem().catch(function (error) { setStatus(getErrorMessage(error, 'Could not add checklist item'), 'error') })
     })

@@ -174,6 +174,35 @@ public sealed class BridgeTaskMessageTests
         checklist = await fixture.SendAsync("task.checklist.delete", new { taskId, checklistItemId = secondChecklistId });
         Assert.Single(checklist.EnumerateArray());
 
+        var relatedTask = await fixture.SendAsync("task.create", new
+        {
+            title = "Related bridge task",
+            taskTypeCode = "NOTE",
+            body = "",
+            bodyFormatCode = "HTML",
+            taskPriorityCode = (string?)null,
+            taskSourceCode = (string?)null,
+            sourceReference = (string?)null,
+            sourceUrl = (string?)null,
+            deadline = (DateTime?)null
+        });
+        var relatedTaskId = relatedTask.GetProperty("id").GetInt32();
+        var relationships = await fixture.SendAsync("task.relation.create", new
+        {
+            taskId,
+            targetTaskId = relatedTaskId,
+            relationTypeCode = "BLOCKS"
+        });
+        var relationship = Assert.Single(relationships.EnumerateArray());
+        Assert.Equal("Blocks", relationship.GetProperty("relationName").GetString());
+        var relationId = relationship.GetProperty("id").GetInt32();
+
+        var reverseRelationships = await fixture.SendAsync("task.relation.list", new { taskId = relatedTaskId });
+        Assert.Equal("Blocked by", Assert.Single(reverseRelationships.EnumerateArray()).GetProperty("relationName").GetString());
+
+        relationships = await fixture.SendAsync("task.relation.delete", new { taskId, relationId });
+        Assert.Empty(relationships.EnumerateArray());
+
         var initialTimeline = await fixture.SendAsync("task.timeline.get", new { taskId });
         Assert.Contains(
             initialTimeline.EnumerateArray(),
@@ -184,6 +213,18 @@ public sealed class BridgeTaskMessageTests
         Assert.Contains(initialTimeline.EnumerateArray(), item => item.GetProperty("logTypeCode").GetString() == "CHECKLIST_ITEM_ADDED");
         Assert.Contains(initialTimeline.EnumerateArray(), item => item.GetProperty("logTypeCode").GetString() == "CHECKLIST_ITEM_COMPLETED");
         Assert.Contains(initialTimeline.EnumerateArray(), item => item.GetProperty("logTypeCode").GetString() == "CHECKLIST_ITEM_REOPENED");
+        Assert.Contains(initialTimeline.EnumerateArray(), item => item.GetProperty("logTypeCode").GetString() == "RELATION_ADDED");
+        Assert.Contains(initialTimeline.EnumerateArray(), item => item.GetProperty("logTypeCode").GetString() == "RELATION_REMOVED");
+
+        var relatedTaskTimeline = await fixture.SendAsync("task.timeline.get", new { taskId = relatedTaskId });
+        Assert.Contains(
+            relatedTaskTimeline.EnumerateArray(),
+            item => item.GetProperty("logTypeCode").GetString() == "RELATION_ADDED"
+                && item.GetProperty("text").GetString() == "Relationship added: Blocked by Bridge task");
+        Assert.Contains(
+            relatedTaskTimeline.EnumerateArray(),
+            item => item.GetProperty("logTypeCode").GetString() == "RELATION_REMOVED"
+                && item.GetProperty("text").GetString() == "Relationship removed: Blocked by Bridge task");
 
         var timelineWithComment = await fixture.SendAsync("task.comment.create", new
         {
@@ -575,6 +616,7 @@ public sealed class BridgeTaskMessageTests
             serviceCollection.AddScoped<TaskService>();
             serviceCollection.AddScoped<TaskAttachmentService>();
             serviceCollection.AddScoped<TaskChecklistService>();
+            serviceCollection.AddScoped<TaskRelationService>();
             serviceCollection.AddScoped<AppPreferenceService>();
             serviceCollection.AddScoped<ImageService>();
 

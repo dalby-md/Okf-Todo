@@ -122,6 +122,14 @@ public sealed class BridgeMessageHandler(IServiceProvider services, ILogger<Brid
                 .ReorderAsync(GetPayload<TaskChecklistReorderRequest>(request), cancellationToken),
             "task.checklist.delete" => await scopedServices.GetRequiredService<TaskChecklistService>()
                 .DeleteAsync(GetPayload<TaskChecklistDeleteRequest>(request), cancellationToken),
+            "task.relation.options" => await scopedServices.GetRequiredService<TaskRelationService>()
+                .GetOptionsAsync(GetPayload<TaskRelationOptionsRequest>(request).TaskId, cancellationToken),
+            "task.relation.list" => await scopedServices.GetRequiredService<TaskRelationService>()
+                .ListAsync(GetPayload<TaskRelationListRequest>(request).TaskId, cancellationToken),
+            "task.relation.create" => await scopedServices.GetRequiredService<TaskRelationService>()
+                .CreateAsync(GetPayload<TaskRelationCreateRequest>(request), cancellationToken),
+            "task.relation.delete" => await scopedServices.GetRequiredService<TaskRelationService>()
+                .DeleteAsync(GetPayload<TaskRelationDeleteRequest>(request), cancellationToken),
             "task.attachment.list" => await scopedServices.GetRequiredService<TaskAttachmentService>()
                 .ListAsync(GetPayload<TaskAttachmentListRequest>(request).TaskId, cancellationToken),
             "task.attachment.create" => await scopedServices.GetRequiredService<TaskAttachmentService>()

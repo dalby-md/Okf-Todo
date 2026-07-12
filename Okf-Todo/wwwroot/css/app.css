@@ -522,6 +522,7 @@ h2 {
   border-top: 1px solid #e0e5ea;
 }
 
+.relationships-section,
 .checklist-section,
 .attachments-section {
   display: grid;
@@ -529,6 +530,57 @@ h2 {
   margin-top: 8px;
   padding-top: 10px;
   border-top: 1px solid #e0e5ea;
+}
+
+.relationships-header h3 {
+  margin: 0;
+  color: #3f4852;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.relationships-list {
+  display: grid;
+  gap: 3px;
+}
+
+.relationship-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.relationship-name,
+.empty-relationships {
+  color: #5f6872;
+  font-size: 0.72rem;
+}
+
+.relationship-open {
+  overflow: hidden;
+  padding: 0;
+  color: #1f6f68;
+  background: transparent;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.relationship-open:hover:not(:disabled) {
+  background: transparent;
+  text-decoration: underline;
+}
+
+.relationship-delete {
+  min-height: 28px;
+  padding: 0 6px;
+}
+
+.relationship-add-form {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) minmax(0, 1fr) auto;
+  gap: 6px;
 }
 
 .checklist-header,
