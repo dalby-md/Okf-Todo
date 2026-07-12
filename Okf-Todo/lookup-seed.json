@@ -11,7 +11,7 @@
   "taskStatuses": [
     { "code": "ACTIVE", "name": "Active", "sortOrder": 10, "isSystem": true, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
     { "code": "COMPLETED", "name": "Completed", "sortOrder": 20, "isSystem": true, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" },
-    { "code": "CANCELLED", "name": "Cancelled", "sortOrder": 30, "isSystem": true, "backgroundColor": "#6b7280", "foregroundColor": "#ffffff" }
+    { "code": "CANCELLED", "name": "Cancelled", "sortOrder": 30, "isSystem": true, "backgroundColor": "#b42318", "foregroundColor": "#ffffff" }
   ],
   "taskPriorities": [
     { "code": "URGENT", "name": "Urgent", "sortOrder": 10, "backgroundColor": "#b42318", "foregroundColor": "#ffffff" },
