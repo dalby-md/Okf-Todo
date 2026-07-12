@@ -32,6 +32,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<AttachmentKind> AttachmentKinds => Set<AttachmentKind>();
 
+    public DbSet<TaskTag> TaskTags => Set<TaskTag>();
+
+    public DbSet<TaskTaskTag> TaskTaskTags => Set<TaskTaskTag>();
+
     public DbSet<TaskRelation> TaskRelations => Set<TaskRelation>();
 
     public DbSet<TaskRelationType> TaskRelationTypes => Set<TaskRelationType>();
@@ -213,6 +217,27 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .WithMany(kind => kind.Attachments)
                 .HasForeignKey(attachment => attachment.AttachmentKindId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TaskTag>(entity =>
+        {
+            entity.Property(tag => tag.Value).IsRequired().UseCollation("NOCASE");
+            entity.HasIndex(tag => tag.Value).IsUnique();
+        });
+
+        modelBuilder.Entity<TaskTaskTag>(entity =>
+        {
+            entity.HasKey(taskTag => new { taskTag.TaskId, taskTag.TaskTagId });
+
+            entity.HasOne(taskTag => taskTag.Task)
+                .WithMany(task => task.Tags)
+                .HasForeignKey(taskTag => taskTag.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(taskTag => taskTag.TaskTag)
+                .WithMany(tag => tag.Tasks)
+                .HasForeignKey(taskTag => taskTag.TaskTagId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<TaskRelation>(entity =>

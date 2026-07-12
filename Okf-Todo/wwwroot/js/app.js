@@ -639,13 +639,14 @@
                 <span>Deadline</span>
                 <input id="task-deadline" type="date" disabled>
               </label>
-              <label class="field-block" for="task-tag">
-                <span>Tag</span>
-                <input id="task-tag" type="text" autocomplete="off" disabled>
-              </label>
               <label class="field-block waiting-field" for="waiting-text">
                 <span>Waiting for</span>
                 <input id="waiting-text" type="text" autocomplete="off" disabled>
+              </label>
+              <label class="field-block tags-field" for="task-tags">
+                <span>Tags</span>
+                <select id="task-tags" multiple disabled></select>
+                <small class="field-help">Type a tag, then press Enter to add it.</small>
               </label>
             </div>
 
@@ -865,6 +866,36 @@
     renderLookupOptions('#task-priority', lookups.taskPriorities, true)
     renderLookupOptions('#task-source', lookups.taskSources, true)
     renderLookupOptions('#editor-mode', lookups.bodyFormats, false)
+    renderTagOptions(lookups.tags || [])
+  }
+
+  function renderTagOptions(values) {
+    const $tags = $('#task-tags')
+    if ($tags.hasClass('select2-hidden-accessible')) {
+      $tags.select2('destroy')
+    }
+
+    $tags.html((values || []).map(function (value) {
+      const encoded = encodeAttribute(value)
+      return `<option value="${encoded}">${encodeText(value)}</option>`
+    }).join(''))
+
+    $tags.select2({
+      tags: true,
+      width: '100%',
+      placeholder: 'Start typing a tag...',
+      dropdownParent: $('.tags-field')
+    })
+  }
+
+  function setTaskTags(values) {
+    const $tags = $('#task-tags')
+    ;(values || []).forEach(function (value) {
+      if (!$tags.find('option').filter(function () { return this.value === value }).length) {
+        $tags.append(new Option(value, value, false, false))
+      }
+    })
+    $tags.val(values || []).trigger('change.select2')
   }
 
   function renderLookupSettings() {
@@ -1168,7 +1199,7 @@
     $('#task-source').val('')
     $('#task-source-reference').val('')
     $('#task-source-url').val('')
-    $('#task-tag').val('')
+    setTaskTags([])
     $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
     $('#waiting-text').val('')
     $('#task-form input, #task-form select').prop('disabled', true)
@@ -1738,7 +1769,7 @@
     $('#task-type').val(currentTask.taskTypeCode || '')
     $('#task-priority').val(currentTask.taskPriorityCode || '')
     $('#task-source').val(currentTask.taskSourceCode || '')
-    $('#task-tag').val(currentTask.tag || '')
+    setTaskTags(currentTask.tags || [])
     $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
   }
 
@@ -1865,7 +1896,7 @@
       $('#task-source').val(task.taskSourceCode || '')
       $('#task-source-reference').val(task.sourceReference || '')
       $('#task-source-url').val(task.sourceUrl || '')
-      $('#task-tag').val(task.tag || '')
+      setTaskTags(task.tags || [])
       $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
       $('#task-form input, #task-form select').prop('disabled', false)
       $('#editor-mode').prop('disabled', false)
@@ -1892,7 +1923,7 @@
       $('#task-source').val(task.taskSourceCode || '')
       $('#task-source-reference').val(task.sourceReference || '')
       $('#task-source-url').val(task.sourceUrl || '')
-      $('#task-tag').val(task.tag || '')
+      setTaskTags(task.tags || [])
       $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
       renderWaitingPanel(task)
 
@@ -1929,7 +1960,7 @@
       sourceUrl: $('#task-source-url').val().toString().trim() || null,
       deadline: $('#task-deadline').val().toString() || null,
       activeWaitingForLabel: $('#waiting-text').val().toString().trim() || null,
-      tag: $('#task-tag').val().toString().trim() || null
+      tags: $('#task-tags').val() || []
     }
   }
 
@@ -2406,7 +2437,7 @@
     })
 
     $('#task-search').on('input', renderTaskList)
-    $('#task-form').on('input change', '#task-title, #task-type, #task-priority, #task-deadline, #task-tag, #task-source, #task-source-reference, #task-source-url, #waiting-text', markDirty)
+    $('#task-form').on('input change', '#task-title, #task-type, #task-priority, #task-deadline, #task-tags, #task-source, #task-source-reference, #task-source-url, #waiting-text', markDirty)
     $('#comment-add-button').on('click', function () {
       addComment().catch(function (error) {
         setStatus(getErrorMessage(error, 'Could not add comment'), 'error')

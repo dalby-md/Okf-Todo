@@ -144,8 +144,7 @@ public sealed class TaskLifecycleServiceTests
             Title: "Fix failed deployment",
             TaskTypeCode: "ERROR",
             BodyFormatCode: "HTML",
-            TaskPriorityCode: "NORMAL",
-            Tag: "deployment"));
+            TaskPriorityCode: "NORMAL"));
 
         var savedTask = await database.LoadTaskAsync(task.Id);
 
@@ -153,7 +152,6 @@ public sealed class TaskLifecycleServiceTests
         Assert.NotNull(savedTask.ActivatedAt);
         Assert.NotEqual(default, savedTask.CreatedAt);
         Assert.NotEqual(default, savedTask.UpdatedAt);
-        Assert.Equal("deployment", savedTask.Tag);
         AssertHasLog(savedTask, TaskLogTypeCodes.TaskCreated, "Task created");
     }
 

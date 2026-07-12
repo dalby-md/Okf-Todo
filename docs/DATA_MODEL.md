@@ -184,7 +184,6 @@ TaskSourceId nullable
 SourceReference nullable
 SourceUrl nullable
 Deadline nullable
-Tag nullable
 CreatedAt
 UpdatedAt
 ActivatedAt nullable
@@ -318,6 +317,24 @@ Notes:
 - Consider a soft max file size, for example 25–50 MB.
 - Store hash to detect duplicate attachments.
 
+## TaskTag
+
+```text
+Id
+Value
+```
+
+`Value` is required and unique case-insensitively. Tags have no additional metadata.
+
+## TaskTaskTag
+
+```text
+TaskId
+TaskTagId
+```
+
+Composite key: `TaskId, TaskTagId`.
+
 ## TaskRelation
 
 ```text
@@ -351,6 +368,8 @@ TaskLogType
 TaskChecklistItem
 TaskAttachment
 AttachmentKind
+TaskTag
+TaskTaskTag
 TaskRelation
 TaskRelationType
 BodyFormat

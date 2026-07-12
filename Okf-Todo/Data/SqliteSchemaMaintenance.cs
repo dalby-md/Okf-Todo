@@ -15,33 +15,13 @@ public static class SqliteSchemaMaintenance
         using var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False");
         connection.Open();
 
-        if (HasTable(connection, "TaskItems") && !HasColumn(connection, "TaskItems", "Tag"))
+        if (HasTable(connection, "TaskTags") && !HasColumn(connection, "TaskTags", "Value"))
         {
-            logger.LogInformation("Adding plain-text Tag column to TaskItems.");
-            Execute(connection, "ALTER TABLE \"TaskItems\" ADD COLUMN \"Tag\" TEXT NULL");
+            DropTableIfExists(connection, "TaskTaskTags");
+            DropTableIfExists(connection, "TaskTags");
         }
 
-        if (HasTable(connection, "TaskTaskTags") && HasTable(connection, "TaskTags"))
-        {
-            logger.LogInformation("Migrating task tag names to the plain-text Tag value.");
-            Execute(connection, """
-                UPDATE "TaskItems"
-                SET "Tag" = (
-                    SELECT group_concat("TaskTags"."Name", ', ')
-                    FROM "TaskTaskTags"
-                    INNER JOIN "TaskTags" ON "TaskTags"."Id" = "TaskTaskTags"."TaskTagId"
-                    WHERE "TaskTaskTags"."TaskId" = "TaskItems"."Id"
-                )
-                WHERE EXISTS (
-                    SELECT 1
-                    FROM "TaskTaskTags"
-                    WHERE "TaskTaskTags"."TaskId" = "TaskItems"."Id"
-                )
-                """);
-        }
-
-        DropTableIfExists(connection, "TaskTaskTags");
-        DropTableIfExists(connection, "TaskTags");
+        EnsureTagTables(connection);
 
         if (HasTable(connection, "TaskStakeholders"))
         {
@@ -144,6 +124,29 @@ public static class SqliteSchemaMaintenance
         Execute(connection, "ALTER TABLE \"TaskWaitingFors_rebuild\" RENAME TO \"TaskWaitingFors\"");
         Execute(connection, "CREATE UNIQUE INDEX \"IX_TaskWaitingFors_TaskId\" ON \"TaskWaitingFors\" (\"TaskId\") WHERE ResolvedAt IS NULL");
     }
+
+    private static void EnsureTagTables(SqliteConnection connection)
+    {
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS "TaskTags" (
+                "Id" INTEGER NOT NULL CONSTRAINT "PK_TaskTags" PRIMARY KEY AUTOINCREMENT,
+                "Value" TEXT COLLATE NOCASE NOT NULL
+            )
+            """);
+        Execute(connection, "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_TaskTags_Value\" ON \"TaskTags\" (\"Value\")");
+
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS "TaskTaskTags" (
+                "TaskId" INTEGER NOT NULL,
+                "TaskTagId" INTEGER NOT NULL,
+                CONSTRAINT "PK_TaskTaskTags" PRIMARY KEY ("TaskId", "TaskTagId"),
+                CONSTRAINT "FK_TaskTaskTags_TaskItems_TaskId" FOREIGN KEY ("TaskId") REFERENCES "TaskItems" ("Id") ON DELETE CASCADE,
+                CONSTRAINT "FK_TaskTaskTags_TaskTags_TaskTagId" FOREIGN KEY ("TaskTagId") REFERENCES "TaskTags" ("Id") ON DELETE CASCADE
+            )
+            """);
+        Execute(connection, "CREATE INDEX IF NOT EXISTS \"IX_TaskTaskTags_TaskTagId\" ON \"TaskTaskTags\" (\"TaskTagId\")");
+    }
+
 
     private static bool HasTable(SqliteConnection connection, string tableName)
     {

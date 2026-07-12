@@ -47,7 +47,7 @@ Each task should support:
 - Task status
 - Task type
 - Deadline
-- Optional tag stored as plain text
+- Zero or more string-only tags
 - Completed state/timestamp
 - Checklist items
 - Task relationships
@@ -325,9 +325,11 @@ Initial attachment kinds:
 
 A soft size limit should be considered, for example 25–50 MB per attachment.
 
-## Tag
+## Tags
 
-A task can have one optional tag. A tag is only a plain string expression stored directly on the task.
+A task can have zero or more tags. Each tag is only a string expression with no color, order, activation state, or other metadata.
+
+Entering a new value creates the tag and attaches it to the task. Removing a tag chip detaches it from the task.
 
 ## Task relationships
 

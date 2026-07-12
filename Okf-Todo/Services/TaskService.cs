@@ -11,7 +11,8 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             await GetLookupItemsAsync(dbContext.TaskTypes, cancellationToken),
             await GetLookupItemsAsync(dbContext.TaskPriorities, cancellationToken),
             await GetLookupItemsAsync(dbContext.TaskSources, cancellationToken),
-            await GetLookupItemsAsync(dbContext.BodyFormats, cancellationToken));
+            await GetLookupItemsAsync(dbContext.BodyFormats, cancellationToken),
+            await dbContext.TaskTags.AsNoTracking().OrderBy(tag => tag.Value).Select(tag => tag.Value).ToListAsync(cancellationToken));
     }
 
     public async Task<TaskLookupSettingsDto> GetLookupSettingsAsync(CancellationToken cancellationToken)
@@ -214,6 +215,8 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             .Include(item => item.TaskPriority)
             .Include(item => item.TaskSource)
             .Include(item => item.WaitingTargets.Where(target => target.ResolvedAt == null))
+            .Include(item => item.Tags)
+                .ThenInclude(taskTag => taskTag.TaskTag)
             .SingleOrDefaultAsync(item => item.Id == id, cancellationToken)
             ?? throw new ValidationException("Task was not found.", "taskId");
 
@@ -234,10 +237,10 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             request.TaskSourceCode,
             request.SourceReference,
             request.SourceUrl,
-            request.Deadline,
-            request.Tag), cancellationToken);
+            request.Deadline), cancellationToken);
 
         await ApplyWaitingForAsync(task.Id, request.ActiveWaitingForLabel, cancellationToken);
+        await ApplyTagsAsync(task.Id, request.Tags, cancellationToken);
 
         return await GetAsync(task.Id, cancellationToken);
     }
@@ -282,7 +285,6 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
         task.TaskSourceId = source?.Id;
         task.SourceReference = NormalizeOptional(request.SourceReference);
         task.SourceUrl = NormalizeOptional(request.SourceUrl);
-        task.Tag = NormalizeOptional(request.Tag);
         task.UpdatedAt = now;
 
         await lifecycleService.ChangeTypeAsync(task.Id, request.TaskTypeCode, cancellationToken);
@@ -291,6 +293,7 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
 
         await dbContext.SaveChangesAsync(cancellationToken);
         await ApplyWaitingForAsync(task.Id, request.ActiveWaitingForLabel, cancellationToken);
+        await ApplyTagsAsync(task.Id, request.Tags, cancellationToken);
 
         return await GetAsync(task.Id, cancellationToken);
     }
@@ -685,6 +688,52 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             cancellationToken);
     }
 
+    private async Task ApplyTagsAsync(
+        int taskId,
+        IReadOnlyCollection<string>? requestedValues,
+        CancellationToken cancellationToken)
+    {
+        var values = (requestedValues ?? [])
+            .Select(NormalizeOptional)
+            .Where(value => value is not null)
+            .Select(value => value!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var task = await dbContext.TaskItems
+            .Include(item => item.Tags)
+                .ThenInclude(taskTag => taskTag.TaskTag)
+            .SingleAsync(item => item.Id == taskId, cancellationToken);
+
+        var requested = values.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var removed = task.Tags
+            .Where(taskTag => taskTag.TaskTag is not null && !requested.Contains(taskTag.TaskTag.Value))
+            .ToList();
+        dbContext.TaskTaskTags.RemoveRange(removed);
+
+        var current = task.Tags
+            .Where(taskTag => !removed.Contains(taskTag) && taskTag.TaskTag is not null)
+            .Select(taskTag => taskTag.TaskTag!.Value)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var value in values.Where(value => !current.Contains(value)))
+        {
+            var tag = await dbContext.TaskTags
+                .SingleOrDefaultAsync(existing => existing.Value == value, cancellationToken);
+
+            if (tag is null)
+            {
+                tag = new TaskTag { Value = value };
+                dbContext.TaskTags.Add(tag);
+            }
+
+            task.Tags.Add(new TaskTaskTag { TaskTag = tag });
+        }
+
+        task.UpdatedAt = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     private static string NormalizeLookupCode(string code)
     {
         return string.IsNullOrWhiteSpace(code)
@@ -779,7 +828,8 @@ public sealed record TaskLookupsDto(
     IReadOnlyCollection<LookupItemDto> TaskTypes,
     IReadOnlyCollection<LookupItemDto> TaskPriorities,
     IReadOnlyCollection<LookupItemDto> TaskSources,
-    IReadOnlyCollection<LookupItemDto> BodyFormats);
+    IReadOnlyCollection<LookupItemDto> BodyFormats,
+    IReadOnlyCollection<string> Tags);
 
 public sealed record LookupItemDto(
     string Code,
@@ -867,7 +917,7 @@ public sealed record TaskSaveRequest(
     string? SourceUrl,
     DateTime? Deadline,
     string? ActiveWaitingForLabel = null,
-    string? Tag = null);
+    IReadOnlyCollection<string>? Tags = null);
 
 public sealed record TaskListItemDto(
     int Id,
@@ -902,7 +952,7 @@ public sealed record TaskDetailDto(
     string? SourceReference,
     string? SourceUrl,
     DateTime? Deadline,
-    string? Tag,
+    IReadOnlyCollection<string> Tags,
     TaskWaitingForDto? ActiveWaitingFor,
     DateTime CreatedAt,
     DateTime UpdatedAt)
@@ -925,7 +975,11 @@ public sealed record TaskDetailDto(
             task.SourceReference,
             task.SourceUrl,
             task.Deadline,
-            task.Tag,
+            task.Tags
+                .Where(taskTag => taskTag.TaskTag is not null)
+                .Select(taskTag => taskTag.TaskTag!.Value)
+                .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+                .ToList(),
             task.WaitingTargets
                 .Where(target => target.ResolvedAt is null)
                 .Select(TaskWaitingForDto.FromWaitingFor)

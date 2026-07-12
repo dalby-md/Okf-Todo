@@ -97,6 +97,33 @@ public sealed class TaskServiceTests
     }
 
     [Fact]
+    public async Task CreateAndUpdate_AttachesCreatesAndRemovesStringTags()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+
+        var created = await database.Tasks.CreateAsync(CreateRequest("Tagged task") with
+        {
+            Tags = ["Deployment", "Oracle APEX"]
+        }, CancellationToken.None);
+
+        Assert.Equal(["Deployment", "Oracle APEX"], created.Tags);
+        var lookups = await database.Tasks.GetLookupsAsync(CancellationToken.None);
+        Assert.Contains("Deployment", lookups.Tags);
+        Assert.Contains("Oracle APEX", lookups.Tags);
+
+        var updated = await database.Tasks.UpdateAsync(CreateRequest("Tagged task") with
+        {
+            Id = created.Id,
+            Tags = ["Oracle APEX", "Support"]
+        }, CancellationToken.None);
+
+        Assert.Equal(["Oracle APEX", "Support"], updated.Tags);
+        Assert.DoesNotContain("Deployment", updated.Tags);
+        Assert.Equal(3, await database.DbContext.TaskTags.CountAsync());
+        Assert.Equal(2, await database.DbContext.TaskTaskTags.CountAsync());
+    }
+
+    [Fact]
     public async Task Create_UsesSelectedLookupDefaultsWhenTypeAndPriorityAreOmitted()
     {
         await using var database = await TestDatabase.CreateAsync();

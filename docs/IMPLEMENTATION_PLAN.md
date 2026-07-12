@@ -18,7 +18,7 @@ Do not ask Codex to build everything in one pass. Use small vertical slices.
 7. Add waiting target behavior
 8. Add comments and timeline
 9. Add checklist items
-10. Add a plain-text tag field
+10. Add string-only multi-value tags
 11. Add attachments as SQLite BLOBs
 12. Add task relationships
 13. Add lookup management UI
@@ -74,7 +74,7 @@ Implement the initial SQLite/EF Core data model for the local task system.
 
 Scope:
 - Add lookup tables with common fields: Id, Code, Name, Description, SortOrder, IsActive, IsSystem, CreatedAt, UpdatedAt.
-- Add TaskItem, TaskWaitingFor, TaskComment, TaskLogEntry, TaskChecklistItem, TaskAttachment, TaskRelation, TaskRelationType.
+- Add TaskItem, TaskWaitingFor, TaskComment, TaskLogEntry, TaskChecklistItem, TaskAttachment, TaskTag, TaskTaskTag, TaskRelation, TaskRelationType.
 - Add startup seeding from configuration: only seed a lookup table if it is empty.
 - Do not hard-delete used lookup rows. Use deactivation for values that have existing references.
 - Allow hard deletion only for unused non-system lookup rows.
@@ -172,7 +172,7 @@ Optional fields:
 - Source reference
 - Source URL
 
-Do not implement attachments, checklist items, the tag field, or relationships in this step.
+Do not implement attachments, checklist items, tags, or relationships in this step.
 Use the existing lifecycle/logging service.
 ```
 
@@ -296,23 +296,26 @@ Do not make checklist items into full tasks.
 Add log entries for checklist item added/completed/reopened.
 ```
 
-## Milestone 9 — Tag
+## Milestone 9 — Tags
 
 Scope:
 
-- Add one optional plain-text tag field to tasks.
+- Add zero or more string-only tags to tasks.
+- Use Select2 with tag creation enabled.
 
 Acceptance criteria:
 
-- User can enter, edit, or clear a tag as plain text.
-- No tag lookup table or tag metadata is used.
+- User can type a new value to create and attach a tag.
+- User can select existing tag values.
+- User can remove a tag association using the chip's remove control.
+- Tags have no metadata beyond their string value.
 
 Suggested Codex prompt:
 
 ```text
-Add one optional Tag string field to tasks.
+Add string-only multi-value tags using TaskTag and TaskTaskTag.
 
-The value is plain text. Do not add tag lookup rows, metadata, colors, activation state, or a join table.
+Use a Select2 multi-select with `tags: true`. Put it on the same row as Waiting for. Creating text adds a tag association; removing a chip removes that association. Do not add colors, sort order, activation state, or other tag metadata.
 ```
 
 ## Milestone 10 — Attachments
