@@ -398,6 +398,13 @@
     return value == null ? '' : String(value)
   }
 
+  function normalizeSnapshotTags(values) {
+    return (values || [])
+      .map(function (value) { return String(value).trim() })
+      .filter(Boolean)
+      .sort(function (left, right) { return left.localeCompare(right, undefined, { sensitivity: 'base' }) })
+  }
+
   function createCurrentTaskSnapshot() {
     if (!currentTask || !isEditorReady) {
       return null
@@ -414,7 +421,8 @@
       sourceReference: normalizeSnapshotValue(payload.sourceReference),
       sourceUrl: normalizeSnapshotValue(payload.sourceUrl),
       deadline: normalizeSnapshotValue(payload.deadline),
-      activeWaitingForLabel: normalizeSnapshotValue(payload.activeWaitingForLabel)
+      activeWaitingForLabel: normalizeSnapshotValue(payload.activeWaitingForLabel),
+      tags: normalizeSnapshotTags(payload.tags)
     }
   }
 
