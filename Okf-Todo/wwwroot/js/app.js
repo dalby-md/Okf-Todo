@@ -51,7 +51,9 @@
   let layoutPreference = {
     taskListWidth: defaultTaskListWidth,
     taskListHeight: null,
-    layoutMode: layoutModeCodes.auto
+    layoutMode: layoutModeCodes.auto,
+    showSourceFields: false,
+    showRelationships: false
   }
   let layoutPreferenceSaveTimer = null
   let unsavedChangesDialogResolve = null
@@ -675,7 +677,7 @@
               <textarea id="text-body"></textarea>
             </div>
 
-            <div class="source-grid">
+            <div class="source-grid" hidden>
               <label class="field-block" for="task-source">
                 <span>Source</span>
                 <select id="task-source" disabled></select>
@@ -690,7 +692,7 @@
               </label>
             </div>
 
-            <section class="relationships-section" aria-labelledby="relationships-title">
+            <section class="relationships-section" aria-labelledby="relationships-title" hidden>
               <div class="relationships-header"><h3 id="relationships-title">Relationships</h3></div>
               <div id="relationships-list" class="relationships-list"><span class="empty-relationships">No relationships.</span></div>
               <div class="relationship-add-form">
@@ -770,6 +772,17 @@
                 <option value="STACKED">Stacked</option>
               </select>
             </label>
+
+            <div class="settings-visibility-options" aria-label="Task detail sections">
+              <label class="lookup-check">
+                <input id="show-source-fields" type="checkbox">
+                <span>Show source fields</span>
+              </label>
+              <label class="lookup-check">
+                <input id="show-relationships" type="checkbox">
+                <span>Show relationships</span>
+              </label>
+            </div>
 
             <section class="lookup-settings-panel" aria-labelledby="lookup-settings-title">
               <h3 id="lookup-settings-title">Lookup values</h3>
@@ -1835,7 +1848,9 @@
     return sendBridgeMessage('layout.preference.save', {
       taskListWidth: layoutPreference.taskListWidth,
       taskListHeight: layoutPreference.taskListHeight,
-      layoutMode: layoutPreference.layoutMode
+      layoutMode: layoutPreference.layoutMode,
+      showSourceFields: layoutPreference.showSourceFields,
+      showRelationships: layoutPreference.showRelationships
     }).then(function () {
       return true
     }).catch(function (error) {
@@ -1857,6 +1872,8 @@
     layoutPreference.taskListWidth = preference.taskListWidth || defaultTaskListWidth
     layoutPreference.taskListHeight = preference.taskListHeight || Math.round(window.innerHeight * 0.42)
     layoutPreference.layoutMode = normalizeLayoutMode(preference.layoutMode)
+    layoutPreference.showSourceFields = preference.showSourceFields === true
+    layoutPreference.showRelationships = preference.showRelationships === true
     applyStoredLayoutSplit(false)
   }
 
@@ -1915,8 +1932,16 @@
     $('#layout-mode').val(layoutPreference.layoutMode)
   }
 
+  function applyTaskSectionVisibility() {
+    $('.source-grid').prop('hidden', !layoutPreference.showSourceFields)
+    $('.relationships-section').prop('hidden', !layoutPreference.showRelationships)
+    $('#show-source-fields').prop('checked', layoutPreference.showSourceFields)
+    $('#show-relationships').prop('checked', layoutPreference.showRelationships)
+  }
+
   function applyStoredLayoutSplit(shouldSave) {
     applyLayoutMode()
+    applyTaskSectionVisibility()
     setTaskListWidth(getLayoutPreferenceValue('taskListWidth', defaultTaskListWidth), shouldSave)
     setTaskListHeight(getLayoutPreferenceValue('taskListHeight', Math.round(window.innerHeight * 0.42)), shouldSave)
     $('#layout-resizer').attr('aria-orientation', isWideLayout() ? 'vertical' : 'horizontal')
@@ -1928,6 +1953,17 @@
     saveLayoutPreference().then(function (wasSaved) {
       if (wasSaved) {
         setStatus('Layout preference saved', 'saved')
+      }
+    })
+  }
+
+  function saveTaskSectionVisibility() {
+    layoutPreference.showSourceFields = $('#show-source-fields').prop('checked')
+    layoutPreference.showRelationships = $('#show-relationships').prop('checked')
+    applyTaskSectionVisibility()
+    saveLayoutPreference().then(function (wasSaved) {
+      if (wasSaved) {
+        setStatus('Display preference saved', 'saved')
       }
     })
   }
@@ -3234,6 +3270,7 @@
       }
     })
     $('#layout-mode').on('change', switchLayoutMode)
+    $('#show-source-fields, #show-relationships').on('change', saveTaskSectionVisibility)
     $('#save-button').on('click', function () {
       saveTask().catch(function (error) {
         setStatus(getErrorMessage(error, 'Could not save task'), 'error')

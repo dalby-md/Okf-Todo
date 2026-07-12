@@ -378,6 +378,7 @@ Acceptance criteria:
 - Source and target task cannot be the same.
 - Relation type controls display name and reverse display name.
 - Add log entries for relation added/removed.
+- Relationships are hidden by default and can be shown through a persisted user preference.
 
 Suggested Codex prompt:
 

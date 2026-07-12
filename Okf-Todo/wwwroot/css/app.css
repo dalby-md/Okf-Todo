@@ -445,6 +445,11 @@ h2 {
   margin-top: 2px;
 }
 
+.source-grid[hidden],
+.relationships-section[hidden] {
+  display: none;
+}
+
 .field-block,
 .mode-field {
   display: grid;
@@ -1202,6 +1207,12 @@ h2 {
 .lookup-check span {
   color: #3f4852;
   font-size: 0.76rem;
+}
+
+.settings-visibility-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .lookup-edit-preview {

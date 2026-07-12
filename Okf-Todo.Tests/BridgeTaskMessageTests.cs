@@ -578,6 +578,8 @@ public sealed class BridgeTaskMessageTests
         Assert.Equal(JsonValueKind.Null, initial.GetProperty("taskListWidth").ValueKind);
         Assert.Equal(JsonValueKind.Null, initial.GetProperty("taskListHeight").ValueKind);
         Assert.Equal("AUTO", initial.GetProperty("layoutMode").GetString());
+        Assert.False(initial.GetProperty("showSourceFields").GetBoolean());
+        Assert.False(initial.GetProperty("showRelationships").GetBoolean());
 
         await fixture.SendAsync("editor.preference.save", new
         {
@@ -588,16 +590,22 @@ public sealed class BridgeTaskMessageTests
         {
             taskListWidth = 412,
             taskListHeight = 275,
-            layoutMode = "STACKED"
+            layoutMode = "STACKED",
+            showSourceFields = true,
+            showRelationships = true
         });
         Assert.Equal(412, saved.GetProperty("taskListWidth").GetDouble());
         Assert.Equal(275, saved.GetProperty("taskListHeight").GetDouble());
         Assert.Equal("STACKED", saved.GetProperty("layoutMode").GetString());
+        Assert.True(saved.GetProperty("showSourceFields").GetBoolean());
+        Assert.True(saved.GetProperty("showRelationships").GetBoolean());
 
         var loaded = await fixture.SendAsync("layout.preference.get", new { });
         Assert.Equal(412, loaded.GetProperty("taskListWidth").GetDouble());
         Assert.Equal(275, loaded.GetProperty("taskListHeight").GetDouble());
         Assert.Equal("STACKED", loaded.GetProperty("layoutMode").GetString());
+        Assert.True(loaded.GetProperty("showSourceFields").GetBoolean());
+        Assert.True(loaded.GetProperty("showRelationships").GetBoolean());
 
         var editorPreference = await fixture.SendAsync("editor.preference.get", new { });
         Assert.Equal("MARKDOWN", editorPreference.GetProperty("bodyFormatCode").GetString());

@@ -224,6 +224,8 @@ SourceReference: Release #1842
 
 Source is not the same as waiting target.
 
+Source fields are hidden in task details by default. User preferences can show them, and the choice persists across application restarts.
+
 Example:
 
 ```text
@@ -346,6 +348,8 @@ Initial relation types:
 Relationships are mainly for navigation and overview in the first version.
 
 The task editor supports adding and removing relationships, shows the correct forward or reverse name, and navigates directly to the related task. Duplicate and self relationships are rejected. Relationship removal uses the application HTML confirmation dialog.
+
+The relationships section is hidden in task details by default. User preferences can show it, and the choice persists across application restarts.
 
 Only `Blocks` / `Depends on` may affect sorting later.
 

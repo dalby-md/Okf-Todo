@@ -13,6 +13,8 @@ public sealed class AppPreferenceService(
     private const string DefaultBodyFormatCode = "HTML";
     private const string DefaultMarkdownEditType = MarkdownEditTypes.Markdown;
     private const string DefaultLayoutMode = LayoutPreferenceModes.Auto;
+    private const bool DefaultShowSourceFields = false;
+    private const bool DefaultShowRelationships = false;
     private const int DefaultEditorHeight = 360;
     private const int MinimumEditorHeight = 240;
     private const int MaximumEditorHeight = 1800;
@@ -81,7 +83,12 @@ public sealed class AppPreferenceService(
         var preferences = await ReadPreferencesAsync(cancellationToken);
         var layoutMode = NormalizeOrDefaultLayoutMode(preferences.LayoutMode);
 
-        return new LayoutPreferenceDto(preferences.TaskListWidth, preferences.TaskListHeight, layoutMode);
+        return new LayoutPreferenceDto(
+            preferences.TaskListWidth,
+            preferences.TaskListHeight,
+            layoutMode,
+            preferences.ShowSourceFields ?? DefaultShowSourceFields,
+            preferences.ShowRelationships ?? DefaultShowRelationships);
     }
 
     public async Task<LayoutPreferenceDto> SaveLayoutPreferenceAsync(
@@ -106,22 +113,37 @@ public sealed class AppPreferenceService(
         var layoutMode = request.LayoutMode is null
             ? NormalizeOrDefaultLayoutMode(preferences.LayoutMode)
             : NormalizeLayoutMode(request.LayoutMode);
+        var showSourceFields = request.ShowSourceFields
+            ?? preferences.ShowSourceFields
+            ?? DefaultShowSourceFields;
+        var showRelationships = request.ShowRelationships
+            ?? preferences.ShowRelationships
+            ?? DefaultShowRelationships;
 
         preferences = preferences with
         {
             TaskListWidth = taskListWidth,
             TaskListHeight = taskListHeight,
-            LayoutMode = layoutMode
+            LayoutMode = layoutMode,
+            ShowSourceFields = showSourceFields,
+            ShowRelationships = showRelationships
         };
         await WritePreferencesAsync(preferences, cancellationToken);
 
         logger.LogInformation(
-            "Saved layout preference with task list width {TaskListWidth}, height {TaskListHeight}, and mode {LayoutMode}.",
+            "Saved layout preference with task list width {TaskListWidth}, height {TaskListHeight}, mode {LayoutMode}, source fields {ShowSourceFields}, and relationships {ShowRelationships}.",
             taskListWidth,
             taskListHeight,
-            layoutMode);
+            layoutMode,
+            showSourceFields,
+            showRelationships);
 
-        return new LayoutPreferenceDto(taskListWidth, taskListHeight, layoutMode);
+        return new LayoutPreferenceDto(
+            taskListWidth,
+            taskListHeight,
+            layoutMode,
+            showSourceFields,
+            showRelationships);
     }
 
     public async Task<WindowPreferenceDto> GetWindowPreferenceAsync(CancellationToken cancellationToken)
@@ -283,6 +305,8 @@ public sealed class AppPreferenceService(
             null,
             null,
             DefaultLayoutMode,
+            DefaultShowSourceFields,
+            DefaultShowRelationships,
             null,
             null,
             null,
@@ -447,9 +471,19 @@ public static class LayoutPreferenceModes
     public const string Stacked = "STACKED";
 }
 
-public sealed record LayoutPreferenceDto(double? TaskListWidth, double? TaskListHeight, string LayoutMode);
+public sealed record LayoutPreferenceDto(
+    double? TaskListWidth,
+    double? TaskListHeight,
+    string LayoutMode,
+    bool ShowSourceFields,
+    bool ShowRelationships);
 
-public sealed record LayoutPreferenceSaveRequest(double? TaskListWidth, double? TaskListHeight, string? LayoutMode);
+public sealed record LayoutPreferenceSaveRequest(
+    double? TaskListWidth,
+    double? TaskListHeight,
+    string? LayoutMode,
+    bool? ShowSourceFields = null,
+    bool? ShowRelationships = null);
 
 public sealed record WindowPreferenceDto(int? Left, int? Top, int? Width, int? Height, bool IsMaximized);
 
@@ -462,6 +496,8 @@ internal sealed record StoredPreferences(
     double? TaskListWidth,
     double? TaskListHeight,
     string? LayoutMode,
+    bool? ShowSourceFields,
+    bool? ShowRelationships,
     int? WindowLeft,
     int? WindowTop,
     int? WindowWidth,
