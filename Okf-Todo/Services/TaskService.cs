@@ -12,7 +12,6 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             await GetLookupItemsAsync(dbContext.TaskPriorities, cancellationToken),
             await GetLookupItemsAsync(dbContext.TaskSources, cancellationToken),
             await GetLookupItemsAsync(dbContext.BodyFormats, cancellationToken),
-            await GetLookupItemsAsync(dbContext.AttachmentKinds, cancellationToken),
             await dbContext.TaskTags.AsNoTracking().OrderBy(tag => tag.Value).Select(tag => tag.Value).ToListAsync(cancellationToken));
     }
 
@@ -963,7 +962,6 @@ public sealed record TaskLookupsDto(
     IReadOnlyCollection<LookupItemDto> TaskPriorities,
     IReadOnlyCollection<LookupItemDto> TaskSources,
     IReadOnlyCollection<LookupItemDto> BodyFormats,
-    IReadOnlyCollection<LookupItemDto> AttachmentKinds,
     IReadOnlyCollection<string> Tags);
 
 public sealed record LookupItemDto(

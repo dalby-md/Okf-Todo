@@ -115,7 +115,6 @@ public sealed class BridgeTaskMessageTests
             fileName = "build.log",
             contentType = "text/plain",
             base64Data = Convert.ToBase64String(attachmentBytes),
-            attachmentKindCode = "LOG_FILE",
             description = (string?)null
         });
         var attachment = Assert.Single(attachments.EnumerateArray());

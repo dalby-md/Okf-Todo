@@ -30,16 +30,6 @@
     { "code": "MONITORING_LOGS", "name": "Monitoring/logs", "sortOrder": 90 },
     { "code": "USER_REPORT", "name": "User report", "sortOrder": 100 }
   ],
-  "attachmentKinds": [
-    { "code": "SCREENSHOT", "name": "Screenshot", "sortOrder": 10 },
-    { "code": "LOG_FILE", "name": "Log file", "sortOrder": 20 },
-    { "code": "DOCUMENT", "name": "Document", "sortOrder": 30 },
-    { "code": "EXPORT", "name": "Export", "sortOrder": 40 },
-    { "code": "SQL_SCRIPT", "name": "SQL script", "sortOrder": 50 },
-    { "code": "CONFIG_FILE", "name": "Config file", "sortOrder": 60 },
-    { "code": "SOURCE_CODE", "name": "Source code", "sortOrder": 70 },
-    { "code": "OTHER", "name": "Other", "sortOrder": 80 }
-  ],
   "taskRelationTypes": [
     { "code": "BLOCKS", "name": "Blocks", "reverseName": "Blocked by", "sortOrder": 10 },
     { "code": "DEPENDS_ON", "name": "Depends on", "reverseName": "Required by", "sortOrder": 20 },

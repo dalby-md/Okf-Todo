@@ -684,7 +684,6 @@
               <div class="attachments-header">
                 <h3 id="attachments-title">Attachments</h3>
                 <div class="attachment-actions">
-                  <select id="attachment-kind" aria-label="Attachment kind" disabled></select>
                   <input id="attachment-file" class="sr-only" type="file" disabled>
                   <button id="attachment-add-button" class="secondary-button" type="button" disabled>Add file</button>
                 </div>
@@ -886,7 +885,6 @@
     renderLookupOptions('#task-priority', lookups.taskPriorities, true)
     renderLookupOptions('#task-source', lookups.taskSources, true)
     renderLookupOptions('#editor-mode', lookups.bodyFormats, false)
-    renderLookupOptions('#attachment-kind', lookups.attachmentKinds, true)
     renderTagOptions(lookups.tags || [])
   }
 
@@ -905,7 +903,6 @@
     $('#attachment-list').html(items.map(function (item) {
       return `<div class="attachment-row">
         <button class="attachment-download-button attachment-name" type="button" data-attachment-id="${item.id}">${encodeText(item.fileName)}</button>
-        <span>${encodeText(item.attachmentKindName || '')}</span>
         <span>${formatFileSize(item.fileSize)}</span>
         <button class="attachment-delete-button secondary-button danger-button" type="button" data-attachment-id="${item.id}" aria-label="Remove ${encodeAttribute(item.fileName)}">Remove</button>
       </div>`
@@ -942,7 +939,6 @@
         fileName: file.name,
         contentType: file.type || null,
         base64Data: await readFileAsBase64(file),
-        attachmentKindCode: $('#attachment-kind').val().toString() || null,
         description: null
       })
       renderAttachments(items)
@@ -2012,7 +2008,7 @@
       .text(canReopen ? 'Reopen' : 'Complete')
       .prop('disabled', !(canCompleteOrCancel || canReopen))
     $('#cancel-button').prop('disabled', !canCompleteOrCancel)
-    $('#attachment-add-button, #attachment-kind, #attachment-file').prop('disabled', !isSavedTask)
+    $('#attachment-add-button, #attachment-file').prop('disabled', !isSavedTask)
     renderWaitingPanel(task)
   }
 

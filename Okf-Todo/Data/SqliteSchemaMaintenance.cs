@@ -32,6 +32,18 @@ public static class SqliteSchemaMaintenance
         DropTableIfExists(connection, "StakeholderTypes");
         DropTableIfExists(connection, "StakeholderRoles");
 
+        if (HasColumn(connection, "TaskAttachments", "AttachmentKindId"))
+        {
+            logger.LogInformation("Removing attachment classification from task attachments.");
+            RebuildTaskAttachments(connection);
+        }
+        else
+        {
+            DropIndexIfExists(connection, "IX_TaskAttachments_AttachmentKindId");
+        }
+
+        DropTableIfExists(connection, "AttachmentKinds");
+
         if (HasTable(connection, "TaskLogEntries") && HasTable(connection, "TaskLogTypes"))
         {
             Execute(connection, """
@@ -123,6 +135,42 @@ public static class SqliteSchemaMaintenance
         Execute(connection, "DROP TABLE \"TaskWaitingFors\"");
         Execute(connection, "ALTER TABLE \"TaskWaitingFors_rebuild\" RENAME TO \"TaskWaitingFors\"");
         Execute(connection, "CREATE UNIQUE INDEX \"IX_TaskWaitingFors_TaskId\" ON \"TaskWaitingFors\" (\"TaskId\") WHERE ResolvedAt IS NULL");
+    }
+
+    private static void RebuildTaskAttachments(SqliteConnection connection)
+    {
+        DropIndexIfExists(connection, "IX_TaskAttachments_AttachmentKindId");
+        Execute(connection, "DROP TABLE IF EXISTS \"TaskAttachments_rebuild\"");
+
+        Execute(connection, """
+            CREATE TABLE "TaskAttachments_rebuild" (
+                "Id" INTEGER NOT NULL CONSTRAINT "PK_TaskAttachments" PRIMARY KEY AUTOINCREMENT,
+                "TaskId" INTEGER NOT NULL,
+                "FileName" TEXT NOT NULL,
+                "ContentType" TEXT NULL,
+                "FileSize" INTEGER NOT NULL,
+                "Sha256Hash" TEXT NULL,
+                "ContentBlob" BLOB NOT NULL,
+                "Description" TEXT NULL,
+                "CreatedAt" TEXT NOT NULL,
+                CONSTRAINT "FK_TaskAttachments_TaskItems_TaskId" FOREIGN KEY ("TaskId") REFERENCES "TaskItems" ("Id") ON DELETE CASCADE
+            )
+            """);
+
+        Execute(connection, """
+            INSERT INTO "TaskAttachments_rebuild" (
+                "Id", "TaskId", "FileName", "ContentType", "FileSize",
+                "Sha256Hash", "ContentBlob", "Description", "CreatedAt"
+            )
+            SELECT
+                "Id", "TaskId", "FileName", "ContentType", "FileSize",
+                "Sha256Hash", "ContentBlob", "Description", "CreatedAt"
+            FROM "TaskAttachments"
+            """);
+
+        Execute(connection, "DROP TABLE \"TaskAttachments\"");
+        Execute(connection, "ALTER TABLE \"TaskAttachments_rebuild\" RENAME TO \"TaskAttachments\"");
+        Execute(connection, "CREATE INDEX \"IX_TaskAttachments_TaskId\" ON \"TaskAttachments\" (\"TaskId\")");
     }
 
     private static void EnsureTagTables(SqliteConnection connection)

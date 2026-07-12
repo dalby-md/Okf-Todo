@@ -16,10 +16,6 @@ public sealed class TaskAttachment
 
     public string? Sha256Hash { get; set; }
 
-    public int? AttachmentKindId { get; set; }
-
-    public AttachmentKind? AttachmentKind { get; set; }
-
     public byte[] ContentBlob { get; set; } = [];
 
     public string? Description { get; set; }

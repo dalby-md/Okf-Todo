@@ -30,8 +30,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<TaskAttachment> TaskAttachments => Set<TaskAttachment>();
 
-    public DbSet<AttachmentKind> AttachmentKinds => Set<AttachmentKind>();
-
     public DbSet<TaskTag> TaskTags => Set<TaskTag>();
 
     public DbSet<TaskTaskTag> TaskTaskTags => Set<TaskTaskTag>();
@@ -99,7 +97,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         ConfigureLookup<TaskStatus>(modelBuilder);
         ConfigureLookup<TaskPriority>(modelBuilder);
         ConfigureLookup<TaskSource>(modelBuilder);
-        ConfigureLookup<AttachmentKind>(modelBuilder);
         ConfigureLookup<TaskLogType>(modelBuilder);
         ConfigureLookup<BodyFormat>(modelBuilder);
 
@@ -213,10 +210,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .HasForeignKey(attachment => attachment.TaskId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasOne(attachment => attachment.AttachmentKind)
-                .WithMany(kind => kind.Attachments)
-                .HasForeignKey(attachment => attachment.AttachmentKindId)
-                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<TaskTag>(entity =>
@@ -286,7 +279,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     private async Task NormalizeSelectedLookupsAsync(CancellationToken cancellationToken)
     {
-        await NormalizeSelectedLookupAsync<AttachmentKind>(cancellationToken);
         await NormalizeSelectedLookupAsync<BodyFormat>(cancellationToken);
         await NormalizeSelectedLookupAsync<TaskLogType>(cancellationToken);
         await NormalizeSelectedLookupAsync<TaskType>(cancellationToken);

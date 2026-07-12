@@ -309,21 +309,9 @@ Recommended attachment fields:
 - ContentType
 - FileSize
 - Sha256Hash
-- AttachmentKindId
 - ContentBlob
 - Description
 - CreatedAt
-
-Initial attachment kinds:
-
-- Screenshot
-- Log file
-- Document
-- Export
-- SQL script
-- Config file
-- Source code
-- Other
 
 A soft size limit should be considered, for example 25–50 MB per attachment.
 
@@ -418,7 +406,6 @@ Add a settings/admin area for lookup values:
 - Statuses
 - Priorities
 - Sources
-- Attachment kinds
 - Relation types
 - Body formats
 - Log types

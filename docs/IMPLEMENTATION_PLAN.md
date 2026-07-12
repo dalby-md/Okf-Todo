@@ -326,7 +326,6 @@ Scope:
 
 - Store files in SQLite as BLOBs.
 - Add hash.
-- Add attachment kind.
 - Add basic attachment list/download/open-save behavior.
 
 Acceptance criteria:
@@ -348,7 +347,6 @@ Fields:
 - ContentType
 - FileSize
 - Sha256Hash
-- AttachmentKindId
 - ContentBlob
 - Description
 - CreatedAt

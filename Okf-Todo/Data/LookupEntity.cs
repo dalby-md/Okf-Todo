@@ -47,11 +47,6 @@ public sealed class TaskSource : LookupEntity
     public List<TaskItem> Tasks { get; set; } = [];
 }
 
-public sealed class AttachmentKind : LookupEntity
-{
-    public List<TaskAttachment> Attachments { get; set; } = [];
-}
-
 public sealed class TaskLogType : LookupEntity
 {
     public List<TaskLogEntry> LogEntries { get; set; } = [];

@@ -91,21 +91,6 @@ MONITORING_LOGS    Monitoring/logs
 USER_REPORT        User report
 ```
 
-### AttachmentKind
-
-Initial values:
-
-```text
-SCREENSHOT    Screenshot
-LOG_FILE      Log file
-DOCUMENT      Document
-EXPORT        Export
-SQL_SCRIPT    SQL script
-CONFIG_FILE   Config file
-SOURCE_CODE   Source code
-OTHER         Other
-```
-
 ### TaskRelationType
 
 Recommended columns:
@@ -307,7 +292,6 @@ FileName
 ContentType nullable
 FileSize
 Sha256Hash nullable
-AttachmentKindId nullable
 ContentBlob
 Description nullable
 CreatedAt
@@ -368,7 +352,6 @@ TaskLogEntry
 TaskLogType
 TaskChecklistItem
 TaskAttachment
-AttachmentKind
 TaskTag
 TaskTaskTag
 TaskRelation

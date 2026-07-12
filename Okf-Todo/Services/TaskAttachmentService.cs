@@ -20,8 +20,6 @@ public sealed class TaskAttachmentService(AppDbContext dbContext)
                 attachment.FileName,
                 attachment.ContentType,
                 attachment.FileSize,
-                attachment.AttachmentKind == null ? null : attachment.AttachmentKind.Code,
-                attachment.AttachmentKind == null ? null : attachment.AttachmentKind.Name,
                 attachment.Description,
                 attachment.CreatedAt))
             .ToListAsync(cancellationToken);
@@ -54,11 +52,6 @@ public sealed class TaskAttachmentService(AppDbContext dbContext)
             throw new ValidationException("Attachments cannot exceed 25 MB.", "base64Data");
         }
 
-        var kind = string.IsNullOrWhiteSpace(request.AttachmentKindCode)
-            ? null
-            : await dbContext.AttachmentKinds.SingleOrDefaultAsync(
-                item => item.Code == request.AttachmentKindCode.Trim().ToUpperInvariant(), cancellationToken)
-                ?? throw new ValidationException("Attachment kind was not found.", "attachmentKindCode");
         var now = DateTime.UtcNow;
         dbContext.TaskAttachments.Add(new TaskAttachment
         {
@@ -67,7 +60,6 @@ public sealed class TaskAttachmentService(AppDbContext dbContext)
             ContentType = NormalizeOptional(request.ContentType),
             FileSize = content.LongLength,
             Sha256Hash = Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant(),
-            AttachmentKindId = kind?.Id,
             ContentBlob = content,
             Description = NormalizeOptional(request.Description),
             CreatedAt = now
@@ -135,11 +127,10 @@ public sealed record TaskAttachmentCreateRequest(
     string FileName,
     string? ContentType,
     string Base64Data,
-    string? AttachmentKindCode,
     string? Description);
 
 public sealed record TaskAttachmentDeleteRequest(int TaskId, int AttachmentId);
 public sealed record TaskAttachmentGetRequest(int AttachmentId);
 public sealed record TaskAttachmentListRequest(int TaskId);
-public sealed record TaskAttachmentDto(int Id, string FileName, string? ContentType, long FileSize, string? AttachmentKindCode, string? AttachmentKindName, string? Description, DateTime CreatedAt);
+public sealed record TaskAttachmentDto(int Id, string FileName, string? ContentType, long FileSize, string? Description, DateTime CreatedAt);
 public sealed record TaskAttachmentContentDto(string FileName, string ContentType, string Base64Data);

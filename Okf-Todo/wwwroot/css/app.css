@@ -549,10 +549,6 @@ h2 {
   font-weight: 500;
 }
 
-#attachment-kind {
-  width: 150px;
-}
-
 .attachment-list {
   display: grid;
   gap: 3px;
