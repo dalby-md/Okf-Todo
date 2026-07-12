@@ -32,12 +32,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<AttachmentKind> AttachmentKinds => Set<AttachmentKind>();
 
-    public DbSet<TaskStakeholder> TaskStakeholders => Set<TaskStakeholder>();
-
-    public DbSet<StakeholderType> StakeholderTypes => Set<StakeholderType>();
-
-    public DbSet<StakeholderRole> StakeholderRoles => Set<StakeholderRole>();
-
     public DbSet<TaskTag> TaskTags => Set<TaskTag>();
 
     public DbSet<TaskTaskTag> TaskTaskTags => Set<TaskTaskTag>();
@@ -106,8 +100,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         ConfigureLookup<TaskPriority>(modelBuilder);
         ConfigureLookup<TaskSource>(modelBuilder);
         ConfigureLookup<AttachmentKind>(modelBuilder);
-        ConfigureLookup<StakeholderType>(modelBuilder);
-        ConfigureLookup<StakeholderRole>(modelBuilder);
         ConfigureLookup<TaskLogType>(modelBuilder);
         ConfigureLookup<BodyFormat>(modelBuilder);
 
@@ -227,28 +219,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        modelBuilder.Entity<TaskStakeholder>(entity =>
-        {
-            entity.Property(stakeholder => stakeholder.Name).IsRequired();
-            entity.Property(stakeholder => stakeholder.CreatedAt).IsRequired();
-            entity.Property(stakeholder => stakeholder.UpdatedAt).IsRequired();
-
-            entity.HasOne(stakeholder => stakeholder.Task)
-                .WithMany(task => task.Stakeholders)
-                .HasForeignKey(stakeholder => stakeholder.TaskId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(stakeholder => stakeholder.StakeholderType)
-                .WithMany(type => type.Stakeholders)
-                .HasForeignKey(stakeholder => stakeholder.StakeholderTypeId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(stakeholder => stakeholder.StakeholderRole)
-                .WithMany(role => role.Stakeholders)
-                .HasForeignKey(stakeholder => stakeholder.StakeholderRoleId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
         modelBuilder.Entity<TaskTag>(entity =>
         {
             entity.Property(tag => tag.Name).IsRequired();
@@ -321,8 +291,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     {
         await NormalizeSelectedLookupAsync<AttachmentKind>(cancellationToken);
         await NormalizeSelectedLookupAsync<BodyFormat>(cancellationToken);
-        await NormalizeSelectedLookupAsync<StakeholderRole>(cancellationToken);
-        await NormalizeSelectedLookupAsync<StakeholderType>(cancellationToken);
         await NormalizeSelectedLookupAsync<TaskLogType>(cancellationToken);
         await NormalizeSelectedLookupAsync<TaskType>(cancellationToken);
         await NormalizeSelectedLookupAsync<TaskStatus>(cancellationToken);

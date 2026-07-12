@@ -40,7 +40,6 @@ Each task should support:
 - Title
 - Free text body, stored as HTML or Markdown
 - Attachments
-- Stakeholders
 - Comments (merged into log entries)
 - Automatic log entries
 - Priority
@@ -182,7 +181,7 @@ INC123456
 
 It should not be necessary to register the wait target elsewhere before it can be used.
 
-Do not add waiting type, URL, follow-up date, stakeholder link, or other structured waiting fields in the first version.
+Do not add waiting type, URL, follow-up date, or other structured waiting fields in the first version.
 
 ## Source
 
@@ -326,60 +325,6 @@ Initial attachment kinds:
 
 A soft size limit should be considered, for example 25–50 MB per attachment.
 
-## Stakeholders
-
-Stakeholders should remain separate from tags.
-
-Tags answer:
-
-> What is the task about?
-
-Stakeholders answer:
-
-> Who or what is involved?
-
-Examples of tags:
-
-- Oracle APEX
-- TFS
-- Power Platform
-- Bug
-- Deployment
-- Security
-
-Examples of stakeholders:
-
-- ServiceDesk
-- Peter Hansen
-- Payroll team
-- External vendor
-- TFS build agent
-
-Stakeholders can appear visually as chips, similar to tags.
-
-Initial stakeholder types:
-
-- Person
-- Team
-- System
-- Vendor
-- ServiceDesk
-- Customer/user
-- Other
-
-Initial stakeholder roles:
-
-- Requester
-- Affected user
-- Helper
-- Approver
-- Technical contact
-- Business contact
-- External contact
-- Other
-
-Waiting for is deliberately separate from stakeholders. Do not link waiting targets to stakeholders in the first version.
-
 ## Tags
 
 Tags are table rows.
@@ -437,8 +382,6 @@ This is a personal local system, so ownership is implicit:
 Owner = me
 ```
 
-Use stakeholders to track involved people, teams, systems, vendors, or cases.
-
 ## Lookup values
 
 All controlled values should be table-based, not hardcoded as enums.
@@ -494,8 +437,6 @@ Add a settings/admin area for lookup values:
 - Priorities
 - Sources
 - Attachment kinds
-- Stakeholder types
-- Stakeholder roles
 - Relation types
 - Tags
 - Body formats

@@ -58,8 +58,6 @@ public sealed class TaskItem
 
     public List<ImageAsset> Images { get; set; } = [];
 
-    public List<TaskStakeholder> Stakeholders { get; set; } = [];
-
     public List<TaskTaskTag> TaskTags { get; set; } = [];
 
     public List<TaskRelation> SourceRelations { get; set; } = [];

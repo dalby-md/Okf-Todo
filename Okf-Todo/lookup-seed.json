@@ -40,25 +40,6 @@
     { "code": "SOURCE_CODE", "name": "Source code", "sortOrder": 70 },
     { "code": "OTHER", "name": "Other", "sortOrder": 80 }
   ],
-  "stakeholderTypes": [
-    { "code": "PERSON", "name": "Person", "sortOrder": 10 },
-    { "code": "TEAM", "name": "Team", "sortOrder": 20 },
-    { "code": "SYSTEM", "name": "System", "sortOrder": 30 },
-    { "code": "VENDOR", "name": "Vendor", "sortOrder": 40 },
-    { "code": "SERVICEDESK", "name": "ServiceDesk", "sortOrder": 50 },
-    { "code": "CUSTOMER_USER", "name": "Customer/user", "sortOrder": 60 },
-    { "code": "OTHER", "name": "Other", "sortOrder": 70 }
-  ],
-  "stakeholderRoles": [
-    { "code": "REQUESTER", "name": "Requester", "sortOrder": 10 },
-    { "code": "AFFECTED_USER", "name": "Affected user", "sortOrder": 20 },
-    { "code": "HELPER", "name": "Helper", "sortOrder": 30 },
-    { "code": "APPROVER", "name": "Approver", "sortOrder": 40 },
-    { "code": "TECHNICAL_CONTACT", "name": "Technical contact", "sortOrder": 50 },
-    { "code": "BUSINESS_CONTACT", "name": "Business contact", "sortOrder": 60 },
-    { "code": "EXTERNAL_CONTACT", "name": "External contact", "sortOrder": 70 },
-    { "code": "OTHER", "name": "Other", "sortOrder": 80 }
-  ],
   "taskRelationTypes": [
     { "code": "BLOCKS", "name": "Blocks", "reverseName": "Blocked by", "sortOrder": 10 },
     { "code": "DEPENDS_ON", "name": "Depends on", "reverseName": "Required by", "sortOrder": 20 },
@@ -80,8 +61,6 @@
     { "code": "CHECKLIST_ITEM_REOPENED", "name": "Checklist item reopened", "sortOrder": 100, "isSystem": true },
     { "code": "ATTACHMENT_ADDED", "name": "Attachment added", "sortOrder": 110, "isSystem": true },
     { "code": "ATTACHMENT_REMOVED", "name": "Attachment removed", "sortOrder": 120, "isSystem": true },
-    { "code": "STAKEHOLDER_ADDED", "name": "Stakeholder added", "sortOrder": 130, "isSystem": true },
-    { "code": "STAKEHOLDER_REMOVED", "name": "Stakeholder removed", "sortOrder": 140, "isSystem": true },
     { "code": "TAG_ADDED", "name": "Tag added", "sortOrder": 150, "isSystem": true },
     { "code": "TAG_REMOVED", "name": "Tag removed", "sortOrder": 160, "isSystem": true },
     { "code": "RELATION_ADDED", "name": "Relation added", "sortOrder": 170, "isSystem": true },

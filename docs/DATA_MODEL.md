@@ -106,35 +106,6 @@ SOURCE_CODE   Source code
 OTHER         Other
 ```
 
-### StakeholderType
-
-Initial values:
-
-```text
-PERSON          Person
-TEAM            Team
-SYSTEM          System
-VENDOR          Vendor
-SERVICEDESK     ServiceDesk
-CUSTOMER_USER   Customer/user
-OTHER           Other
-```
-
-### StakeholderRole
-
-Initial values:
-
-```text
-REQUESTER          Requester
-AFFECTED_USER      Affected user
-HELPER             Helper
-APPROVER           Approver
-TECHNICAL_CONTACT  Technical contact
-BUSINESS_CONTACT   Business contact
-EXTERNAL_CONTACT   External contact
-OTHER              Other
-```
-
 ### TaskRelationType
 
 Recommended columns:
@@ -180,8 +151,6 @@ CHECKLIST_ITEM_COMPLETED     Checklist item completed
 CHECKLIST_ITEM_REOPENED      Checklist item reopened
 ATTACHMENT_ADDED             Attachment added
 ATTACHMENT_REMOVED           Attachment removed
-STAKEHOLDER_ADDED            Stakeholder added
-STAKEHOLDER_REMOVED          Stakeholder removed
 TAG_ADDED                    Tag added
 TAG_REMOVED                  Tag removed
 RELATION_ADDED               Relation added
@@ -258,7 +227,7 @@ Rules:
 - Enforce at most one active wait target per task.
 - Adding an active wait target keeps task status `ACTIVE` and sets `Task.WaitingSince`.
 - Clearing an active wait target sets `ResolvedAt`, clears `Task.WaitingSince`, and sets task status to `ACTIVE`.
-- Do not add waiting type, URL, follow-up date, stakeholder link, or other structured waiting fields in the first version.
+- Do not add waiting type, URL, follow-up date, or other structured waiting fields in the first version.
 
 Suggested SQLite uniqueness rule:
 
@@ -350,27 +319,6 @@ Notes:
 - Consider a soft max file size, for example 25–50 MB.
 - Store hash to detect duplicate attachments.
 
-## TaskStakeholder
-
-```text
-Id
-TaskId
-StakeholderTypeId nullable
-StakeholderRoleId nullable
-Name
-Email nullable
-Reference nullable
-Url nullable
-CreatedAt
-UpdatedAt
-```
-
-Notes:
-
-- Stakeholders can represent people, teams, systems, vendors, ServiceDesk cases, or similar.
-- Stakeholders are not owners.
-- Ownership is implicit because the app is personal/local.
-
 ## TaskTag
 
 ```text
@@ -451,9 +399,6 @@ TaskLogType
 TaskChecklistItem
 TaskAttachment
 AttachmentKind
-TaskStakeholder
-StakeholderType
-StakeholderRole
 TaskTag
 TaskTaskTag
 TaskRelation

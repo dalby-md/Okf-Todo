@@ -28,8 +28,6 @@ public sealed class LookupSeedService(AppDbContext dbContext, ILogger<LookupSeed
         await SeedLookupAsync(dbContext.TaskPriorities, seed.TaskPriorities, now, cancellationToken);
         await SeedLookupAsync(dbContext.TaskSources, seed.TaskSources, now, cancellationToken);
         await SeedLookupAsync(dbContext.AttachmentKinds, seed.AttachmentKinds, now, cancellationToken);
-        await SeedLookupAsync(dbContext.StakeholderTypes, seed.StakeholderTypes, now, cancellationToken);
-        await SeedLookupAsync(dbContext.StakeholderRoles, seed.StakeholderRoles, now, cancellationToken);
         await SeedLookupAsync(dbContext.TaskLogTypes, seed.TaskLogTypes, now, cancellationToken);
         await SeedLookupAsync(dbContext.BodyFormats, seed.BodyFormats, now, cancellationToken);
         await SeedRelationTypesAsync(seed.TaskRelationTypes, now, cancellationToken);
@@ -124,8 +122,6 @@ public sealed record LookupSeedConfiguration(
     IReadOnlyCollection<LookupSeedItem> TaskPriorities,
     IReadOnlyCollection<LookupSeedItem> TaskSources,
     IReadOnlyCollection<LookupSeedItem> AttachmentKinds,
-    IReadOnlyCollection<LookupSeedItem> StakeholderTypes,
-    IReadOnlyCollection<LookupSeedItem> StakeholderRoles,
     IReadOnlyCollection<TaskRelationTypeSeedItem> TaskRelationTypes,
     IReadOnlyCollection<LookupSeedItem> TaskLogTypes,
     IReadOnlyCollection<LookupSeedItem> BodyFormats,

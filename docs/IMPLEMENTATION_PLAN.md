@@ -19,11 +19,10 @@ Do not ask Codex to build everything in one pass. Use small vertical slices.
 8. Add comments and timeline
 9. Add checklist items
 10. Add tags
-11. Add stakeholders
-12. Add attachments as SQLite BLOBs
-13. Add task relationships
-14. Add lookup management UI
-15. Add task views and sorting
+11. Add attachments as SQLite BLOBs
+12. Add task relationships
+13. Add lookup management UI
+14. Add task views and sorting
 ```
 
 ## Milestone 1 — Documentation
@@ -75,7 +74,7 @@ Implement the initial SQLite/EF Core data model for the local task system.
 
 Scope:
 - Add lookup tables with common fields: Id, Code, Name, Description, SortOrder, IsActive, IsSystem, CreatedAt, UpdatedAt.
-- Add TaskItem, TaskWaitingFor, TaskComment, TaskLogEntry, TaskChecklistItem, TaskAttachment, TaskStakeholder, TaskTag, TaskTaskTag, TaskRelation, TaskRelationType.
+- Add TaskItem, TaskWaitingFor, TaskComment, TaskLogEntry, TaskChecklistItem, TaskAttachment, TaskTag, TaskTaskTag, TaskRelation, TaskRelationType.
 - Add startup seeding from configuration: only seed a lookup table if it is empty.
 - Do not hard-delete used lookup rows. Use deactivation for values that have existing references.
 - Allow hard deletion only for unused non-system lookup rows.
@@ -173,7 +172,7 @@ Optional fields:
 - Source reference
 - Source URL
 
-Do not implement attachments, checklist items, stakeholders, tags, or relationships in this step.
+Do not implement attachments, checklist items, tags, or relationships in this step.
 Use the existing lifecycle/logging service.
 ```
 
@@ -219,7 +218,7 @@ Acceptance criteria:
 - Clearing wait target keeps task status `ACTIVE` and clears the active waiting target.
 - Logs are created.
 - Only one active wait target is allowed per task.
-- Do not add waiting type, URL, follow-up date, stakeholder link, or other structured waiting fields.
+- Do not add waiting type, URL, follow-up date, or other structured waiting fields.
 
 Suggested Codex prompt:
 
@@ -328,46 +327,7 @@ Requirements:
 - Add log entries for tag added/removed.
 ```
 
-## Milestone 10 — Stakeholders
-
-Scope:
-
-- Add stakeholders to tasks.
-- Use stakeholder type and role lookups.
-- Show stakeholders as chips or compact rows.
-
-Acceptance criteria:
-
-- User can add/edit/deactivate/remove stakeholder association from a task.
-- Stakeholders are separate from tags.
-
-Suggested Codex prompt:
-
-```text
-Add stakeholders to tasks.
-
-Stakeholders are separate from tags.
-They represent who or what is involved:
-- Person
-- Team
-- System
-- Vendor
-- ServiceDesk
-- Customer/user
-- Other
-
-Support optional fields:
-- Type
-- Role
-- Name
-- Email
-- Reference
-- URL
-
-Add log entries for stakeholder added/removed.
-```
-
-## Milestone 11 — Attachments
+## Milestone 10 — Attachments
 
 Scope:
 
@@ -405,7 +365,7 @@ Add log entries for attachment added/removed.
 Consider a configurable soft file size warning.
 ```
 
-## Milestone 12 — Task relationships
+## Milestone 11 — Task relationships
 
 Scope:
 
@@ -434,7 +394,7 @@ Show related tasks on the task detail screen.
 Add log entries for relation added/removed.
 ```
 
-## Milestone 13 — Lookup management UI
+## Milestone 12 — Lookup management UI
 
 Scope:
 
@@ -466,7 +426,7 @@ Requirements:
 - Inactive values remain visible on existing tasks.
 ```
 
-## Milestone 14 — Views and sorting
+## Milestone 13 — Views and sorting
 
 Scope:
 

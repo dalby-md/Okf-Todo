@@ -52,16 +52,6 @@ public sealed class AttachmentKind : LookupEntity
     public List<TaskAttachment> Attachments { get; set; } = [];
 }
 
-public sealed class StakeholderType : LookupEntity
-{
-    public List<TaskStakeholder> Stakeholders { get; set; } = [];
-}
-
-public sealed class StakeholderRole : LookupEntity
-{
-    public List<TaskStakeholder> Stakeholders { get; set; } = [];
-}
-
 public sealed class TaskLogType : LookupEntity
 {
     public List<TaskLogEntry> LogEntries { get; set; } = [];

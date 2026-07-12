@@ -15,6 +15,32 @@ public static class SqliteSchemaMaintenance
         using var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False");
         connection.Open();
 
+        if (HasTable(connection, "TaskStakeholders"))
+        {
+            logger.LogInformation("Dropping removed task stakeholder tables.");
+            Execute(connection, "DROP TABLE \"TaskStakeholders\"");
+        }
+
+        DropTableIfExists(connection, "StakeholderTypes");
+        DropTableIfExists(connection, "StakeholderRoles");
+
+        if (HasTable(connection, "TaskLogEntries") && HasTable(connection, "TaskLogTypes"))
+        {
+            Execute(connection, """
+                DELETE FROM "TaskLogEntries"
+                WHERE "TaskLogTypeId" IN (
+                    SELECT "Id"
+                    FROM "TaskLogTypes"
+                    WHERE "Code" IN ('STAKEHOLDER_ADDED', 'STAKEHOLDER_REMOVED')
+                )
+                """);
+
+            Execute(connection, """
+                DELETE FROM "TaskLogTypes"
+                WHERE "Code" IN ('STAKEHOLDER_ADDED', 'STAKEHOLDER_REMOVED')
+                """);
+        }
+
         DropIfExists(connection, "TR_WaitingForTypes_IsSelected_AfterInsert", "TRIGGER");
         DropIfExists(connection, "TR_WaitingForTypes_IsSelected_AfterUpdate", "TRIGGER");
 
@@ -124,6 +150,11 @@ public static class SqliteSchemaMaintenance
     private static void DropIndexIfExists(SqliteConnection connection, string name)
     {
         Execute(connection, $"DROP INDEX IF EXISTS \"{name}\"");
+    }
+
+    private static void DropTableIfExists(SqliteConnection connection, string name)
+    {
+        Execute(connection, $"DROP TABLE IF EXISTS \"{name}\"");
     }
 
     private static void Execute(SqliteConnection connection, string commandText)
