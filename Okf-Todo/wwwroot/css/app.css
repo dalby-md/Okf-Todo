@@ -450,6 +450,26 @@ h2 {
   border-radius: 4px;
 }
 
+.select2-container--default .select2-selection--multiple .select2-selection__rendered {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 6px;
+}
+
+.select2-container--default .select2-selection--multiple .select2-search--inline {
+  display: flex;
+  align-items: center;
+  height: 30px;
+}
+
+.select2-container--default .select2-selection--multiple .select2-search--inline .select2-search__field {
+  height: 28px;
+  min-height: 28px;
+  margin-top: 0;
+  line-height: 28px;
+}
+
 .field-help {
   margin-top: -1px;
   color: #68737f;
@@ -464,7 +484,8 @@ h2 {
 }
 
 .select2-container--default .select2-selection--multiple .select2-selection__choice {
-  margin-top: 4px;
+  margin-top: 0;
+  margin-bottom: 0;
   border-color: #bfd6d1;
   background: #e8f2ef;
 }
