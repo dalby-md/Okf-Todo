@@ -27,7 +27,7 @@ namespace Photino.Okf_Todo
 
             using var services = CreateServices();
             var startupLogger = services.GetRequiredService<ILogger<Program>>();
-            startupLogger.LogInformation("Starting OKF Todo from {BaseDirectory}", AppContext.BaseDirectory);
+            startupLogger.LogInformation("Starting OKF-Todo from {BaseDirectory}", AppContext.BaseDirectory);
 
             using (var scope = services.CreateScope())
             {
@@ -78,7 +78,7 @@ namespace Photino.Okf_Todo
 
             var windowPreference = LoadWindowPreference(services, startupLogger);
             var window = new PhotinoWindow()
-                .SetTitle("OKF Todo")
+                .SetTitle("OKF-Todo")
                 .SetUseOsDefaultSize(false)
                 .SetSize(GetStartupWindowSize(windowPreference))
                 .SetResizable(true)

@@ -1,6 +1,6 @@
 ---
 name: compile-okf-context
-description: Compile the Okf-Todo SQLite and EF Core database design into a compliant Open Knowledge Format (OKF) context graph bundle. Use whenever database design changes, including entities, mappings, tables, columns, keys, foreign keys, indexes, constraints, delete behavior, lookup schema, database initialization, or docs/DATA_MODEL.md; also use when asked to generate, refresh, validate, or explain the Todo database OKF bundle.
+description: Compile the OKF-Todo SQLite and EF Core database design into a compliant Open Knowledge Format (OKF) context graph bundle. Use whenever database design changes, including entities, mappings, tables, columns, keys, foreign keys, indexes, constraints, delete behavior, lookup schema, database initialization, or docs/DATA_MODEL.md; also use when asked to generate, refresh, validate, or explain the Todo database OKF bundle.
 ---
 
 # Compile OKF Context

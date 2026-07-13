@@ -620,7 +620,7 @@
           <header class="sidebar-header">
             <div>
               <p class="eyebrow">Local task system</p>
-              <h1 id="app-title">OKF Tasks</h1>
+              <h1 id="app-title">OKF-Todo</h1>
             </div>
             <button id="new-task-button" type="button">New task</button>
           </header>

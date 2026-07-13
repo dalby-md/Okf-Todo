@@ -1,12 +1,12 @@
-# OKF Todo
+# OKF-Todo
 
 > **Version 0.1 alpha - work in progress.** Expect incomplete features and changes to the user interface. Database will be migrated to newest version if necessary.
 
-OKF Todo is a task manager for Windows, macOS, and Linux. It works like a familiar task tool for everyday users, while its OKF-described data interface allows local AI assistants to read and update the same tasks alongside you.
+OKF-Todo is a task manager for Windows, macOS, and Linux. It works like a familiar task tool for everyday users, while its OKF-described data interface allows local AI assistants to read and update the same tasks alongside you.
 
 ## AI-First Data
 
-OKF Todo is designed so an AI assistant can read, analyze, and update task data without depending on a proprietary cloud API. There are two complementary access paths:
+OKF-Todo is designed so an AI assistant can read, analyze, and update task data without depending on a proprietary cloud API. There are two complementary access paths:
 
 - **SQLite directly:** the application database contains the actual tasks, lookups, comments, history, tags, relationships, images, and attachments.
 - **OKF-guided access:** the repository's [Open Knowledge Format context graph](docs/okf/todo-database/) describes the database concepts, schema, relationships, integrity rules, and lifecycle conventions so an AI can discover and reason about the data before working with SQLite.
@@ -15,9 +15,9 @@ OKF is the knowledge and navigation layer; SQLite remains the source of task dat
 
 The same database remains fully usable through the desktop interface. AI assistance is optional, local data stays under the user's control, and no hosted service is required.
 
-A dedicated **OKF Todo CLI** is being considered. It will provide direct terminal access for people, scripts, and AI agents, with supported commands for querying and updating tasks without writing ad hoc SQL. The CLI is also planned as the foundation for **Model Context Protocol (MCP) support**, allowing MCP-compatible AI clients to discover task capabilities and work with local data through structured tools.
+A dedicated **OKF-Todo CLI** is being considered. It will provide direct terminal access for people, scripts, and AI agents, with supported commands for querying and updating tasks without writing ad hoc SQL. The CLI is also planned as the foundation for **Model Context Protocol (MCP) support**, allowing MCP-compatible AI clients to discover task capabilities and work with local data through structured tools.
 
-![OKF Todo task workspace showing task views, rich task details, tags, waiting status, Markdown editing, and a checklist](docs/images/okf-todo-task-workspace.png)\
+![OKF-Todo task workspace showing task views, rich task details, tags, waiting status, Markdown editing, and a checklist](docs/images/okf-todo-task-workspace.png)\
 <sub>Data are created by Codex directly.</sub>
 
 ## Coming Next
@@ -29,7 +29,7 @@ Planned for the next few days:
 
 Plans for the future:
 
-- An OKF Todo CLI for direct task queries and updates from terminals, scripts, and AI workflows.
+- An OKF-Todo CLI for direct task queries and updates from terminals, scripts, and AI workflows.
 - MCP support built on the CLI and OKF context graph for structured AI-tool integration.
 - Installers for Mac and Linux planned.
 
@@ -72,7 +72,7 @@ dotnet restore
 dotnet run --project ./Okf-Todo/Okf-Todo.csproj
 ```
 
-On first launch, OKF Todo creates its database and initial lookup values automatically. No setup wizard or account is required.
+On first launch, OKF-Todo creates its database and initial lookup values automatically. No setup wizard or account is required.
 
 The database is stored under the operating system's local application-data directory:
 
@@ -219,16 +219,16 @@ The backup includes tasks, body images, attachments, lookups, tags, relationship
 
 Restore is manual in version 0.1:
 
-1. Close OKF Todo.
+1. Close OKF-Todo.
 2. Keep a copy of the current database if needed.
 3. Replace the platform-specific `Okf-Todo/okf-todo.db` file listed under Getting Started with the backup file.
-4. Start OKF Todo again.
+4. Start OKF-Todo again.
 
 Never replace the active database while the application is running.
 
 ## Data and Privacy
 
-OKF Todo is a single-user, local-first application. It has no authentication, cloud synchronization, application telemetry, or external task-system integration. Application data stays in the local SQLite database unless you create a backup or save an attachment copy yourself.
+OKF-Todo is a single-user, local-first application. It has no authentication, cloud synchronization, application telemetry, or external task-system integration. Application data stays in the local SQLite database unless you create a backup or save an attachment copy yourself.
 
 ## Current Limitations
 

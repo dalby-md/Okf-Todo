@@ -1,6 +1,6 @@
 ---
 type: SQLite Database
-title: Okf-Todo SQLite Database
+title: OKF-Todo SQLite Database
 description: Describes the local SQLite database and its ownership boundary.
 resource: Okf-Todo/Data/DatabasePathProvider.cs
 tags:
@@ -9,7 +9,7 @@ tags:
 timestamp: 2026-07-13T00:00:00Z
 ---
 
-# Okf-Todo SQLite Database
+# OKF-Todo SQLite Database
 
 ## Purpose
 
