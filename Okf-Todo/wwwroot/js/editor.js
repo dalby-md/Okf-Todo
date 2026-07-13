@@ -254,6 +254,17 @@
 
     textarea.value = options.initialContent || ''
 
+    function applyColorScheme(colorScheme) {
+      if (!editor || typeof editor.getBody !== 'function') {
+        return
+      }
+
+      const body = editor.getBody()
+      const isDark = String(colorScheme || '').toUpperCase() === 'DARK'
+      body.style.setProperty('color', isDark ? '#e7e5e4' : '#202124')
+      body.style.setProperty('background-color', isDark ? '#101112' : '#ffffff')
+    }
+
     return {
       initialize: async function () {
         await ensureTinyMceLoaded()
@@ -285,6 +296,9 @@
           content_style: options.contentStyle || '',
           setup: function (tinyEditor) {
             editor = tinyEditor
+            tinyEditor.on('init', function () {
+              applyColorScheme(options.colorScheme)
+            })
             tinyEditor.on('change keyup undo redo setcontent', notifyChanged)
           }
         })
@@ -293,6 +307,8 @@
         if (!editor) {
           throw new Error('TinyMCE did not attach to the editor textarea.')
         }
+
+        applyColorScheme(options.colorScheme)
 
         const loading = host.querySelector('.editor-loading')
         if (loading) {
@@ -341,6 +357,10 @@
 
       setReadOnly: function (readOnly) {
         editor.mode.set(readOnly ? 'readonly' : 'design')
+      },
+
+      setColorScheme: function (colorScheme) {
+        applyColorScheme(colorScheme)
       },
 
       focus: function () {
@@ -666,6 +686,10 @@
         // TOAST UI v2 does not expose a stable read-only API in the browser bundle.
       },
 
+      setColorScheme: function () {
+        // TOAST UI is styled by the application theme stylesheet.
+      },
+
       focus: function () {
         editor.focus()
       },
@@ -790,6 +814,12 @@
 
     setReadOnly: function (readOnly) {
       requireAdapter().setReadOnly(readOnly)
+    },
+
+    setColorScheme: function (colorScheme) {
+      if (activeAdapter && typeof activeAdapter.setColorScheme === 'function') {
+        activeAdapter.setColorScheme(colorScheme)
+      }
     },
 
     setHeight: function (height) {

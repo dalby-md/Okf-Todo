@@ -13,6 +13,7 @@ public sealed class AppPreferenceService(
     private const string DefaultBodyFormatCode = "HTML";
     private const string DefaultMarkdownEditType = MarkdownEditTypes.Markdown;
     private const string DefaultLayoutMode = LayoutPreferenceModes.Auto;
+    private const string DefaultColorScheme = ColorSchemes.Light;
     private const bool DefaultShowSourceFields = false;
     private const bool DefaultShowRelationships = false;
     private const int DefaultEditorHeight = 360;
@@ -82,13 +83,15 @@ public sealed class AppPreferenceService(
     {
         var preferences = await ReadPreferencesAsync(cancellationToken);
         var layoutMode = NormalizeOrDefaultLayoutMode(preferences.LayoutMode);
+        var colorScheme = NormalizeOrDefaultColorScheme(preferences.ColorScheme);
 
         return new LayoutPreferenceDto(
             preferences.TaskListWidth,
             preferences.TaskListHeight,
             layoutMode,
             preferences.ShowSourceFields ?? DefaultShowSourceFields,
-            preferences.ShowRelationships ?? DefaultShowRelationships);
+            preferences.ShowRelationships ?? DefaultShowRelationships,
+            colorScheme);
     }
 
     public async Task<LayoutPreferenceDto> SaveLayoutPreferenceAsync(
@@ -119,6 +122,9 @@ public sealed class AppPreferenceService(
         var showRelationships = request.ShowRelationships
             ?? preferences.ShowRelationships
             ?? DefaultShowRelationships;
+        var colorScheme = request.ColorScheme is null
+            ? NormalizeOrDefaultColorScheme(preferences.ColorScheme)
+            : NormalizeColorScheme(request.ColorScheme);
 
         preferences = preferences with
         {
@@ -126,24 +132,27 @@ public sealed class AppPreferenceService(
             TaskListHeight = taskListHeight,
             LayoutMode = layoutMode,
             ShowSourceFields = showSourceFields,
-            ShowRelationships = showRelationships
+            ShowRelationships = showRelationships,
+            ColorScheme = colorScheme
         };
         await WritePreferencesAsync(preferences, cancellationToken);
 
         logger.LogInformation(
-            "Saved layout preference with task list width {TaskListWidth}, height {TaskListHeight}, mode {LayoutMode}, source fields {ShowSourceFields}, and relationships {ShowRelationships}.",
+            "Saved layout preference with task list width {TaskListWidth}, height {TaskListHeight}, mode {LayoutMode}, source fields {ShowSourceFields}, relationships {ShowRelationships}, and color scheme {ColorScheme}.",
             taskListWidth,
             taskListHeight,
             layoutMode,
             showSourceFields,
-            showRelationships);
+            showRelationships,
+            colorScheme);
 
         return new LayoutPreferenceDto(
             taskListWidth,
             taskListHeight,
             layoutMode,
             showSourceFields,
-            showRelationships);
+            showRelationships,
+            colorScheme);
     }
 
     public async Task<WindowPreferenceDto> GetWindowPreferenceAsync(CancellationToken cancellationToken)
@@ -311,7 +320,8 @@ public sealed class AppPreferenceService(
             null,
             null,
             null,
-            DefaultWindowIsMaximized);
+            DefaultWindowIsMaximized,
+            DefaultColorScheme);
     }
 
     private static string NormalizeOrDefaultLayoutMode(string? layoutMode)
@@ -323,6 +333,18 @@ public sealed class AppPreferenceService(
         catch (ValidationException)
         {
             return DefaultLayoutMode;
+        }
+    }
+
+    private static string NormalizeOrDefaultColorScheme(string? colorScheme)
+    {
+        try
+        {
+            return NormalizeColorScheme(colorScheme);
+        }
+        catch (ValidationException)
+        {
+            return DefaultColorScheme;
         }
     }
 
@@ -388,6 +410,20 @@ public sealed class AppPreferenceService(
         }
 
         throw new ValidationException("Layout mode is invalid.", "layoutMode");
+    }
+
+    private static string NormalizeColorScheme(string? colorScheme)
+    {
+        var normalizedColorScheme = string.IsNullOrWhiteSpace(colorScheme)
+            ? DefaultColorScheme
+            : colorScheme.Trim().ToUpperInvariant();
+
+        if (normalizedColorScheme is ColorSchemes.Light or ColorSchemes.Dark)
+        {
+            return normalizedColorScheme;
+        }
+
+        throw new ValidationException("Color scheme is invalid.", "colorScheme");
     }
 
     private WindowPreferenceDto NormalizeOrDefaultWindowPreference(StoredPreferences preferences)
@@ -471,19 +507,27 @@ public static class LayoutPreferenceModes
     public const string Stacked = "STACKED";
 }
 
+public static class ColorSchemes
+{
+    public const string Light = "LIGHT";
+    public const string Dark = "DARK";
+}
+
 public sealed record LayoutPreferenceDto(
     double? TaskListWidth,
     double? TaskListHeight,
     string LayoutMode,
     bool ShowSourceFields,
-    bool ShowRelationships);
+    bool ShowRelationships,
+    string ColorScheme);
 
 public sealed record LayoutPreferenceSaveRequest(
     double? TaskListWidth,
     double? TaskListHeight,
     string? LayoutMode,
     bool? ShowSourceFields = null,
-    bool? ShowRelationships = null);
+    bool? ShowRelationships = null,
+    string? ColorScheme = null);
 
 public sealed record WindowPreferenceDto(int? Left, int? Top, int? Width, int? Height, bool IsMaximized);
 
@@ -502,4 +546,5 @@ internal sealed record StoredPreferences(
     int? WindowTop,
     int? WindowWidth,
     int? WindowHeight,
-    bool? WindowIsMaximized);
+    bool? WindowIsMaximized,
+    string? ColorScheme);

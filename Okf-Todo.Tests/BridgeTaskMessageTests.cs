@@ -580,6 +580,7 @@ public sealed class BridgeTaskMessageTests
         Assert.Equal("AUTO", initial.GetProperty("layoutMode").GetString());
         Assert.False(initial.GetProperty("showSourceFields").GetBoolean());
         Assert.False(initial.GetProperty("showRelationships").GetBoolean());
+        Assert.Equal("LIGHT", initial.GetProperty("colorScheme").GetString());
 
         await fixture.SendAsync("editor.preference.save", new
         {
@@ -592,13 +593,15 @@ public sealed class BridgeTaskMessageTests
             taskListHeight = 275,
             layoutMode = "STACKED",
             showSourceFields = true,
-            showRelationships = true
+            showRelationships = true,
+            colorScheme = "DARK"
         });
         Assert.Equal(412, saved.GetProperty("taskListWidth").GetDouble());
         Assert.Equal(275, saved.GetProperty("taskListHeight").GetDouble());
         Assert.Equal("STACKED", saved.GetProperty("layoutMode").GetString());
         Assert.True(saved.GetProperty("showSourceFields").GetBoolean());
         Assert.True(saved.GetProperty("showRelationships").GetBoolean());
+        Assert.Equal("DARK", saved.GetProperty("colorScheme").GetString());
 
         var loaded = await fixture.SendAsync("layout.preference.get", new { });
         Assert.Equal(412, loaded.GetProperty("taskListWidth").GetDouble());
@@ -606,6 +609,7 @@ public sealed class BridgeTaskMessageTests
         Assert.Equal("STACKED", loaded.GetProperty("layoutMode").GetString());
         Assert.True(loaded.GetProperty("showSourceFields").GetBoolean());
         Assert.True(loaded.GetProperty("showRelationships").GetBoolean());
+        Assert.Equal("DARK", loaded.GetProperty("colorScheme").GetString());
 
         var editorPreference = await fixture.SendAsync("editor.preference.get", new { });
         Assert.Equal("MARKDOWN", editorPreference.GetProperty("bodyFormatCode").GetString());
@@ -688,6 +692,21 @@ public sealed class BridgeTaskMessageTests
         Assert.False(response.RootElement.GetProperty("ok").GetBoolean());
         Assert.Equal("ValidationFailed", response.RootElement.GetProperty("error").GetProperty("code").GetString());
         Assert.Equal("layoutMode", response.RootElement.GetProperty("error").GetProperty("details").GetProperty("field").GetString());
+    }
+
+    [Fact]
+    public async Task Bridge_RejectsInvalidColorSchemePreference()
+    {
+        await using var fixture = await BridgeFixture.CreateAsync();
+
+        using var response = await fixture.SendRawAsync("layout.preference.save", new
+        {
+            colorScheme = "SYSTEM"
+        });
+
+        Assert.False(response.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Equal("ValidationFailed", response.RootElement.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal("colorScheme", response.RootElement.GetProperty("error").GetProperty("details").GetProperty("field").GetString());
     }
 
     private sealed class BridgeFixture : IAsyncDisposable

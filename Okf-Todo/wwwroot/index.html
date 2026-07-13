@@ -6,7 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OKF Todo</title>
     <link rel="stylesheet" href="/css/select2.min.css?v=4.0.13">
-    <link rel="stylesheet" href="/css/app.css?v=20260712-section-visibility-1">
+    <link rel="stylesheet" href="/css/app.css?v=20260713-color-scheme-1">
+    <link id="dark-theme-stylesheet" rel="stylesheet" href="/css/dark-theme.css?v=20260713-color-scheme-1" disabled>
+    <script>
+      try {
+        if (window.localStorage.getItem('okf-todo-color-scheme') === 'DARK') {
+          document.documentElement.classList.add('theme-dark')
+          document.documentElement.style.colorScheme = 'dark'
+          document.getElementById('dark-theme-stylesheet').disabled = false
+        }
+      } catch {
+        // The bridge preference is loaded after startup.
+      }
+    </script>
   </head>
   <body>
     <div id="app">
@@ -24,7 +36,7 @@
     </div>
     <script defer src="/js/jquery.min.js?v=20260707-editor-2"></script>
     <script defer src="/js/select2.min.js?v=4.0.13"></script>
-    <script defer src="/js/editor.js?v=20260711-markdown-total-height-1"></script>
-    <script defer src="/js/app.js?v=20260712-section-visibility-1"></script>
+    <script defer src="/js/editor.js?v=20260713-color-scheme-1"></script>
+    <script defer src="/js/app.js?v=20260713-color-scheme-1"></script>
   </body>
 </html>

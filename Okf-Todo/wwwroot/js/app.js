@@ -32,6 +32,11 @@
     sideBySide: 'SIDE_BY_SIDE',
     stacked: 'STACKED'
   }
+  const colorSchemeCodes = {
+    light: 'LIGHT',
+    dark: 'DARK'
+  }
+  const colorSchemeStorageKey = 'okf-todo-color-scheme'
 
   let lookups = null
   let tasks = []
@@ -53,7 +58,10 @@
     taskListHeight: null,
     layoutMode: layoutModeCodes.auto,
     showSourceFields: false,
-    showRelationships: false
+    showRelationships: false,
+    colorScheme: document.documentElement.classList.contains('theme-dark')
+      ? colorSchemeCodes.dark
+      : colorSchemeCodes.light
   }
   let layoutPreferenceSaveTimer = null
   let unsavedChangesDialogResolve = null
@@ -762,6 +770,14 @@
             <label class="settings-field" for="editor-height">
               <span>Editor height (px)</span>
               <input id="editor-height" type="number" min="${minimumEditorHeight}" max="${maximumEditorHeight}" step="1" disabled>
+            </label>
+
+            <label class="settings-field" for="color-scheme">
+              <span>Color scheme</span>
+              <select id="color-scheme">
+                <option value="LIGHT">Light</option>
+                <option value="DARK">Dark</option>
+              </select>
             </label>
 
             <label class="settings-field" for="layout-mode">
@@ -1839,6 +1855,37 @@
     return layoutModeCodes.auto
   }
 
+  function normalizeColorScheme(colorScheme) {
+    return String(colorScheme || '').trim().toUpperCase() === colorSchemeCodes.dark
+      ? colorSchemeCodes.dark
+      : colorSchemeCodes.light
+  }
+
+  function applyColorScheme(colorScheme) {
+    const normalizedColorScheme = normalizeColorScheme(colorScheme)
+    const isDark = normalizedColorScheme === colorSchemeCodes.dark
+    const darkThemeStylesheet = document.getElementById('dark-theme-stylesheet')
+
+    layoutPreference.colorScheme = normalizedColorScheme
+    document.documentElement.classList.toggle('theme-dark', isDark)
+    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light'
+    $('#color-scheme').val(normalizedColorScheme)
+
+    if (darkThemeStylesheet) {
+      darkThemeStylesheet.disabled = !isDark
+    }
+
+    try {
+      window.localStorage.setItem(colorSchemeStorageKey, normalizedColorScheme)
+    } catch {
+      // The persisted bridge preference remains authoritative.
+    }
+
+    if (window.Editor && typeof window.Editor.setColorScheme === 'function') {
+      window.Editor.setColorScheme(normalizedColorScheme)
+    }
+  }
+
   function saveLayoutPreference() {
     if (layoutPreferenceSaveTimer) {
       window.clearTimeout(layoutPreferenceSaveTimer)
@@ -1850,7 +1897,8 @@
       taskListHeight: layoutPreference.taskListHeight,
       layoutMode: layoutPreference.layoutMode,
       showSourceFields: layoutPreference.showSourceFields,
-      showRelationships: layoutPreference.showRelationships
+      showRelationships: layoutPreference.showRelationships,
+      colorScheme: layoutPreference.colorScheme
     }).then(function () {
       return true
     }).catch(function (error) {
@@ -1874,6 +1922,7 @@
     layoutPreference.layoutMode = normalizeLayoutMode(preference.layoutMode)
     layoutPreference.showSourceFields = preference.showSourceFields === true
     layoutPreference.showRelationships = preference.showRelationships === true
+    applyColorScheme(preference.colorScheme)
     applyStoredLayoutSplit(false)
   }
 
@@ -1964,6 +2013,15 @@
     saveLayoutPreference().then(function (wasSaved) {
       if (wasSaved) {
         setStatus('Display preference saved', 'saved')
+      }
+    })
+  }
+
+  function switchColorScheme() {
+    applyColorScheme($('#color-scheme').val())
+    saveLayoutPreference().then(function (wasSaved) {
+      if (wasSaved) {
+        setStatus('Color scheme saved', 'saved')
       }
     })
   }
@@ -2238,6 +2296,7 @@
       baseUrl: '/tinymce',
       minHeight: preferredEditorHeight,
       markdownEditType: preferredMarkdownEditType,
+      colorScheme: layoutPreference.colorScheme,
       initialContent: initialContent || '',
       initialHtml: initialHtml || '',
       contentStyle:
@@ -3270,6 +3329,7 @@
       }
     })
     $('#layout-mode').on('change', switchLayoutMode)
+    $('#color-scheme').on('change', switchColorScheme)
     $('#show-source-fields, #show-relationships').on('change', saveTaskSectionVisibility)
     $('#save-button').on('click', function () {
       saveTask().catch(function (error) {
