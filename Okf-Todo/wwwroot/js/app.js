@@ -97,23 +97,31 @@
 
   function sendBridgeMessage(type, payload) {
     const messageId = createMessageId()
-    const timeoutMs = type === 'image.create' || type === 'image.get'
-      ? imageBridgeTimeoutMs
-      : bridgeTimeoutMs
+    const timeoutMs = type === 'database.backup.create'
+      ? null
+      : type === 'image.create' || type === 'image.get'
+        ? imageBridgeTimeoutMs
+        : bridgeTimeoutMs
 
     return new Promise(function (resolve, reject) {
-      const timeoutId = window.setTimeout(function () {
-        pendingRequests.delete(messageId)
-        reject(new Error(`Timed out waiting for ${type}.`))
-      }, timeoutMs)
+      const timeoutId = timeoutMs === null
+        ? null
+        : window.setTimeout(function () {
+            pendingRequests.delete(messageId)
+            reject(new Error(`Timed out waiting for ${type}.`))
+          }, timeoutMs)
 
       pendingRequests.set(messageId, {
         resolve: function (value) {
-          window.clearTimeout(timeoutId)
+          if (timeoutId !== null) {
+            window.clearTimeout(timeoutId)
+          }
           resolve(value)
         },
         reject: function (error) {
-          window.clearTimeout(timeoutId)
+          if (timeoutId !== null) {
+            window.clearTimeout(timeoutId)
+          }
           reject(error)
         }
       })
@@ -126,7 +134,9 @@
         })
       } catch (error) {
         pendingRequests.delete(messageId)
-        window.clearTimeout(timeoutId)
+        if (timeoutId !== null) {
+          window.clearTimeout(timeoutId)
+        }
         reject(error)
       }
     })
