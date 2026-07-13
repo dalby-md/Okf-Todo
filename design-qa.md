@@ -1,10 +1,5 @@
 **Design QA**
 
-- Source visual truth: `C:\Users\soere\AppData\Local\Temp\codex-clipboard-64c5bff9-efbc-43ad-a4cf-23f75186accf.png`
-- Implementation screenshot: `C:\git\Okf-Todo\artifacts\design-qa\theme-native.png`
-- Combined comparison: `C:\git\Okf-Todo\artifacts\design-qa\theme-comparison.png`
-- Viewport: 1920 x 1200 desktop
-- State: Dark color scheme, active task selected with HTML editor initialized
 
 **Full-View Comparison Evidence**
 

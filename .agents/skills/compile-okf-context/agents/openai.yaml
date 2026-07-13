@@ -1,0 +1,6 @@
+interface:
+  display_name: "Compile OKF Context"
+  short_description: "Compile the Todo SQLite design into an OKF bundle"
+  default_prompt: "Use $compile-okf-context to regenerate and validate the Todo database OKF context graph bundle."
+policy:
+  allow_implicit_invocation: true

@@ -67,6 +67,13 @@ Keep `AGENTS.md` focused on how Codex should work in this repo. Do not duplicate
 
 Use `TaskItem` as the C# entity name instead of `Task` to avoid confusion with `System.Threading.Tasks.Task`.
 
+## OKF Database Context
+
+- After every database-design change, use the repo-local `compile-okf-context` skill.
+- Database-design changes include EF entities or mappings, tables, columns, keys, relationships, indexes, constraints, delete behavior, lookup schema, and database initialization rules.
+- Regenerate and validate the OKF bundle under `docs/okf/todo-database` in the same change.
+- Do not treat a successful application build as proof that the OKF bundle is current.
+
 ## Development Approach
 
 - Use small vertical slices.
@@ -83,4 +90,3 @@ Report:
 - How to run/build/test.
 - Any assumptions.
 - Any incomplete parts.
-
