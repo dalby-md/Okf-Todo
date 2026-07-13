@@ -467,6 +467,25 @@ Acceptance criteria:
 - Cancelled tasks appear in All, not Completed, and use red struck-through titles with gray pills in the list.
 - Waiting tasks remain easy to find.
 
+## Milestone 14 — Database backup
+
+Status: implemented.
+
+Scope:
+
+- Add a database backup command under user preferences.
+- Select the destination with the native save-file dialog.
+- Use SQLite's online backup API.
+- Validate the temporary backup before replacing the selected destination.
+
+Acceptance criteria:
+
+- Backup includes the complete SQLite database, including BLOB content.
+- The active database is not modified.
+- Cancelling the native dialog creates no file.
+- A failed backup does not replace an existing valid backup.
+- Success and failure are reported in the application status.
+
 ## Recommended first real Codex task
 
 Start with:

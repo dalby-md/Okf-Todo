@@ -800,6 +800,12 @@
               </label>
             </div>
 
+            <section class="settings-data-panel" aria-labelledby="settings-data-title">
+              <h3 id="settings-data-title">Data</h3>
+              <button id="backup-database-button" class="secondary-button" type="button">Back up database</button>
+              <p id="backup-database-status" class="settings-help" role="status" aria-live="polite"></p>
+            </section>
+
             <section class="lookup-settings-panel" aria-labelledby="lookup-settings-title">
               <h3 id="lookup-settings-title">Lookup values</h3>
               <div id="lookup-settings-groups" class="lookup-group-buttons" aria-label="Lookup groups"></div>
@@ -1313,6 +1319,31 @@
     $('#lookup-settings-groups').html('<div class="empty-lookup-settings">Loading lookup values.</div>')
     lookupSettings = await sendBridgeMessage('lookup.settings.get', {})
     renderLookupSettings()
+  }
+
+  async function backupDatabase() {
+    const $button = $('#backup-database-button')
+    const $backupStatus = $('#backup-database-status')
+    $button.prop('disabled', true).text('Backing up...')
+    $backupStatus.text('')
+
+    try {
+      const result = await sendBridgeMessage('database.backup.create', {})
+      if (result.cancelled) {
+        $backupStatus.text('Backup cancelled.')
+        setStatus('Backup cancelled', 'ready')
+        return
+      }
+
+      const fileName = String(result.filePath || '').split(/[\\/]/).pop()
+      $backupStatus.text(fileName ? `Saved ${fileName}.` : 'Backup saved.')
+      setStatus(fileName ? `Backup saved: ${fileName}` : 'Backup saved', 'saved')
+    } catch (error) {
+      $backupStatus.text(getErrorMessage(error, 'Could not back up database'))
+      throw error
+    } finally {
+      $button.prop('disabled', false).text('Back up database')
+    }
   }
 
   function renderTagSettingsCount() {
@@ -3331,6 +3362,11 @@
     $('#layout-mode').on('change', switchLayoutMode)
     $('#color-scheme').on('change', switchColorScheme)
     $('#show-source-fields, #show-relationships').on('change', saveTaskSectionVisibility)
+    $('#backup-database-button').on('click', function () {
+      backupDatabase().catch(function (error) {
+        setStatus(getErrorMessage(error, 'Could not back up database'), 'error')
+      })
+    })
     $('#save-button').on('click', function () {
       saveTask().catch(function (error) {
         setStatus(getErrorMessage(error, 'Could not save task'), 'error')

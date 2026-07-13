@@ -709,36 +709,75 @@ public sealed class BridgeTaskMessageTests
         Assert.Equal("colorScheme", response.RootElement.GetProperty("error").GetProperty("details").GetProperty("field").GetString());
     }
 
+    [Fact]
+    public async Task Bridge_CreatesDatabaseBackupContainingTaskData()
+    {
+        await using var fixture = await BridgeFixture.CreateAsync();
+        await fixture.SendAsync("task.create", new
+        {
+            title = "Backup bridge task",
+            taskTypeCode = "REQUEST",
+            body = "",
+            bodyFormatCode = "HTML",
+            taskPriorityCode = "NORMAL",
+            taskSourceCode = (string?)null,
+            sourceReference = (string?)null,
+            sourceUrl = (string?)null,
+            deadline = (DateTime?)null
+        });
+
+        var result = await fixture.SendAsync("database.backup.create", new { });
+
+        Assert.False(result.GetProperty("cancelled").GetBoolean());
+        Assert.Equal(Path.GetFullPath(fixture.BackupPath), result.GetProperty("filePath").GetString());
+        Assert.True(File.Exists(fixture.BackupPath));
+
+        await using var backupConnection = new SqliteConnection(
+            $"Data Source={fixture.BackupPath};Mode=ReadOnly;Pooling=False");
+        await backupConnection.OpenAsync();
+        await using var command = backupConnection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM TaskItems WHERE Title = 'Backup bridge task';";
+        Assert.Equal(1L, Convert.ToInt64(await command.ExecuteScalarAsync()));
+    }
+
     private sealed class BridgeFixture : IAsyncDisposable
     {
         private readonly SqliteConnection connection;
         private readonly string preferencesDirectory;
         private readonly ServiceProvider services;
         private readonly BridgeMessageHandler handler;
+        private readonly TestBackupDestinationPicker backupDestinationPicker;
 
         private BridgeFixture(
             SqliteConnection connection,
             string preferencesDirectory,
             ServiceProvider services,
-            BridgeMessageHandler handler)
+            BridgeMessageHandler handler,
+            TestBackupDestinationPicker backupDestinationPicker)
         {
             this.connection = connection;
             this.preferencesDirectory = preferencesDirectory;
             this.services = services;
             this.handler = handler;
+            this.backupDestinationPicker = backupDestinationPicker;
         }
+
+        public string BackupPath => backupDestinationPicker.Path!;
 
         public static async Task<BridgeFixture> CreateAsync()
         {
             var connection = new SqliteConnection("Data Source=:memory:");
             await connection.OpenAsync();
             var preferencesDirectory = Path.Combine(Path.GetTempPath(), "Okf-Todo.Tests", Guid.NewGuid().ToString("N"));
+            var backupDestinationPicker = new TestBackupDestinationPicker(
+                Path.Combine(preferencesDirectory, "bridge-backup.db"));
 
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddLogging();
             serviceCollection.AddDbContext<AppDbContext>(options => options.UseSqlite(connection));
             serviceCollection.AddSingleton<IAppPreferencePathProvider>(
                 new TestAppPreferencePathProvider(Path.Combine(preferencesDirectory, "app-preferences.json")));
+            serviceCollection.AddSingleton<IBackupDestinationPicker>(backupDestinationPicker);
             serviceCollection.AddScoped<LookupSeedService>();
             serviceCollection.AddScoped<TaskLifecycleService>();
             serviceCollection.AddScoped<TaskService>();
@@ -747,6 +786,7 @@ public sealed class BridgeTaskMessageTests
             serviceCollection.AddScoped<TaskRelationService>();
             serviceCollection.AddScoped<AppPreferenceService>();
             serviceCollection.AddScoped<ImageService>();
+            serviceCollection.AddScoped<DatabaseBackupService>();
 
             var services = serviceCollection.BuildServiceProvider();
 
@@ -761,7 +801,12 @@ public sealed class BridgeTaskMessageTests
                 services,
                 services.GetRequiredService<ILogger<BridgeMessageHandler>>());
 
-            return new BridgeFixture(connection, preferencesDirectory, services, handler);
+            return new BridgeFixture(
+                connection,
+                preferencesDirectory,
+                services,
+                handler,
+                backupDestinationPicker);
         }
 
         public async Task<JsonElement> SendAsync(string type, object payload)
@@ -801,6 +846,16 @@ public sealed class BridgeTaskMessageTests
         public string GetPreferencesPath()
         {
             return preferencesPath;
+        }
+    }
+
+    private sealed class TestBackupDestinationPicker(string? path) : IBackupDestinationPicker
+    {
+        public string? Path { get; } = path;
+
+        public Task<string?> PickAsync(string suggestedFileName, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Path);
         }
     }
 }

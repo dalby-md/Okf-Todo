@@ -87,6 +87,8 @@ namespace Photino.Okf_Todo
                         });
                     });
 
+            services.GetRequiredService<PhotinoBackupDestinationPicker>().Attach(window);
+
             ApplyStartupWindowPlacement(window, windowPreference);
             window.WindowClosing += (_, _) =>
             {
@@ -285,6 +287,9 @@ namespace Photino.Okf_Todo
             services.AddDbContext<AppDbContext>(options => options.UseSqlite($"Data Source={databasePath}"));
             services.AddSingleton<HtmlSanitizerService>();
             services.AddSingleton<IAppPreferencePathProvider, AppPreferencePathProvider>();
+            services.AddSingleton<PhotinoBackupDestinationPicker>();
+            services.AddSingleton<IBackupDestinationPicker>(serviceProvider =>
+                serviceProvider.GetRequiredService<PhotinoBackupDestinationPicker>());
             services.AddScoped<LookupSeedService>();
             services.AddScoped<TaskLifecycleService>();
             services.AddScoped<TaskService>();
@@ -294,6 +299,7 @@ namespace Photino.Okf_Todo
             services.AddScoped<AppPreferenceService>();
             services.AddScoped<IssueService>();
             services.AddScoped<ImageService>();
+            services.AddScoped<DatabaseBackupService>();
             services.AddSingleton<BridgeMessageHandler>();
 
             return services.BuildServiceProvider();

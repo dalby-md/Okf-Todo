@@ -41,6 +41,7 @@ h2,
 .attachments-header h3,
 .timeline-header h3,
 .lookup-settings-panel h3,
+.settings-data-panel h3,
 .lookup-check span {
   color: var(--theme-text);
 }
@@ -260,7 +261,8 @@ textarea.is-invalid {
 .timeline-list,
 .timeline-entry,
 .attachment-row,
-.lookup-settings-panel {
+.lookup-settings-panel,
+.settings-data-panel {
   border-color: var(--theme-border);
 }
 

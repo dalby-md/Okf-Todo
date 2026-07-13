@@ -323,6 +323,12 @@ A soft size limit should be considered, for example 25–50 MB per attachment.
 
 The initial UI supports adding, downloading, and removing attachments. Attachments are limited to 25 MB and appear above the task timeline.
 
+## Database backup
+
+User preferences provide a database backup command. The user selects the destination with the native save-file dialog. Backup uses SQLite's online backup API, validates the generated database, and replaces the selected destination only after validation succeeds.
+
+The backup contains the complete SQLite database, including tasks, body images, attachments, lookups, tags, relationships, comments, checklists, and history. Application preferences stored outside SQLite are not included. Restore is manual in the first version: close the application and replace the active database with a backup copy.
+
 ## Tags
 
 A task can have zero or more tags. Each tag is only a string expression with no color, order, activation state, or other metadata.
