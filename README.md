@@ -2,7 +2,29 @@
 
 > **Version 0.1 alpha - work in progress.** Expect incomplete features and changes to the data model and user interface.
 
-OKF Todo is a local-first Windows desktop application for developers and internal support professionals who need a fast place to capture, organize, and follow up on technical work.
+OKF Todo is an **AI-first, local-first desktop task system**. It is built with .NET and Photino for Windows, macOS, and Linux, and gives both people and AI assistants a transparent way to work with the same local data.
+
+## AI-First Data
+
+OKF Todo is designed so an AI assistant can read, analyze, and update task data without depending on a proprietary cloud API. There are two complementary access paths:
+
+- **SQLite directly:** the application database contains the actual tasks, lookups, comments, history, tags, relationships, images, and attachments.
+- **OKF-guided access:** the repository's [Open Knowledge Format context graph](docs/okf/todo-database/) describes the database concepts, schema, relationships, integrity rules, and lifecycle conventions so an AI can discover and reason about the data before working with SQLite.
+
+OKF is the knowledge and navigation layer; SQLite remains the source of task data. An AI that writes directly to SQLite must respect the documented foreign keys, lookup codes, lifecycle rules, and history behavior. Close the desktop application and create a backup before allowing an external tool to perform direct writes.
+
+The same database remains fully usable through the desktop interface. AI assistance is optional, local data stays under the user's control, and no hosted service is required.
+
+A dedicated **OKF Todo CLI** is coming soon. It will provide direct terminal access for people, scripts, and AI agents, with supported commands for querying and updating tasks without writing ad hoc SQL. The CLI is also planned as the foundation for **Model Context Protocol (MCP) support**, allowing MCP-compatible AI clients to discover task capabilities and work with local data through structured tools.
+
+## Coming Next
+
+Planned for the next few days:
+
+- An OKF Todo CLI for direct task queries and updates from terminals, scripts, and AI workflows.
+- MCP support built on the CLI and OKF context graph for structured AI-tool integration.
+- Improved filtering and sorting of tasks.
+- A Windows MSIX installer for easier installation and updates.
 
 It is designed for the work that often falls between formal systems: production errors, support cases, deployment checks, investigations, ideas, notes, requests, and follow-up tasks. The application runs locally, requires no account or cloud service, and keeps tasks, history, images, and attachments together in one SQLite database.
 
@@ -27,26 +49,30 @@ It is designed for the work that often falls between formal systems: production 
 
 The current alpha is run from source. You need:
 
-- Windows 10 or Windows 11.
+- Windows 10 or later, macOS 10.15 or later, or a current Linux desktop distribution.
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
-- Microsoft Edge WebView2 Runtime, normally already installed on supported Windows systems.
+- The platform webview used by Photino: WebView2 on Windows, the system WebKit view on macOS, or GTK/WebKit on Linux.
+
+Windows is the primary tested platform for version 0.1. The application architecture and Photino shell are cross-platform, but macOS and Linux packaging and verification are still in progress.
 
 ### Run the application
 
-Clone the repository, open PowerShell or Windows Command Prompt in the repository root, and run:
+Clone the repository, open a terminal in the repository root, and run:
 
-```powershell
+```shell
 dotnet restore
-dotnet run --project .\Okf-Todo\Okf-Todo.csproj
+dotnet run --project ./Okf-Todo/Okf-Todo.csproj
 ```
 
 On first launch, OKF Todo creates its database and initial lookup values automatically. No setup wizard or account is required.
 
-The database is stored at:
+The database is stored under the operating system's local application-data directory:
 
-```text
-%LOCALAPPDATA%\Okf-Todo\okf-todo.db
-```
+| Platform | Typical database path |
+| --- | --- |
+| Windows | `%LOCALAPPDATA%\Okf-Todo\okf-todo.db` |
+| macOS | `~/Library/Application Support/Okf-Todo/okf-todo.db` |
+| Linux | `~/.local/share/Okf-Todo/okf-todo.db` |
 
 Do not delete this file unless you intentionally want to remove all application data.
 
@@ -179,7 +205,7 @@ Task types, priorities, and statuses may be renamed, reordered, assigned badge c
 
 ### Back up and restore data
 
-Open **Setup**, then select **Back up database**. Choose a destination in the Windows save dialog. The application creates and validates a complete SQLite backup before replacing the selected destination.
+Open **Setup**, then select **Back up database**. Choose a destination in the native save dialog. The application creates and validates a complete SQLite backup before replacing the selected destination.
 
 The backup includes tasks, body images, attachments, lookups, tags, relationships, comments, checklists, and history. Interface preferences such as layout and color scheme are stored separately and are not included.
 
@@ -187,21 +213,21 @@ Restore is manual in version 0.1:
 
 1. Close OKF Todo.
 2. Keep a copy of the current database if needed.
-3. Replace `%LOCALAPPDATA%\Okf-Todo\okf-todo.db` with the backup file.
+3. Replace the platform-specific `Okf-Todo/okf-todo.db` file listed under Getting Started with the backup file.
 4. Start OKF Todo again.
 
 Never replace the active database while the application is running.
 
 ## Data and Privacy
 
-OKF Todo is a single-user, local-first application. It has no authentication, cloud synchronization, telemetry workflow, or external task-system integration. Application data stays in the local SQLite database unless you create a backup or save an attachment copy yourself.
+OKF Todo is a single-user, local-first application. It has no authentication, cloud synchronization, application telemetry, or external task-system integration. Application data stays in the local SQLite database unless you create a backup or save an attachment copy yourself.
 
 ## Current Limitations
 
 Version 0.1 is an alpha release intended for evaluation and personal use:
 
-- Windows is the primary supported platform.
-- There is no installer or automatic updater yet.
+- Windows, macOS, and Linux can run from source; Windows currently receives the most testing.
+- Packaged installers and automatic updates are not available yet. A Windows MSIX package is the first planned installer.
 - There is no cloud sync or multi-user collaboration.
 - Database migrations are not supported during early development; schema changes may require a fresh development database.
 - Restore is a manual file-replacement operation.
