@@ -26,7 +26,8 @@ Planned for the next few days:
 
 - Improved filtering and sorting of tasks.
 - A Windows MSIX installer for easier installation and updates. Installers for Mac and Linux planned.
-
+- Parts of the page is AI Slop and needs to be rewritten.
+ 
 Plans for the future:
 
 - An OKF-Todo CLI for direct task queries and updates from terminals, scripts, and AI workflows.
