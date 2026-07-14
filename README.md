@@ -8,10 +8,10 @@ OKF-Todo is a task manager for Windows, macOS, and Linux. It works like a famili
 
 OKF-Todo is designed so an AI assistant can read, analyze, and update task data without depending on a proprietary cloud API. There are four complementary access paths:
 
+- **OKF-guided access:** the repository's [Open Knowledge Format context graph](docs/okf/todo-database/) describes the database concepts, schema, relationships, integrity rules, and lifecycle conventions so an AI can discover and reason about the data before working with SQLite.
 - **MCP server:** MCP-compatible AI clients can list, read, create, and update tasks and inspect their timelines through structured tools.
 - **CLI commands:** people, scripts, and agents can execute the same application commands from a terminal.
 - **SQLite for inspection:** the application database contains the actual tasks, lookups, comments, history, tags, relationships, images, and attachments.
-- **OKF-guided access:** the repository's [Open Knowledge Format context graph](docs/okf/todo-database/) describes the database concepts, schema, relationships, integrity rules, and lifecycle conventions so an AI can discover and reason about the data before working with SQLite.
 
 OKF is the knowledge and navigation layer; SQLite remains the source of task data. Supported writes should go through the desktop app, CLI, or MCP server so validation, lifecycle rules, and automatic task history run consistently. Direct SQLite access is intended for read-only inspection and diagnostics; direct writes can bypass application behavior.
 
