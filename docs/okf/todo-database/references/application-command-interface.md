@@ -34,6 +34,16 @@ $request | dotnet run -c Release --no-build --project .\Okf-Todo\Okf-Todo.csproj
 
 The adapter writes one JSON response envelope to standard output and diagnostic logs to standard error.
 
+By default, commands use the same personal database as the desktop application. For isolated automation or testing, pass an absolute database file path with `--okf-database-path`:
+
+```powershell
+$request | dotnet run -c Release --no-build --project .\Okf-Todo\Okf-Todo.csproj -- `
+  --okf-command `
+  --okf-database-path C:\Temp\okf-command-test.db
+```
+
+`--okf-database-path` is accepted only together with `--okf-command`. The application creates the parent directory when necessary, applies pending migrations, and seeds empty lookup tables before executing the command.
+
 Exit codes:
 
 - `0`: the command succeeded and the response has `"ok": true`.

@@ -29,8 +29,9 @@ namespace Photino.Okf_Todo
             }
 
             Directory.SetCurrentDirectory(AppContext.BaseDirectory);
+            var databasePath = ResolveDatabasePath(args, isOkfCommandMode);
 
-            using var services = CreateServices(isOkfCommandMode);
+            using var services = CreateServices(isOkfCommandMode, databasePath);
             var startupLogger = services.GetRequiredService<ILogger<Program>>();
             startupLogger.LogInformation("Starting OKF-Todo from {BaseDirectory}", AppContext.BaseDirectory);
 
@@ -42,7 +43,7 @@ namespace Photino.Okf_Todo
                 {
                     logger.LogInformation("Applying pending SQLite database migrations.");
                     MigrateDatabase(scope.ServiceProvider);
-                    logger.LogInformation("SQLite database is ready at {DatabasePath}.", DatabasePathProvider.GetDatabasePath());
+                    logger.LogInformation("SQLite database is ready at {DatabasePath}.", databasePath);
                     logger.LogInformation("Seeding lookup values.");
                     scope.ServiceProvider.GetRequiredService<LookupSeedService>()
                         .SeedAsync()
@@ -135,6 +136,43 @@ namespace Photino.Okf_Todo
             }
 
             return new Mutex(true, "OkfTodoSingleInstance", out isFirstInstance);
+        }
+
+        private static string ResolveDatabasePath(string[] args, bool isOkfCommandMode)
+        {
+            const string optionName = "--okf-database-path";
+            var optionIndexes = args
+                .Select((argument, index) => new { Argument = argument, Index = index })
+                .Where(item => string.Equals(item.Argument, optionName, StringComparison.OrdinalIgnoreCase))
+                .Select(item => item.Index)
+                .ToList();
+
+            if (optionIndexes.Count == 0)
+            {
+                return DatabasePathProvider.GetDatabasePath();
+            }
+
+            if (!isOkfCommandMode)
+            {
+                throw new ArgumentException($"{optionName} can only be used with --okf-command.");
+            }
+
+            if (optionIndexes.Count != 1 || optionIndexes[0] + 1 >= args.Length)
+            {
+                throw new ArgumentException($"{optionName} requires exactly one absolute file path.");
+            }
+
+            var databasePath = args[optionIndexes[0] + 1];
+            if (string.IsNullOrWhiteSpace(databasePath) || !Path.IsPathFullyQualified(databasePath))
+            {
+                throw new ArgumentException($"{optionName} requires an absolute file path.");
+            }
+
+            var fullPath = Path.GetFullPath(databasePath);
+            var directory = Path.GetDirectoryName(fullPath)
+                ?? throw new ArgumentException($"{optionName} requires a file path with a parent directory.");
+            Directory.CreateDirectory(directory);
+            return fullPath;
         }
 
         private static void RunOkfCommand(IServiceProvider services, ILogger logger)
@@ -309,7 +347,7 @@ namespace Photino.Okf_Todo
             throw new InvalidOperationException($"Static UI did not become ready at {appUrl}.", lastException);
         }
 
-        private static ServiceProvider CreateServices(bool logToStandardError = false)
+        private static ServiceProvider CreateServices(bool logToStandardError, string databasePath)
         {
             var services = new ServiceCollection();
 
@@ -327,7 +365,8 @@ namespace Photino.Okf_Todo
                 services.Configure<ConsoleLoggerOptions>(options =>
                     options.LogToStandardErrorThreshold = LogLevel.Trace);
             }
-            services.AddDbContext<AppDbContext>(options => options.UseSqlite(DatabasePathProvider.GetConnectionString()));
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseSqlite(DatabasePathProvider.CreateConnectionString(databasePath)));
             services.AddSingleton<HtmlSanitizerService>();
             services.AddSingleton<IAppPreferencePathProvider, AppPreferencePathProvider>();
             services.AddSingleton<PhotinoBackupDestinationPicker>();
