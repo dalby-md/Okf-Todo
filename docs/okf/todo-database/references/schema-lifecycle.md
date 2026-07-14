@@ -11,8 +11,8 @@ timestamp: 2026-07-13T00:00:00Z
 
 # Database Schema Lifecycle
 
-The application calls EF Core `Database.EnsureCreated()` at startup. Migrations and upgrades of old schemas are intentionally out of scope.
+The application calls EF Core `Database.Migrate()` at startup before seeding or normal data access. EF Core creates a missing database and applies every migration not recorded in `__EFMigrationsHistory`.
 
-During development, delete `%LOCALAPPDATA%\Okf-Todo\okf-todo.db` explicitly when a model change requires a fresh database. Builds and normal startup must not delete it automatically.
+`InitialCreate` is the earliest supported database version. Every future physical schema change must include a reviewed migration. Builds and normal startup must not delete the database automatically.
 
-EF Core mappings and current source define intended structure. A live database may lag the source after a design change and is evidence of deployed state, not the authority for intended state.
+EF Core mappings, the model snapshot, and committed migrations define intended structure. A live database may lag until startup applies pending migrations and remains evidence of deployed state, not the authority for intended state.

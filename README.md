@@ -75,13 +75,15 @@ dotnet run --project ./Okf-Todo/Okf-Todo.csproj
 
 On first launch, OKF-Todo creates its database and initial lookup values automatically. No setup wizard or account is required.
 
+On later releases, pending EF Core migrations are applied automatically before the application reads or writes task data.
+
 The database is stored under the operating system's local application-data directory:
 
 | Platform | Typical database path |
 | --- | --- |
 | Windows | `%LOCALAPPDATA%\Okf-Todo\okf-todo.db` |
 | macOS | `~/Library/Application Support/Okf-Todo/okf-todo.db` |
-| Linux | `~/.local/share/Okf-Todo/okf-todo.db` |
+| Linux | `$XDG_DATA_HOME/Okf-Todo/okf-todo.db`, or `~/.local/share/Okf-Todo/okf-todo.db` when `XDG_DATA_HOME` is unset or relative |
 
 Do not delete this file unless you intentionally want to remove all application data.
 
@@ -238,7 +240,7 @@ Version 0.1 is an alpha release intended for evaluation and personal use:
 - Windows, macOS, and Linux can run from source; Windows currently receives the most testing.
 - Packaged installers and automatic updates are not available yet. A Windows MSIX package is the first planned installer.
 - There is no cloud sync or multi-user collaboration.
-- Database migrations are not supported during early development; schema changes may require a fresh development database.
+- Database downgrades are not supported; back up the database before installing an older application version.
 - Restore is a manual file-replacement operation.
 - Deep integrations with email, ServiceDesk, Teams, and Azure DevOps are not included.
 
@@ -257,5 +259,14 @@ Run the test suite:
 ```powershell
 dotnet test .\Okf-Todo.Tests\Okf-Todo.Tests.csproj -c Release
 ```
+
+Restore the repository-local EF Core tool and add a migration after changing the physical model:
+
+```powershell
+dotnet tool restore
+dotnet tool run dotnet-ef migrations add <MigrationName> --project .\Okf-Todo\Okf-Todo.csproj --startup-project .\Okf-Todo\Okf-Todo.csproj --output-dir Migrations
+```
+
+Commit the generated migration and model snapshot with the model change. The application applies pending migrations automatically at startup.
 
 Product and architecture documentation is available in [`docs`](docs/).

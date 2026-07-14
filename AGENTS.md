@@ -67,6 +67,13 @@ Keep `AGENTS.md` focused on how Codex should work in this repo. Do not duplicate
 
 Use `TaskItem` as the C# entity name instead of `Task` to avoid confusion with `System.Threading.Tasks.Task`.
 
+## Database Migrations
+
+- Apply pending EF Core migrations at application startup before seeding or normal data access.
+- Do not use `EnsureCreated()` in application startup.
+- Include a reviewed migration and refreshed OKF bundle with every committed physical schema change.
+- Treat `InitialCreate` as the earliest supported database version; no pre-migration database compatibility is required.
+
 ## OKF Database Context
 
 - After every database-design change, use the repo-local `compile-okf-context` skill.

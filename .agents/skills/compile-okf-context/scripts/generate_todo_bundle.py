@@ -162,7 +162,13 @@ def main() -> int:
 
 ## Purpose
 
-The application owns one local SQLite database at `%LOCALAPPDATA%\\Okf-Todo\\okf-todo.db`. It stores tasks, controlled lookups, history, relationships, tags, attachments, and image BLOBs.
+The application owns one local SQLite database under the operating system's per-user application-data directory. It stores tasks, controlled lookups, history, relationships, tags, attachments, and image BLOBs.
+
+The path is resolved by `DatabasePathProvider` using these platform rules:
+
+- Windows: `%LOCALAPPDATA%\\Okf-Todo\\okf-todo.db`.
+- macOS: `~/Library/Application Support/Okf-Todo/okf-todo.db`.
+- Linux: `$XDG_DATA_HOME/Okf-Todo/okf-todo.db` when `XDG_DATA_HOME` is an absolute path; otherwise `~/.local/share/Okf-Todo/okf-todo.db`.
 
 ## Contents
 
@@ -208,11 +214,11 @@ Lifecycle transitions and append-oriented history behavior are service-level rul
 """)
     write(root / "references" / "schema-lifecycle.md", frontmatter("Database Schema Lifecycle", "Database Schema Lifecycle", reference_entries[2][2], "Okf-Todo/Program.cs", args.timestamp) + """# Database Schema Lifecycle
 
-The application calls EF Core `Database.EnsureCreated()` at startup. Migrations and upgrades of old schemas are intentionally out of scope.
+The application calls EF Core `Database.Migrate()` at startup before seeding or normal data access. EF Core creates a missing database and applies every migration not recorded in `__EFMigrationsHistory`.
 
-During development, delete `%LOCALAPPDATA%\\Okf-Todo\\okf-todo.db` explicitly when a model change requires a fresh database. Builds and normal startup must not delete it automatically.
+`InitialCreate` is the earliest supported database version. Every future physical schema change must include a reviewed migration. Builds and normal startup must not delete the database automatically.
 
-EF Core mappings and current source define intended structure. A live database may lag the source after a design change and is evidence of deployed state, not the authority for intended state.
+EF Core mappings, the model snapshot, and committed migrations define intended structure. A live database may lag until startup applies pending migrations and remains evidence of deployed state, not the authority for intended state.
 """)
     print(f"Generated {len(tables)} table concepts in {root.resolve()}.")
     return 0

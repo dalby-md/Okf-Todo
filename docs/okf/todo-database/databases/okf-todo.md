@@ -13,7 +13,13 @@ timestamp: 2026-07-13T00:00:00Z
 
 ## Purpose
 
-The application owns one local SQLite database at `%LOCALAPPDATA%\Okf-Todo\okf-todo.db`. It stores tasks, controlled lookups, history, relationships, tags, attachments, and image BLOBs.
+The application owns one local SQLite database under the operating system's per-user application-data directory. It stores tasks, controlled lookups, history, relationships, tags, attachments, and image BLOBs.
+
+The path is resolved by `DatabasePathProvider` using these platform rules:
+
+- Windows: `%LOCALAPPDATA%\Okf-Todo\okf-todo.db`.
+- macOS: `~/Library/Application Support/Okf-Todo/okf-todo.db`.
+- Linux: `$XDG_DATA_HOME/Okf-Todo/okf-todo.db` when `XDG_DATA_HOME` is an absolute path; otherwise `~/.local/share/Okf-Todo/okf-todo.db`.
 
 ## Contents
 

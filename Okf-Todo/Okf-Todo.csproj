@@ -29,6 +29,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<InternalsVisibleTo Include="Okf-Todo.Tests" />
+	</ItemGroup>
+
+	<ItemGroup>
 	  <None Update="wwwroot\**">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>

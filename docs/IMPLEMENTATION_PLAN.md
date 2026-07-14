@@ -49,12 +49,12 @@ Scope:
 
 - Add EF Core entities.
 - Add SQLite DbContext.
-- Create the current schema with `Database.EnsureCreated()`.
+- Create and upgrade the schema with EF Core migrations.
 - Add lookup entities.
 - Add initial config seed objects.
 - Add startup seeding from config.
 
-Schema-version migrations and upgrades of old database files are out of scope. Delete the development database explicitly and recreate it when the model changes. A normal build or startup must not delete user data automatically.
+`InitialCreate` is the earliest supported database version. Apply pending migrations at startup and add a reviewed migration for every future schema change. A normal build or startup must not delete user data automatically.
 
 Do not build the full UI yet.
 
@@ -80,7 +80,7 @@ Scope:
 - Add lookup tables with common fields: Id, Code, Name, Description, SortOrder, IsActive, IsSystem, CreatedAt, UpdatedAt.
 - Add TaskItem, TaskWaitingFor, TaskComment, TaskLogEntry, TaskChecklistItem, TaskAttachment, TaskTag, TaskTaskTag, TaskRelation, TaskRelationType.
 - Add startup seeding from configuration: only seed a lookup table if it is empty.
-- Use `Database.EnsureCreated()` and explicit SQLite foreign-key enforcement.
+- Add the initial EF Core migration, apply pending migrations at startup, and enforce SQLite foreign keys explicitly.
 - Add integration tests for foreign keys, restrict behavior, cascade behavior, unique indexes, and check constraints.
 - Do not hard-delete used lookup rows. Use deactivation for values that have existing references.
 - Allow hard deletion only for unused non-system lookup rows.
@@ -88,7 +88,7 @@ Scope:
 
 After implementation:
 - Show changed files.
-- Explain how to create or explicitly reset the SQLite database.
+- Explain how to create and apply EF Core migrations.
 - Add or update tests where appropriate.
 ```
 

@@ -161,15 +161,15 @@ Reason: TinyMCE documentation identifies PowerPaste as the enhanced/premium path
 
 Consequence: The MVP acceptance criteria must avoid promising premium paste fidelity unless the dependency choice changes.
 
-## ADR-006: Prefer A Small Repository Layer Before EF Core
+## ADR-006: Use EF Core With Versioned Migrations
 
 Status: Proposed
 
-Decision: Start with `Microsoft.Data.Sqlite` repositories unless relational complexity grows enough to justify EF Core.
+Decision: Use EF Core for relational mapping and version the SQLite schema with migrations from `InitialCreate` onward.
 
-Reason: The initial schema is small, local, and transaction-focused. EF Core adds migrations and tracking behavior that may not be needed immediately.
+Reason: User data must survive application schema upgrades, and the implemented model has enough relationships and integrity rules to benefit from EF Core mappings and migration history.
 
-Consequence: If EF Core is later adopted, keep repository/service boundaries stable.
+Consequence: Apply pending migrations before application data access and include a reviewed migration with every physical schema change.
 
 ## Suggested Schema
 

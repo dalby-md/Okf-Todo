@@ -35,8 +35,8 @@ namespace Photino.Okf_Todo
 
                 try
                 {
-                    logger.LogInformation("Ensuring SQLite database schema.");
-                    EnsureDatabase(scope.ServiceProvider);
+                    logger.LogInformation("Applying pending SQLite database migrations.");
+                    MigrateDatabase(scope.ServiceProvider);
                     logger.LogInformation("SQLite database is ready at {DatabasePath}.", DatabasePathProvider.GetDatabasePath());
                     logger.LogInformation("Seeding lookup values.");
                     scope.ServiceProvider.GetRequiredService<LookupSeedService>()
@@ -228,10 +228,10 @@ namespace Photino.Okf_Todo
             return int.TryParse(idText, out imageId);
         }
 
-        private static void EnsureDatabase(IServiceProvider services)
+        private static void MigrateDatabase(IServiceProvider services)
         {
             var dbContext = services.GetRequiredService<AppDbContext>();
-            dbContext.Database.EnsureCreated();
+            dbContext.Database.Migrate();
         }
 
         private static async Task WaitForStaticFileServerAsync(string appUrl, ILogger logger)

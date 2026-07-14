@@ -123,11 +123,11 @@ The important distinction: static asset loading and application/data communicati
 
 11. Database access
 
-   Use EF Core with SQLite. Create a fresh database from the current model with `Database.EnsureCreated()` and enable SQLite foreign-key enforcement explicitly on every connection.
+   Use EF Core with SQLite. Create and upgrade databases with versioned migrations applied at startup, and enable SQLite foreign-key enforcement explicitly on every connection.
 
 12. Schema changes
 
-   Do not support migrations or upgrades of old database schemas. During development, explicitly delete and recreate the database when the model changes. Never delete the database automatically during a normal build or application startup.
+   `InitialCreate` is the earliest supported database version. Add a reviewed migration for every future physical schema change and apply pending migrations at startup. Never delete the database automatically during a normal build or application startup.
 
 13. Export
 
@@ -245,7 +245,7 @@ Use stable error codes: `ValidationFailed`, `NotFound`, `Conflict`, `ImageTooLar
 - [x] Keep REST, ASP.NET, IIS, and dynamic localhost APIs out of the app.
 - [x] Resolve `app://image/{id}` through bridge-loaded temporary editor URLs.
 - [x] Use `Issues` as the domain model name for v1.
-- [x] Use EF Core with SQLite `EnsureCreated()` and explicit foreign-key enforcement.
+- [x] Use EF Core migrations with SQLite and explicit foreign-key enforcement.
 - [x] Keep images in SQLite BLOBs and owned by one issue in v1.
 - [x] Do not implement export formats in v1.
 - [x] Do not consider Markdown in v1.

@@ -14,14 +14,14 @@ Read `references/okf/SPEC.md` completely before generating. Read `references/ups
 ## Workflow
 
 1. Read `docs/PRD.md`, `docs/DATA_MODEL.md`, and `docs/IMPLEMENTATION_PLAN.md`.
-2. Inspect `Okf-Todo/Data/AppDbContext.cs`, entity classes, lookup seed configuration, database initialization, and relevant integrity tests.
+2. Inspect `Okf-Todo/Data/AppDbContext.cs`, entity classes, committed EF Core migrations and model snapshot, lookup seed configuration, database initialization, and relevant integrity tests.
 3. Locate the configured SQLite database without modifying it. If it exists, extract its structural schema with:
 
    ```text
    python scripts/extract_sqlite_schema.py --database <database-path> --out <temporary-json-path>
    ```
 
-4. Treat EF Core mappings and current source as authoritative for intended schema. Treat extracted SQLite structure as evidence of deployed state. Explicitly document mismatches; never make a stale database authoritative merely because it exists.
+4. Treat EF Core mappings, the model snapshot, committed migrations, and current source as authoritative for intended schema and upgrade history. Treat extracted SQLite structure as evidence of deployed state. Explicitly document mismatches; never make a stale database authoritative merely because it exists.
 5. Generate the structural bundle, then review and preserve accurate hand-authored application semantics:
 
    ```text
@@ -103,6 +103,7 @@ State primary keys, alternate keys, foreign-key targets, delete behavior, unique
 
 - Open SQLite databases read-only and inspect structure only. Never read task content or BLOB values for this workflow.
 - Never delete, migrate, or rewrite a database while compiling knowledge.
+- Document the earliest supported migration and startup migration behavior in the schema lifecycle reference.
 - Do not invent relationships that are not enforced or documented.
 - Do not add REST, web-server, export, or Markdown-format concerns to this bundle unless they directly affect database structure.
 - Keep generated links internal to the bundle except for explicit source references.

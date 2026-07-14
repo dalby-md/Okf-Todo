@@ -10,9 +10,10 @@ All controlled values are lookup tables. Initial lookup values are seeded from c
 
 ## Schema lifecycle and integrity
 
-- Create new databases from the current EF Core model with `Database.EnsureCreated()`.
-- EF Core migrations and upgrades of old database schemas are out of scope.
-- During development, delete `%LOCALAPPDATA%\Okf-Todo\okf-todo.db` explicitly when a schema change requires a fresh database.
+- Create new databases and upgrade supported existing databases with EF Core migrations.
+- Apply pending migrations at startup with `Database.Migrate()` before lookup or sample-data seeding.
+- Treat `InitialCreate` as the earliest supported database version; databases created before it are out of scope.
+- Add and review an EF Core migration for every committed physical schema change.
 - Do not delete the database automatically during a normal build or application startup.
 - Enable SQLite foreign-key enforcement explicitly on every connection.
 - Define required relationships as non-null foreign keys.
