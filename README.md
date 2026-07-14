@@ -29,8 +29,6 @@ Planned for the next few days:
 - Improved filtering and sorting of tasks.
 - A Windows MSIX installer for easier installation and updates. Installers for Mac and Linux planned.
 - Parts of the page is AI Slop and needs to be rewritten.
- 
-Installers for Mac and Linux planned.
 
 It is designed for the work that often falls between formal systems: production errors, support cases, deployment checks, investigations, ideas, notes, requests, and follow-up tasks. The application runs locally, requires no account or cloud service, and keeps tasks, history, images, and attachments together in one SQLite database.
 
