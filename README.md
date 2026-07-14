@@ -151,7 +151,7 @@ Use the view buttons to focus the list:
 | **Completed** | Completed tasks. |
 | **All** | Every task, including cancelled tasks. |
 
-Use **Search tasks** to filter the current view. The arrow keys move through the visible task list; **Home** and **End** select its first and last entries.
+Use **Search tasks** to filter the current view by task details or tag text. The tag filter accepts multiple existing tags and shows tasks having any selected tag. The arrow keys move through the visible task list; **Home** and **End** select its first and last entries.
 
 When you switch tasks with unsaved changes, the application asks whether to save, discard, or keep editing.
 

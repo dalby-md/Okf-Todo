@@ -367,6 +367,11 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
                     .SingleOrDefault(),
                 task.ChecklistItems.Count(item => item.IsCompleted),
                 task.ChecklistItems.Count,
+                task.Tags
+                    .Where(taskTag => taskTag.TaskTag != null)
+                    .Select(taskTag => taskTag.TaskTag!.Value)
+                    .OrderBy(value => value)
+                    .ToList(),
                 task.UpdatedAt))
             .ToListAsync(cancellationToken);
     }
@@ -1272,6 +1277,7 @@ public sealed record TaskListItemDto(
     string? ActiveWaitingForLabel,
     int CompletedChecklistCount,
     int ChecklistCount,
+    IReadOnlyCollection<string> Tags,
     DateTime UpdatedAt);
 
 public sealed record TaskDetailDto(

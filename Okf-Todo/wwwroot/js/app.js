@@ -631,8 +631,15 @@
             }).join('')}
           </div>
 
-          <label class="sr-only" for="task-search">Search tasks</label>
-          <input id="task-search" class="task-search" type="search" placeholder="Search tasks" autocomplete="off">
+          <div class="task-search-panel" aria-label="Task search">
+            <label class="sr-only" for="task-search">Search tasks</label>
+            <input id="task-search" class="task-search" type="search" placeholder="Search tasks" autocomplete="off">
+
+            <div class="task-tag-filter-field">
+              <select id="task-tag-filter" multiple aria-label="Filter tasks by tags"></select>
+              <small class="field-help">Type a tag, then press Enter to filter.</small>
+            </div>
+          </div>
 
           <div id="task-list" class="task-list" aria-label="Tasks" tabindex="0"></div>
         </aside>
@@ -1026,6 +1033,7 @@
     renderLookupOptions('#task-source', lookups.taskSources, true)
     renderLookupOptions('#editor-mode', lookups.bodyFormats, false)
     renderTagOptions(lookups.tags || [])
+    renderTaskTagFilterOptions(lookups.tags || [])
   }
 
   function resolveConfirmationDialog(isConfirmed) {
@@ -1317,6 +1325,31 @@
     $tags.val(values || []).trigger('change.select2')
   }
 
+  function renderTaskTagFilterOptions(values, selectedValues) {
+    const $filter = $('#task-tag-filter')
+    const selected = selectedValues || $filter.val() || []
+    if ($filter.hasClass('select2-hidden-accessible')) {
+      $filter.select2('destroy')
+    }
+
+    $filter.html((values || []).map(function (value) {
+      const encoded = encodeAttribute(value)
+      return `<option value="${encoded}">${encodeText(value)}</option>`
+    }).join(''))
+
+    $filter.select2({
+      width: '100%',
+      placeholder: 'Search tags...',
+      closeOnSelect: false,
+      dropdownParent: $('.task-tag-filter-field')
+    })
+
+    const available = new Set(values || [])
+    $filter.val(selected.filter(function (value) {
+      return available.has(value)
+    })).trigger('change.select2')
+  }
+
   function renderLookupSettings() {
     $('#lookup-settings-groups').html(Object.keys(lookupSettingsGroups).map(function (group) {
       const count = lookupSettings && lookupSettings[group] ? lookupSettings[group].length : 0
@@ -1470,9 +1503,11 @@
       return String(value).toLocaleLowerCase() === String(oldValue || '').toLocaleLowerCase()
     })
     const nextSelectedTags = replaceTagValue(selectedTags, oldValue, newValue)
+    const nextFilterTags = replaceTagValue($('#task-tag-filter').val() || [], oldValue, newValue)
 
     lookups = await sendBridgeMessage('task.lookups.get', {})
     renderTagOptions(lookups.tags || [])
+    renderTaskTagFilterOptions(lookups.tags || [], nextFilterTags)
 
     if (currentTask) {
       currentTask.tags = nextSelectedTags
@@ -2143,31 +2178,48 @@
     return $('#task-search').val().toString().trim().toLowerCase()
   }
 
+  function getSelectedTaskTagFilters() {
+    return ($('#task-tag-filter').val() || []).map(function (tag) {
+      return String(tag).toLocaleLowerCase()
+    })
+  }
+
   function getVisibleTasks() {
     const query = getTaskSearchQuery()
+    const selectedTags = getSelectedTaskTagFilters()
 
-    return query
-      ? tasks.filter(function (task) {
-        return task.title.toLowerCase().includes(query)
+    return tasks.filter(function (task) {
+      const taskTags = (task.tags || []).map(function (tag) {
+        return String(tag).toLocaleLowerCase()
+      })
+      const matchesSearch = !query
+        || task.title.toLowerCase().includes(query)
           || task.taskTypeName.toLowerCase().includes(query)
           || task.taskStatusName.toLowerCase().includes(query)
           || (task.taskPriorityName || '').toLowerCase().includes(query)
           || (task.activeWaitingForLabel || '').toLowerCase().includes(query)
-      })
-      : tasks
+          || taskTags.some(function (tag) { return tag.includes(query) })
+      const matchesTags = selectedTags.length === 0
+        || selectedTags.some(function (selectedTag) {
+          return taskTags.includes(selectedTag)
+        })
+
+      return matchesSearch && matchesTags
+    })
   }
 
   function renderTaskList() {
     const query = getTaskSearchQuery()
+    const selectedTags = getSelectedTaskTagFilters()
     const visibleTasks = getVisibleTasks()
 
     $('.view-tab').removeClass('is-active')
     $(`.view-tab[data-view="${currentView}"]`).addClass('is-active')
 
     if (visibleTasks.length === 0) {
-      const hasSearch = query.length > 0
+      const hasSearch = query.length > 0 || selectedTags.length > 0
       const title = hasSearch ? 'No matching tasks' : `No ${viewLabels[currentView].toLowerCase()} tasks`
-      const detail = hasSearch ? 'Adjust the search text' : 'Create a task or switch view'
+      const detail = hasSearch ? 'Adjust the search text or tag filters' : 'Create a task or switch view'
 
       $('#task-list').html(`
         <div class="empty-list">
@@ -3272,6 +3324,7 @@
     })
 
     $('#task-search').on('input', renderTaskList)
+    $('#task-tag-filter').on('change', renderTaskList)
     $('#relationship-add-button').on('click', function () {
       addRelationship().catch(function (error) { setStatus(getErrorMessage(error, 'Could not add relationship'), 'error') })
     })

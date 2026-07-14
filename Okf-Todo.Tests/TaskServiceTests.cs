@@ -101,6 +101,7 @@ public sealed class TaskServiceTests
         Assert.Equal("#111827", listed.TaskTypeForegroundColor);
         Assert.Equal("#6b7280", listed.TaskStatusBackgroundColor);
         Assert.Equal("#ffffff", listed.TaskStatusForegroundColor);
+        Assert.Equal(["Initial"], listed.Tags);
 
         var completedTasks = await database.Tasks.ListAsync(new TaskListRequest("completed"), CancellationToken.None);
         Assert.DoesNotContain(completedTasks, task => task.Id == created.Id);
