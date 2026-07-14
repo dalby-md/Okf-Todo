@@ -6,16 +6,18 @@ OKF-Todo is a task manager for Windows, macOS, and Linux. It works like a famili
 
 ## AI-First Data
 
-OKF-Todo is designed so an AI assistant can read, analyze, and update task data without depending on a proprietary cloud API. There are two complementary access paths:
+OKF-Todo is designed so an AI assistant can read, analyze, and update task data without depending on a proprietary cloud API. There are four complementary access paths:
 
-- **SQLite directly:** the application database contains the actual tasks, lookups, comments, history, tags, relationships, images, and attachments.
+- **MCP server:** MCP-compatible AI clients can list, read, create, and update tasks and inspect their timelines through structured tools.
+- **CLI commands:** people, scripts, and agents can execute the same application commands from a terminal.
+- **SQLite for inspection:** the application database contains the actual tasks, lookups, comments, history, tags, relationships, images, and attachments.
 - **OKF-guided access:** the repository's [Open Knowledge Format context graph](docs/okf/todo-database/) describes the database concepts, schema, relationships, integrity rules, and lifecycle conventions so an AI can discover and reason about the data before working with SQLite.
 
-OKF is the knowledge and navigation layer; SQLite remains the source of task data. An AI that writes directly to SQLite must respect the documented foreign keys, lookup codes, lifecycle rules, and history behavior. Close the desktop application and create a backup before allowing an external tool to perform direct writes.
+OKF is the knowledge and navigation layer; SQLite remains the source of task data. Supported writes should go through the desktop app, CLI, or MCP server so validation, lifecycle rules, and automatic task history run consistently. Direct SQLite access is intended for read-only inspection and diagnostics; direct writes can bypass application behavior.
 
 The same database remains fully usable through the desktop interface. AI assistance is optional, local data stays under the user's control, and no hosted service is required.
 
-A dedicated **OKF-Todo CLI** is being considered. It will provide direct terminal access for people, scripts, and AI agents, with supported commands for querying and updating tasks without writing ad hoc SQL. The CLI is also planned as the foundation for **Model Context Protocol (MCP) support**, allowing MCP-compatible AI clients to discover task capabilities and work with local data through structured tools.
+The CLI and MCP server are thin adapters over the same shared application command service used by the Photino bridge. A task created or updated through any supported interface therefore follows the same business rules and produces the same task history.
 
 ![OKF-Todo task workspace showing task views, rich task details, tags, waiting status, Markdown editing, and a checklist](docs/images/okf-todo-task-workspace.png)\
 <sub>Data are created by Codex directly.</sub>
@@ -30,8 +32,6 @@ Planned for the next few days:
  
 Plans for the future:
 
-- An OKF-Todo CLI for direct task queries and updates from terminals, scripts, and AI workflows.
-- MCP support built on the CLI and OKF context graph for structured AI-tool integration.
 - Installers for Mac and Linux planned.
 
 
@@ -86,6 +86,49 @@ The database is stored under the operating system's local application-data direc
 | Linux | `$XDG_DATA_HOME/Okf-Todo/okf-todo.db`, or `~/.local/share/Okf-Todo/okf-todo.db` when `XDG_DATA_HOME` is unset or relative |
 
 Do not delete this file unless you intentionally want to remove all application data.
+
+### Connect an MCP client
+
+Build the MCP server in the repository root:
+
+```powershell
+dotnet build .\Okf-Todo.Mcp\Okf-Todo.Mcp.csproj -c Release
+```
+
+Then configure an MCP client to start the built stdio server. For example:
+
+```json
+{
+  "mcpServers": {
+    "okf-todo": {
+      "command": "dotnet",
+      "args": [
+        "C:\\git\\Okf-Todo\\Okf-Todo.Mcp\\bin\\Release\\net8.0\\Okf-Todo.Mcp.dll"
+      ]
+    }
+  }
+}
+```
+
+Adjust the absolute DLL path for your checkout. By default, the server uses the same platform-specific database as the desktop application. It exposes these tools:
+
+| Tool | Purpose |
+| --- | --- |
+| `task_list` | List tasks by view. |
+| `task_get` | Read one task. |
+| `task_create` | Create a task through the shared application command service. |
+| `task_update` | Replace a task's editable fields through the shared application command service. |
+| `task_get_timeline` | Read comments and automatic task history. |
+
+`task_update` has full-replacement semantics for editable fields. Call `task_get` first and include every value that must be preserved; omitted optional fields are cleared.
+
+For development or isolated tests, start the server with a different database:
+
+```powershell
+dotnet run --project .\Okf-Todo.Mcp\Okf-Todo.Mcp.csproj -- --database-path C:\temp\okf-todo-mcp.db
+```
+
+The MCP protocol uses standard output. Server and framework logs are written to standard error so they do not corrupt the protocol stream.
 
 ### Create your first task
 

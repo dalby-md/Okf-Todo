@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Okf-Todo.Mcp\Okf-Todo.Mcp.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Okf-Todo\Okf-Todo.csproj" />
   </ItemGroup>
 
