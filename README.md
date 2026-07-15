@@ -20,15 +20,17 @@ The same database remains fully usable through the desktop interface. AI assista
 The CLI and MCP server are thin adapters over the same shared application command service used by the Photino bridge. A task created or updated through any supported interface therefore follows the same business rules and produces the same task history.
 
 ![OKF-Todo task workspace showing task views, rich task details, tags, waiting status, Markdown editing, and a checklist](docs/images/okf-todo-task-workspace.png)\
-<sub>Data are created by Codex directly.</sub>
+<sub>Data was created by Codex directly.</sub>
 
 ## Coming Next
 
-Planned for the next few days:
+Planned improvements:
 
 - Improved filtering and sorting of tasks.
-- A Windows MSIX installer for easier installation and updates. Installers for Mac and Linux planned.
-- Parts of the page is AI Slop and needs to be rewritten.
+- Calculation of initial editor height based on screen resolution. 
+- Possible inspiration points from MS To Do: Lists, flags and stars
+- Installers for Mac and Linux are planned.
+
 
 It is designed for the work that often falls between formal systems: production errors, support cases, deployment checks, investigations, ideas, notes, requests, and follow-up tasks. The application runs locally, requires no account or cloud service, and keeps tasks, history, images, and attachments together in one SQLite database.
 
@@ -276,7 +278,7 @@ OKF-Todo is a single-user, local-first application. It has no authentication, cl
 Version 0.1 is an alpha release intended for evaluation and personal use:
 
 - Windows, macOS, and Linux can run from source; Windows currently receives the most testing.
-- Packaged installers and automatic updates are not available yet. A Windows MSIX package is the first planned installer.
+- A Windows installer can be built from the repository. Automatic updates and macOS/Linux packages are not available yet.
 - There is no cloud sync or multi-user collaboration.
 - Database downgrades are not supported; back up the database before installing an older application version.
 - Restore is a manual file-replacement operation.
@@ -308,3 +310,43 @@ dotnet tool run dotnet-ef migrations add <MigrationName> --project .\Okf-Todo\Ok
 Commit the generated migration and model snapshot with the model change. The application applies pending migrations automatically at startup.
 
 Product and architecture documentation is available in [`docs`](docs/).
+
+### Build the Windows installer
+
+The Windows installer is a self-contained `win-x64` Inno Setup package. It always installs the GUI and OKF context graph. **Install MCP server** is presented as an installer component and is selected by default.
+
+Install Inno Setup 7 (or compatible Inno Setup 6), then run from the repository root:
+
+```powershell
+.\installer\build-installer.ps1 -Version 0.1.0
+```
+
+Or from Windows cmd:
+
+```cmd
+installer\build-installer.cmd -Version 0.1.0
+```
+
+The installer is written to:
+
+```text
+artifacts\installer\Okf-Todo-0.1.0-win-x64-setup.exe
+```
+
+To publish, merge, and validate the staging payload without compiling the setup executable:
+
+```powershell
+.\installer\build-installer.ps1 -Version 0.1.0 -SkipInstallerCompile
+```
+
+The mandatory payload is staged under `artifacts\installer\staging\core`; the optional MCP server and its isolated runtime are staged under `artifacts\installer\staging\mcp`; and the installed OKF bundle is staged under `artifacts\installer\staging\okf`.
+
+For a signed production build, provide the Windows SDK `signtool.exe`, certificate thumbprint, and optional RFC 3161 timestamp URL:
+
+```powershell
+.\installer\build-installer.ps1 -Version 0.1.0 `
+  -SignToolPath 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\signtool.exe' `
+  -CertificateThumbprint '<certificate-thumbprint>'
+```
+
+The build signs the GUI executable and MCP executable before packaging, then signs the resulting setup executable. Ordinary development builds remain unsigned.
