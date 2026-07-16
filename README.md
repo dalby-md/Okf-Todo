@@ -49,7 +49,11 @@ It is designed for the work that often falls between formal systems: production 
 - Light and dark color schemes with flexible desktop layouts.
 - Complete database backup from inside the application.
 
-Windows users can install the self-contained application with [OKF-Todo 0.1.0 for Windows x64](Windows users can install the self-contained application with [OKF-Todo 0.1 for Windows x64](OKF-Todo/releases/download/latest-alpha/Okf-Todo-0.1-win-x64-setup.exe). The installer includes the desktop application and OKF context layer. Installing the MCP server is offered as a user choice and is selected by default.). The installer includes the desktop application and OKF context layer. Installing the MCP server is offered as a user choice and is selected by default. You don't need to be a local administrator to install this.
+Windows users can install the self-contained application with [OKF-Todo 0.1.0 for Windows x64](Windows users can install the self-contained application with 
+
+[OKF-Todo 0.1 installer for Windows x64](https://github.com/dalby-md/OKF-Todo/releases/download/latest-alpha/Okf-Todo-0.1-win-x64-setup.exe). 
+
+The installer includes the desktop application and OKF context layer. Installing the MCP server is offered as a user choice and is selected by default.). The installer includes the desktop application and OKF context layer. Installing the MCP server is offered as a user choice and is selected by default. You don't need to be a local administrator to install this.
 
 ## Getting Started
 
