@@ -26,6 +26,7 @@
   const defaultEditorHeight = 360
   const minimumEditorHeight = 240
   const maximumEditorHeight = 1800
+  const editorHeightStep = 40
   const defaultTaskListWidth = 320
   const layoutModeCodes = {
     auto: 'AUTO',
@@ -64,6 +65,7 @@
       : colorSchemeCodes.light
   }
   let layoutPreferenceSaveTimer = null
+  let editorHeightPreferenceSaveTimer = null
   let unsavedChangesDialogResolve = null
   let completeWaitDialogResolve = null
   let confirmationDialogResolve = null
@@ -700,6 +702,15 @@
             </div>
             <div id="editor-host" class="editor-host">
               <textarea id="text-body"></textarea>
+            </div>
+            <div id="editor-height-control" class="editor-height-control" aria-label="Editor height" hidden>
+              <button id="editor-height-decrease" class="editor-height-adjust-button" type="button" aria-label="Decrease editor height" title="Decrease editor height" disabled>&minus;</button>
+              <label class="editor-height-range-label" for="editor-height-range">
+                <span class="sr-only">Editor height</span>
+                <input id="editor-height-range" type="range" min="${minimumEditorHeight}" max="${maximumEditorHeight}" step="${editorHeightStep}" value="${defaultEditorHeight}" disabled>
+              </label>
+              <button id="editor-height-increase" class="editor-height-adjust-button" type="button" aria-label="Increase editor height" title="Increase editor height" disabled>+</button>
+              <output id="editor-height-value" for="editor-height-range">Comfortable · ${defaultEditorHeight} px</output>
             </div>
 
             <div class="source-grid" hidden>
@@ -1803,6 +1814,36 @@
     return Math.min(maximumEditorHeight, Math.max(minimumEditorHeight, height))
   }
 
+  function describeEditorHeight(height) {
+    if (height <= 320) {
+      return 'Compact'
+    }
+
+    if (height <= 480) {
+      return 'Comfortable'
+    }
+
+    if (height <= 720) {
+      return 'Spacious'
+    }
+
+    return 'Extra tall'
+  }
+
+  function syncEditorHeightControls() {
+    const description = describeEditorHeight(preferredEditorHeight)
+    $('#editor-height').val(preferredEditorHeight)
+    $('#editor-height-range')
+      .val(preferredEditorHeight)
+      .attr('aria-valuetext', `${description}, ${preferredEditorHeight} pixels`)
+    $('#editor-height-value').text(`${description} · ${preferredEditorHeight} px`)
+  }
+
+  function setEditorHeightControlEnabled(enabled) {
+    $('#editor-height-control').prop('hidden', !enabled)
+    $('#editor-height-range, #editor-height-decrease, #editor-height-increase').prop('disabled', !enabled)
+  }
+
   async function loadEditorPreference() {
     const preference = await sendBridgeMessage('editor.preference.get', {})
     preferredBodyFormatCode = getSupportedBodyFormatCode(preference.bodyFormatCode)
@@ -1810,7 +1851,7 @@
     preferredEditorHeight = getSupportedEditorHeight(preference.editorHeight)
     $('#editor-mode').val(preferredBodyFormatCode)
     $('#editor-mode').prop('disabled', false)
-    $('#editor-height').val(preferredEditorHeight)
+    syncEditorHeightControls()
     $('#editor-height').prop('disabled', false)
   }
 
@@ -1863,6 +1904,8 @@
   }
 
   function applyEditorHeightPreference() {
+    syncEditorHeightControls()
+
     if (!window.Editor || typeof window.Editor.setHeight !== 'function' || !isEditorReady) {
       return
     }
@@ -1870,10 +1913,48 @@
     window.Editor.setHeight(preferredEditorHeight)
   }
 
+  function previewEditorHeightPreference(value) {
+    preferredEditorHeight = getSupportedEditorHeight(value)
+    applyEditorHeightPreference()
+  }
+
+  function saveEditorHeightPreferenceFromControl() {
+    if (editorHeightPreferenceSaveTimer) {
+      window.clearTimeout(editorHeightPreferenceSaveTimer)
+      editorHeightPreferenceSaveTimer = null
+    }
+
+    return saveEditorPreference(preferredBodyFormatCode, preferredMarkdownEditType, preferredEditorHeight)
+      .then(function () {
+        syncEditorHeightControls()
+        setStatus('Editor height preference saved', 'saved')
+      })
+  }
+
+  function queueEditorHeightPreferenceSave() {
+    if (editorHeightPreferenceSaveTimer) {
+      window.clearTimeout(editorHeightPreferenceSaveTimer)
+    }
+
+    editorHeightPreferenceSaveTimer = window.setTimeout(function () {
+      editorHeightPreferenceSaveTimer = null
+      saveEditorHeightPreferenceFromControl().catch(function (error) {
+        setStatus(getErrorMessage(error, 'Could not save editor height'), 'error')
+      })
+    }, 400)
+  }
+
+  function adjustEditorHeightPreference(direction) {
+    const nextHeight = preferredEditorHeight + (direction * editorHeightStep)
+    previewEditorHeightPreference(nextHeight)
+    queueEditorHeightPreferenceSave()
+  }
+
   function renderEmptyEditor() {
     currentTask = null
     isDirty = false
     isEditorReady = false
+    setEditorHeightControlEnabled(false)
     cleanTaskSnapshot = null
     clearValidationState()
 
@@ -2378,6 +2459,7 @@
     }
 
     isEditorReady = false
+    setEditorHeightControlEnabled(false)
     $('#save-button').prop('disabled', true)
 
     const editorMode = modeCode === 'MARKDOWN' ? 'markdown' : 'html'
@@ -2405,6 +2487,7 @@
 
     window.Editor.markClean()
     isEditorReady = true
+    setEditorHeightControlEnabled(true)
     $('#save-button').prop('disabled', false)
 
     if (modeCode === 'MARKDOWN' && typeof window.Editor.getMarkdownEditType === 'function') {
@@ -3421,6 +3504,21 @@
           setStatus(getErrorMessage(error, 'Could not save editor height'), 'error')
         })
       }
+    })
+    $('#editor-height-range').on('input', function () {
+      previewEditorHeightPreference($(this).val())
+      queueEditorHeightPreferenceSave()
+    })
+    $('#editor-height-range').on('change', function () {
+      saveEditorHeightPreferenceFromControl().catch(function (error) {
+        setStatus(getErrorMessage(error, 'Could not save editor height'), 'error')
+      })
+    })
+    $('#editor-height-decrease').on('click', function () {
+      adjustEditorHeightPreference(-1)
+    })
+    $('#editor-height-increase').on('click', function () {
+      adjustEditorHeightPreference(1)
     })
     $('#layout-mode').on('change', switchLayoutMode)
     $('#color-scheme').on('change', switchColorScheme)

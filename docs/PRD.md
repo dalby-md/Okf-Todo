@@ -72,6 +72,8 @@ The task body is free text.
 
 The user should not be forced to choose Markdown or HTML directly. The editor decides the format and the app stores the selected format with the content.
 
+The editor provides a shared height control directly below the editing surface in both Markdown and HTML modes. Height changes are previewed immediately and persist as a user preference across application restarts.
+
 Store:
 
 - `Body`
