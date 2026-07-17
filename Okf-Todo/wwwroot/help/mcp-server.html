@@ -29,6 +29,14 @@
     <p>Client products store MCP configuration in different places and may use a different outer property name. Preserve the server name, command, and arguments, but follow the client's documentation for where to put the entry. Restart or reload the client after changing its configuration.</p>
 
     <h3>Run from a source checkout</h3>
+    <p>Clone the repository and change to its root directory if you do not already have a checkout:</p>
+    <p><strong>Bash</strong></p>
+    <pre><code>git clone https://github.com/dalby-md/OKF-Todo.git
+cd OKF-Todo</code></pre>
+    <p><strong>Windows Command Prompt</strong></p>
+    <pre><code>git clone https://github.com/dalby-md/OKF-Todo.git
+cd OKF-Todo</code></pre>
+    <p>All following source-based <code>dotnet</code> commands in this guide assume the current directory is the repository root.</p>
     <pre><code>dotnet build .\Okf-Todo.Mcp\Okf-Todo.Mcp.csproj -c Release</code></pre>
     <pre><code>{
   "mcpServers": {

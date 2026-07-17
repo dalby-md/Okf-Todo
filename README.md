@@ -69,12 +69,27 @@ Windows is the primary tested platform for version 0.1. The application architec
 
 ### Run the application
 
-Clone the repository, open a terminal in the repository root, and run:
+Clone the repository, change to its root directory, and run the application using your shell.
 
-```shell
+For Bash:
+
+```bash
+git clone https://github.com/dalby-md/OKF-Todo.git
+cd OKF-Todo
 dotnet restore
 dotnet run --project ./Okf-Todo/Okf-Todo.csproj
 ```
+
+For Windows Command Prompt:
+
+```cmd
+git clone https://github.com/dalby-md/OKF-Todo.git
+cd OKF-Todo
+dotnet restore
+dotnet run --project .\Okf-Todo\Okf-Todo.csproj
+```
+
+All following `dotnet` commands in this README assume the current directory is the repository root.
 
 On first launch, OKF-Todo creates its database and initial lookup values automatically. No setup wizard or account is required.
 

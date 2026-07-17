@@ -35,6 +35,24 @@ In a source checkout, use:
 docs\okf\todo-database\index.md
 ```
 
+If you do not already have a source checkout, clone the repository and change to its root directory.
+
+For Bash:
+
+```bash
+git clone https://github.com/dalby-md/OKF-Todo.git
+cd OKF-Todo
+```
+
+For Windows Command Prompt:
+
+```cmd
+git clone https://github.com/dalby-md/OKF-Todo.git
+cd OKF-Todo
+```
+
+All following source-based `dotnet` commands in this guide assume the current directory is the repository root.
+
 Recommended navigation:
 
 1. Read [`index.md`](../okf/todo-database/index.md) for graph entry points and the source-of-truth statement.

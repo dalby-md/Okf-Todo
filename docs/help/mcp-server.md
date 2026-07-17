@@ -39,6 +39,24 @@ Client products store MCP configuration in different places and may use a differ
 
 ### Run from a source checkout
 
+Clone the repository and change to its root directory if you do not already have a checkout.
+
+For Bash:
+
+```bash
+git clone https://github.com/dalby-md/OKF-Todo.git
+cd OKF-Todo
+```
+
+For Windows Command Prompt:
+
+```cmd
+git clone https://github.com/dalby-md/OKF-Todo.git
+cd OKF-Todo
+```
+
+All following source-based `dotnet` commands in this guide assume the current directory is the repository root.
+
 Build the MCP server:
 
 ```powershell
