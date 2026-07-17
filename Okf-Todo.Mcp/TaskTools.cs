@@ -12,10 +12,10 @@ public static class TaskTools
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     [McpServerTool(Name = "task_list", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false)]
-    [Description("List OKF-Todo tasks. The view can be inbox, active, waiting, completed, or all.")]
+    [Description("List OKF-Todo tasks. The view can be active, urgent, waiting, overdue, completed, or all.")]
     public static Task<IReadOnlyCollection<TaskListItemDto>> ListAsync(
         ApplicationCommandService commandService,
-        [Description("Task view: inbox, active, waiting, completed, or all. Defaults to active.")] string? view = null,
+        [Description("Task view: active, urgent, waiting, overdue, completed, or all. Defaults to active.")] string? view = null,
         CancellationToken cancellationToken = default) =>
         ExecuteAsync<IReadOnlyCollection<TaskListItemDto>>(
             commandService,
@@ -40,7 +40,7 @@ public static class TaskTools
     public static Task<TaskDetailDto> CreateAsync(
         ApplicationCommandService commandService,
         [Description("Task title.")] string title,
-        [Description("Stable task type code, for example TASK or BUG.")] string taskTypeCode,
+        [Description("Stable task type code, for example REQUEST or ERROR.")] string taskTypeCode,
         [Description("Optional HTML task body.")] string? body = null,
         [Description("Stable body format code. Defaults to HTML.")] string? bodyFormatCode = "HTML",
         [Description("Optional stable priority code.")] string? taskPriorityCode = null,

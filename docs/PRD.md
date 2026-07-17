@@ -15,6 +15,7 @@ The app already has a Photino prototype demonstrating usage of an HTML/Markdown 
 - Very few required fields.
 - Structured enough for sorting, filtering, and history.
 - Avoid unnecessary multi-user concepts.
+- Provide offline in-app Help that loads the shipped OKF-layer and MCP-server guides from local application assets.
 - Prefer table-based lookup values over hardcoded enums.
 - Use configuration only to seed initial lookup values when tables are empty.
 - Do not overwrite user-customized lookup values after initial seeding.

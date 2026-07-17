@@ -66,7 +66,7 @@ Use a unique `messageId` per call. Responses preserve the identifier and use `<c
 
 For updates, read the task first with `task.get`, preserve fields that are not changing, and then submit the complete `task.update` payload. The update path records every changed field in [TaskLogEntries](../tables/task-log-entries.md).
 
-Supported task mutation commands include:j
+Supported task mutation commands include:
 
 - `task.create`
 - `task.update`

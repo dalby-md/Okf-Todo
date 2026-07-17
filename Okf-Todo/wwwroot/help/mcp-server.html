@@ -1,0 +1,152 @@
+<article class="help-document">
+  <header>
+    <h1>Using the MCP server</h1>
+    <p class="help-lead">The optional OKF-Todo MCP server gives an MCP-compatible AI client structured, local tools for listing, reading, creating, and updating tasks and reading task timelines.</p>
+  </header>
+
+  <section>
+    <h2>How it works</h2>
+    <p>The MCP client starts <code>Okf-Todo.Mcp.exe</code> as a standard-input/standard-output process when the client needs it. It is not a Windows service, web server, or cloud API, and you normally do not start it by double-clicking the executable.</p>
+    <p>The server uses the same application command service and, by default, the same SQLite database as the desktop application. Tasks created through MCP therefore appear in the GUI and follow the same field validation and automatic history behavior.</p>
+    <p class="help-note"><strong>Local by design:</strong> OKF-Todo does not send the database to a hosted OKF-Todo service. Your chosen MCP client and AI model may have their own data-handling behavior, so review that client's settings before granting it task access.</p>
+  </section>
+
+  <section>
+    <h2>Install and locate the server</h2>
+    <p>The Windows installer offers <strong>Install MCP server</strong> as an optional component and selects it by default. In the standard installation, these files are created:</p>
+    <pre><code>%LOCALAPPDATA%\Programs\Okf-Todo\mcp\Okf-Todo.Mcp.exe
+%LOCALAPPDATA%\Programs\Okf-Todo\integration\mcp-config.json</code></pre>
+    <p>The generated <code>mcp-config.json</code> contains the actual absolute executable path chosen during installation. Copy its <code>okf-todo</code> server entry into your MCP client's configuration. If the <code>mcp</code> folder or configuration file is absent, run the same installer again and select the MCP component.</p>
+
+    <h3>Installed configuration shape</h3>
+    <pre><code>{
+  "mcpServers": {
+    "okf-todo": {
+      "command": "C:\\Users\\&lt;you&gt;\\AppData\\Local\\Programs\\Okf-Todo\\mcp\\Okf-Todo.Mcp.exe"
+    }
+  }
+}</code></pre>
+    <p>Client products store MCP configuration in different places and may use a different outer property name. Preserve the server name, command, and arguments, but follow the client's documentation for where to put the entry. Restart or reload the client after changing its configuration.</p>
+
+    <h3>Run from a source checkout</h3>
+    <pre><code>dotnet build .\Okf-Todo.Mcp\Okf-Todo.Mcp.csproj -c Release</code></pre>
+    <pre><code>{
+  "mcpServers": {
+    "okf-todo": {
+      "command": "dotnet",
+      "args": [
+        "C:\\git\\Okf-Todo\\Okf-Todo.Mcp\\bin\\Release\\net8.0\\Okf-Todo.Mcp.dll"
+      ]
+    }
+  }
+}</code></pre>
+    <p>Replace the DLL path with the absolute path for your checkout.</p>
+  </section>
+
+  <section>
+    <h2>Available tools</h2>
+    <table>
+      <thead><tr><th>Tool</th><th>Purpose and important behavior</th></tr></thead>
+      <tbody>
+        <tr><td><code>task_list</code></td><td>Lists tasks for a view. It defaults to active tasks and supports active, urgent, waiting, overdue, completed, and all.</td></tr>
+        <tr><td><code>task_get</code></td><td>Returns one task by numeric ID, including the editable values needed before an update.</td></tr>
+        <tr><td><code>task_create</code></td><td>Creates and returns a task. The title and stable task type code are required; the other fields are optional.</td></tr>
+        <tr><td><code>task_update</code></td><td>Replaces all editable fields. Read the task first and preserve every value that should not change.</td></tr>
+        <tr><td><code>task_get_timeline</code></td><td>Returns comments and application-generated history for a task, newest first.</td></tr>
+      </tbody>
+    </table>
+    <p>The current MCP surface does not expose completion, cancellation, comments, checklists, attachments, or relationships as tools. Use the desktop GUI or the OKF application command adapter for those operations.</p>
+  </section>
+
+  <section>
+    <h2>Recommended AI workflow</h2>
+    <ol>
+      <li>Ask the client to call <code>task_list</code> to find candidate tasks.</li>
+      <li>Call <code>task_get</code> for the exact task before drawing conclusions or changing it.</li>
+      <li>For an update, retain all returned editable values, change only the requested values, and call <code>task_update</code>.</li>
+      <li>Call <code>task_get</code> again to verify the saved state.</li>
+      <li>Use <code>task_get_timeline</code> when change history or comments matter.</li>
+    </ol>
+    <p class="help-warning"><strong>Treat <code>task_update</code> as a full replacement.</strong> Omitted optional fields are cleared. Null or empty tags remove all tags. Always read before updating, even if the requested change seems small.</p>
+
+    <h3>Useful prompts</h3>
+    <ul>
+      <li>“List my active OKF-Todo tasks and summarize the three that need attention first. Do not change anything.”</li>
+      <li>“Get task 42 and show its current priority, deadline, waiting target, tags, and latest timeline entries.”</li>
+      <li>“Create an investigation task titled ‘Review deployment logs’, priority URGENT, tagged production and deployment.”</li>
+      <li>“Read task 42 first. Change only its priority to URGENT, preserve every other editable field, then read it again to verify.”</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Tool inputs</h2>
+    <h3>Create and update fields</h3>
+    <table>
+      <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>title</code></td><td>Required task title.</td></tr>
+        <tr><td><code>taskTypeCode</code></td><td>Stable task type code, not the display name.</td></tr>
+        <tr><td><code>body</code></td><td>HTML or Markdown body matching <code>bodyFormatCode</code>.</td></tr>
+        <tr><td><code>bodyFormatCode</code></td><td><code>HTML</code> or <code>MARKDOWN</code>. Create defaults to <code>HTML</code>.</td></tr>
+        <tr><td><code>taskPriorityCode</code></td><td>Optional stable priority code.</td></tr>
+        <tr><td><code>taskSourceCode</code></td><td>Optional stable source code.</td></tr>
+        <tr><td><code>sourceReference</code>, <code>sourceUrl</code></td><td>Optional external reference and URL.</td></tr>
+        <tr><td><code>deadline</code></td><td>Optional ISO 8601 date/time, preferably with timezone.</td></tr>
+        <tr><td><code>activeWaitingForLabel</code></td><td>Optional free-text waiting target. Supplying it records the task as waiting while it remains active.</td></tr>
+        <tr><td><code>tags</code></td><td>Optional collection of plain strings.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Default stable codes</h3>
+    <p>Users can customize non-system lookups in Setup, so the current database is authoritative. A new installation starts with:</p>
+    <ul>
+      <li>Task types: <code>CRITICAL_ERROR</code>, <code>ERROR</code>, <code>REQUEST</code>, <code>IDEA</code>, <code>NOTE</code>, <code>INVESTIGATION</code>, <code>IMPROVEMENT</code>.</li>
+      <li>Priorities: <code>URGENT</code>, <code>NORMAL</code>, <code>CAN_WAIT</code>.</li>
+      <li>Sources: <code>MANUAL</code>, <code>SERVICEDESK</code>, <code>EMAIL</code>, <code>TEAMS</code>, <code>TFS_AZURE_DEVOPS</code>, <code>ORACLE_APEX</code>, <code>POWER_PLATFORM</code>, <code>DEPLOYMENT</code>, <code>MONITORING_LOGS</code>, <code>USER_REPORT</code>.</li>
+    </ul>
+    <p>For example, use <code>"taskTypeCode": "ERROR"</code>, not <code>"taskTypeCode": "Error"</code>.</p>
+  </section>
+
+  <section>
+    <h2>Use the same database as the GUI</h2>
+    <p>Without extra arguments, the server uses:</p>
+    <pre><code>%LOCALAPPDATA%\Okf-Todo\okf-todo.db</code></pre>
+    <p>For an isolated development or test database, add arguments to the server entry:</p>
+    <pre><code>{
+  "mcpServers": {
+    "okf-todo-test": {
+      "command": "C:\\path\\to\\Okf-Todo.Mcp.exe",
+      "args": ["--database-path", "C:\\Temp\\okf-todo-mcp.db"]
+    }
+  }
+}</code></pre>
+    <p class="help-warning"><strong>A database override creates a separate task store.</strong> If MCP-created tasks do not appear in the desktop app, compare the MCP argument with the GUI database path before troubleshooting anything else.</p>
+  </section>
+
+  <section>
+    <h2>Security and permissions</h2>
+    <ul>
+      <li>The MCP server runs with your Windows user permissions and can read and modify the selected OKF-Todo database.</li>
+      <li>Only configure it in clients you trust. A client allowed to invoke mutation tools can create or replace task content.</li>
+      <li>Use read-only wording in prompts when you want analysis without changes, and review tool confirmations offered by your MCP client.</li>
+      <li>Back up the database from <strong>Setup → Data</strong> before large automated changes.</li>
+      <li>Do not wrap the executable in a script that prints banners or diagnostics to standard output; MCP protocol messages use that stream.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Troubleshooting</h2>
+    <table>
+      <thead><tr><th>Symptom</th><th>Check</th></tr></thead>
+      <tbody>
+        <tr><td>The client shows no OKF-Todo server</td><td>Validate the client's configuration location and JSON shape, use an absolute command path, then restart or reload the client.</td></tr>
+        <tr><td>The executable is missing</td><td>Rerun the Windows installer and select <strong>Install MCP server</strong>, or build the MCP project from source.</td></tr>
+        <tr><td>The process opens and immediately closes</td><td>That is expected when it has no MCP client connected. Let the client start it over stdio.</td></tr>
+        <tr><td>The client reports invalid JSON or protocol output</td><td>Remove wrappers that write to stdout. Server and framework logs already go to stderr.</td></tr>
+        <tr><td>A lookup code is rejected</td><td>Use stable codes from the current database. Lookup display names are not valid inputs and customized codes may differ from defaults.</td></tr>
+        <tr><td>An update cleared data</td><td><code>task_update</code> is replacement-based. Restore from a backup if necessary, then use read-before-update.</td></tr>
+        <tr><td>MCP and GUI show different tasks</td><td>Remove or correct <code>--database-path</code> so both processes use the same database.</td></tr>
+      </tbody>
+    </table>
+  </section>
+</article>

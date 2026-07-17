@@ -38,6 +38,10 @@
     dark: 'DARK'
   }
   const colorSchemeStorageKey = 'okf-todo-color-scheme'
+  const helpTopics = {
+    'okf-layer': '/help/okf-layer.html?v=20260717-help-1',
+    'mcp-server': '/help/mcp-server.html?v=20260717-help-1'
+  }
 
   let lookups = null
   let tasks = []
@@ -73,6 +77,8 @@
   let dirtyTrackingSuppressions = 0
   let markdownEditTypeSwitchCleanUntil = 0
   let markdownEditTypeSwitchWasClean = false
+  let activeHelpTopic = 'okf-layer'
+  const helpDocumentCache = new Map()
 
   function createMessageId() {
     if (window.crypto && window.crypto.randomUUID) {
@@ -657,6 +663,14 @@
             </div>
             <div class="app-actions" aria-label="Task actions">
               <span id="save-status" class="save-status is-ready" role="status">Ready</span>
+              <button id="help-button" class="icon-button setup-button" type="button" aria-label="Help" title="Help">
+                <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                  <path d="M9.4 9a2.8 2.8 0 1 1 4.42 2.28c-1.02.72-1.82 1.27-1.82 2.72"></path>
+                  <path d="M12 18h.01"></path>
+                  <circle cx="12" cy="12" r="9"></circle>
+                </svg>
+                <span>Help</span>
+              </button>
               <button id="settings-button" class="icon-button setup-button" type="button" aria-label="Setup" title="Setup">
                 <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
                   <path d="M12 8.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"></path>
@@ -785,6 +799,35 @@
             </section>
           </form>
         </section>
+
+        <div id="help-overlay" class="modal-overlay" hidden>
+          <section class="settings-dialog help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title">
+            <header class="settings-header help-header">
+              <div>
+                <p class="eyebrow">Local integration guides</p>
+                <h2 id="help-title">Help</h2>
+              </div>
+              <button id="help-close-button" class="icon-button" type="button" aria-label="Close help" title="Close">&times;</button>
+            </header>
+
+            <div class="help-layout">
+              <nav class="help-topic-list" aria-label="Help topics">
+                <button class="help-topic-button is-active" type="button" data-help-topic="okf-layer" aria-current="page">
+                  <strong>OKF layer</strong>
+                  <span>Context graph and command adapter</span>
+                </button>
+                <button class="help-topic-button" type="button" data-help-topic="mcp-server">
+                  <strong>MCP server</strong>
+                  <span>Connect an AI client and use tools</span>
+                </button>
+              </nav>
+
+              <div id="help-content" class="help-content" tabindex="0" aria-live="polite">
+                <p class="help-loading">Loading help...</p>
+              </div>
+            </div>
+          </section>
+        </div>
 
         <div id="settings-overlay" class="modal-overlay" hidden>
           <section class="settings-dialog setup-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
@@ -3176,6 +3219,69 @@
     await runLifecycleAction(type)
   }
 
+  function renderHelpDocument(topic, html) {
+    if (topic !== activeHelpTopic) {
+      return
+    }
+
+    $('#help-content').html(html).scrollTop(0)
+  }
+
+  async function loadHelpTopic(topic, forceReload) {
+    if (!Object.prototype.hasOwnProperty.call(helpTopics, topic)) {
+      return
+    }
+
+    activeHelpTopic = topic
+    $('.help-topic-button')
+      .removeClass('is-active')
+      .removeAttr('aria-current')
+      .filter(`[data-help-topic="${topic}"]`)
+      .addClass('is-active')
+      .attr('aria-current', 'page')
+
+    if (!forceReload && helpDocumentCache.has(topic)) {
+      renderHelpDocument(topic, helpDocumentCache.get(topic))
+      return
+    }
+
+    $('#help-content').html('<p class="help-loading">Loading help...</p>')
+
+    try {
+      const response = await window.fetch(helpTopics[topic])
+      if (!response.ok) {
+        throw new Error(`Help request failed with status ${response.status}.`)
+      }
+
+      const html = await response.text()
+      helpDocumentCache.set(topic, html)
+      renderHelpDocument(topic, html)
+    } catch (error) {
+      if (topic !== activeHelpTopic) {
+        return
+      }
+
+      $('#help-content').html(`
+        <div class="help-load-error" role="alert">
+          <h1>Help could not be loaded</h1>
+          <p>${encodeText(getErrorMessage(error, 'The local help document is unavailable.'))}</p>
+          <button class="secondary-button help-retry-button" type="button" data-help-retry="${encodeAttribute(topic)}">Retry</button>
+        </div>
+      `)
+    }
+  }
+
+  function openHelp() {
+    $('#help-overlay').prop('hidden', false)
+    $('#help-close-button').trigger('focus')
+    loadHelpTopic(activeHelpTopic, false)
+  }
+
+  function closeHelp() {
+    $('#help-overlay').prop('hidden', true)
+    $('#help-button').trigger('focus')
+  }
+
   function openSettings() {
     $('#settings-overlay').prop('hidden', false)
     $('#settings-close-button').trigger('focus')
@@ -3250,6 +3356,20 @@
           openNewTaskDialog()
         }
       })
+    })
+
+    $('#help-button').on('click', openHelp)
+    $('#help-close-button').on('click', closeHelp)
+    $('#help-overlay').on('click', function (event) {
+      if (event.target === this) {
+        closeHelp()
+      }
+    })
+    $('.help-topic-button').on('click', function () {
+      loadHelpTopic($(this).attr('data-help-topic'), false)
+    })
+    $('#help-content').on('click', '.help-retry-button', function () {
+      loadHelpTopic($(this).attr('data-help-retry'), true)
     })
 
     $('#settings-button').on('click', openSettings)
@@ -3428,6 +3548,10 @@
       }
       if (event.key === 'Escape' && !$('#lookup-list-overlay').prop('hidden')) {
         closeLookupList()
+        return
+      }
+      if (event.key === 'Escape' && !$('#help-overlay').prop('hidden')) {
+        closeHelp()
         return
       }
       if (event.key === 'Escape' && !$('#unsaved-changes-overlay').prop('hidden')) {

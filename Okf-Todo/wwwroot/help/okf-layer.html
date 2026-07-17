@@ -1,0 +1,141 @@
+<article class="help-document">
+  <header>
+    <h1>Using the OKF layer</h1>
+    <p class="help-lead">The Open Knowledge Format (OKF) layer explains the database to people and AI agents, then points them to a safe application command interface when they need to change tasks.</p>
+  </header>
+
+  <section>
+    <h2>What the OKF layer is</h2>
+    <p>OKF-Todo ships a linked Markdown context graph describing the SQLite schema, tables, columns, relationships, lookup codes, integrity constraints, lifecycle rules, and supported application commands. Start at <code>index.md</code> and follow only the links needed for the current job.</p>
+    <p class="help-note"><strong>Important:</strong> OKF is knowledge and navigation, not an executable API. SQLite contains the actual tasks. Use the desktop app, the application command adapter, or the MCP server for supported writes.</p>
+
+    <table>
+      <thead>
+        <tr><th>Need</th><th>Use</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Understand the data model or prepare a query</td><td>Read the OKF context graph.</td></tr>
+        <tr><td>Inspect data during diagnostics</td><td>Use OKF to understand the schema, then query SQLite read-only.</td></tr>
+        <tr><td>Script a supported task operation</td><td>Invoke <code>Okf-Todo.exe --okf-command</code>.</td></tr>
+        <tr><td>Give an MCP-compatible AI client task tools</td><td>Use the MCP server described in the other Help topic.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Find and navigate the context graph</h2>
+    <p>In a standard Windows installation, the entry point is relative to the application folder:</p>
+    <pre><code>okf\todo-database\index.md</code></pre>
+    <p>The default application folder is:</p>
+    <pre><code>%LOCALAPPDATA%\Programs\Okf-Todo</code></pre>
+    <p>In a source checkout, use:</p>
+    <pre><code>docs\okf\todo-database\index.md</code></pre>
+
+    <ol>
+      <li>Read <code>index.md</code> for the graph entry points and source-of-truth statement.</li>
+      <li>Open the database document for database-wide rules and the physical SQLite location.</li>
+      <li>Open only the relevant table documents, such as tasks, tags, waiting targets, comments, or log entries.</li>
+      <li>Follow relationship and integrity links before joining tables or proposing a mutation.</li>
+      <li>For a write, open <code>references\application-command-interface.md</code> and use an application command instead of direct SQL.</li>
+    </ol>
+    <p>Stable lookup <em>codes</em> are application inputs. Lookup <em>names</em> are display text and can be changed by the user. The installed defaults include task types such as <code>REQUEST</code>, <code>ERROR</code>, <code>NOTE</code>, and <code>INVESTIGATION</code>; priorities such as <code>URGENT</code>, <code>NORMAL</code>, and <code>CAN_WAIT</code>; and body formats <code>HTML</code> and <code>MARKDOWN</code>.</p>
+  </section>
+
+  <section>
+    <h2>Run an application command</h2>
+    <p>The command adapter reads one JSON envelope from standard input, applies migrations and validation, executes the same application service used by the desktop UI, and writes one JSON response envelope to standard output. Diagnostic logs go to standard error.</p>
+
+    <h3>Installed application: list active tasks</h3>
+    <pre><code>$request = @'
+{"messageId":"okf-list-1","type":"task.list","payload":{"view":"active"}}
+'@
+
+$app = "$env:LOCALAPPDATA\Programs\Okf-Todo\Okf-Todo.exe"
+$request | &amp; $app --okf-command</code></pre>
+    <p>If you selected another installation folder, replace <code>$app</code> with that absolute path.</p>
+
+    <h3>Source checkout: get one task</h3>
+    <pre><code>$request = @'
+{"messageId":"okf-get-42","type":"task.get","payload":{"id":42}}
+'@
+
+$request | dotnet run -c Release --no-build `
+  --project .\Okf-Todo\Okf-Todo.csproj -- --okf-command</code></pre>
+
+    <h3>Create a task</h3>
+    <pre><code>$request = @'
+{
+  "messageId": "okf-create-1",
+  "type": "task.create",
+  "payload": {
+    "title": "Review deployment logs",
+    "taskTypeCode": "INVESTIGATION",
+    "body": "## Checks\n\n- Inspect errors\n- Record findings",
+    "bodyFormatCode": "MARKDOWN",
+    "taskPriorityCode": "URGENT",
+    "taskSourceCode": "MONITORING_LOGS",
+    "sourceReference": "Production API",
+    "sourceUrl": null,
+    "deadline": "2026-07-20T12:00:00Z",
+    "activeWaitingForLabel": null,
+    "tags": ["production", "deployment"]
+  }
+}
+'@
+
+$request | &amp; $app --okf-command</code></pre>
+    <p>New tasks are active. Supplying <code>activeWaitingForLabel</code> records the active waiting target while the task remains in the active lifecycle state.</p>
+
+    <h3>Update safely: read, merge, replace</h3>
+    <p><code>task.update</code> replaces the editable task fields. First call <code>task.get</code>, copy every value that must remain, change only the intended values, and then submit the complete replacement payload. An omitted or null optional field is cleared, and an empty or null tag collection removes all tags.</p>
+    <p class="help-warning"><strong>Do not send a partial update.</strong> A request containing only an ID and a changed title can unintentionally clear the body, priority, source, deadline, waiting target, and tags.</p>
+  </section>
+
+  <section>
+    <h2>Command envelope and results</h2>
+    <pre><code>{
+  "messageId": "unique-caller-correlation-id",
+  "type": "task.get",
+  "payload": { "id": 42 }
+}</code></pre>
+    <ul>
+      <li>Use a unique <code>messageId</code> for each call. The response preserves it.</li>
+      <li>A successful response has <code>"ok": true</code> and the result in <code>payload</code>.</li>
+      <li>A failed response has <code>"ok": false</code> and a structured <code>error</code>.</li>
+      <li>Exit code <code>0</code> means success, <code>1</code> means validation or command processing failed, and <code>2</code> means no input command was supplied.</li>
+    </ul>
+
+    <table>
+      <thead><tr><th>Command group</th><th>Examples</th></tr></thead>
+      <tbody>
+        <tr><td>Read</td><td><code>task.list</code>, <code>task.get</code>, <code>task.timeline.get</code>, lookup and tag reads</td></tr>
+        <tr><td>Task fields</td><td><code>task.create</code>, <code>task.update</code></td></tr>
+        <tr><td>Lifecycle</td><td><code>task.start</code>, <code>task.undoStart</code>, <code>task.complete</code>, <code>task.reopen</code>, <code>task.cancel</code></td></tr>
+        <tr><td>Task details</td><td>waiting, comments, checklist items, relations, and attachments</td></tr>
+      </tbody>
+    </table>
+    <p>The detailed command list and its source-code references are in the OKF graph's <code>references\application-command-interface.md</code>.</p>
+  </section>
+
+  <section>
+    <h2>Use another database only deliberately</h2>
+    <p>Commands normally use the same personal database as the desktop application:</p>
+    <pre><code>%LOCALAPPDATA%\Okf-Todo\okf-todo.db</code></pre>
+    <p>For an isolated test, add an absolute path:</p>
+    <pre><code>$request | &amp; $app --okf-command `
+  --okf-database-path C:\Temp\okf-command-test.db</code></pre>
+    <p>The directory and database are created when needed. If a command appears to succeed but its task is missing from the GUI, first check whether a database override caused the command and GUI to use different files.</p>
+  </section>
+
+  <section>
+    <h2>Safety and troubleshooting</h2>
+    <ul>
+      <li><strong>Never write task tables directly.</strong> Direct SQL bypasses validation, lifecycle behavior, timestamps, relationships, and automatic timeline history.</li>
+      <li><strong>Keep standard output clean.</strong> Scripts should parse the single JSON response. Send their own diagnostics elsewhere.</li>
+      <li><strong>Use ISO 8601 dates.</strong> Include a timezone, for example <code>2026-07-20T12:00:00Z</code>.</li>
+      <li><strong>Verify mutations.</strong> Read the task and <code>task.timeline.get</code> after an important change.</li>
+      <li><strong>Check stable codes.</strong> Users can customize lookup values in Setup; inspect the current lookup data when a code is rejected.</li>
+      <li><strong>Build before using <code>--no-build</code>.</strong> From source, run <code>dotnet build -c Release</code> after code changes.</li>
+    </ul>
+  </section>
+</article>

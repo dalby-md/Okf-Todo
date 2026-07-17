@@ -2,8 +2,8 @@
 
 > **Version 0.1 alpha - work in progress.** Expect incomplete features and changes to the user interface. Database will be migrated to newest version if necessary.
 
-OKF-Todo is a task manager for Windows, macOS, and Linux. It works like a familiar task tool for everyday users, while its OKF-interface and its MCP server allows local AI assistants to read and update the same tasks alongside you.
- 
+An open-source, offline To-Do application for developers and supporters built with SQLite supporting Open Knowledge Format and MCP. 
+
 ## AI-First Data
 
 OKF-Todo is designed so an AI assistant can read, analyze, and update task data without depending on a proprietary cloud API. There are four complementary access paths:
@@ -48,6 +48,7 @@ It is designed for the work that often falls between formal systems: production 
 - Editable task types, priorities, and statuses.
 - Light and dark color schemes with flexible desktop layouts.
 - Complete database backup from inside the application.
+- Offline in-app Help for using the OKF layer and optional MCP server.
 
 Windows users can install the self-contained application with [OKF-Todo 0.1.0 for Windows x64](Windows users can install the self-contained application with 
 

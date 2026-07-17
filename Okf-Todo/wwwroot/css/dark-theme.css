@@ -427,6 +427,77 @@ textarea.is-invalid {
   box-shadow: 0 20px 70px rgb(0 0 0 / 58%);
 }
 
+.help-topic-button {
+  border-color: var(--theme-border-strong);
+  color: var(--theme-text);
+  background: var(--theme-surface);
+}
+
+.help-topic-button:hover {
+  border-color: #5a5d63;
+  background: var(--theme-surface-hover);
+}
+
+.help-topic-button.is-active {
+  border-color: var(--theme-accent);
+  color: var(--theme-text);
+  background: #243c39;
+  box-shadow: inset 3px 0 var(--theme-accent);
+}
+
+.help-topic-button span,
+.help-loading,
+.help-load-error,
+.help-document .help-lead {
+  color: var(--theme-muted);
+}
+
+.help-content {
+  border-color: var(--theme-border-strong);
+  color: var(--theme-text);
+  background: var(--theme-surface-raised);
+}
+
+.help-load-error h1,
+.help-document h1,
+.help-document h2,
+.help-document h3 {
+  color: var(--theme-text);
+}
+
+.help-document a {
+  color: var(--theme-accent);
+}
+
+.help-document code {
+  color: var(--theme-text);
+  background: #303236;
+}
+
+.help-document pre {
+  border-color: var(--theme-border-strong);
+  background: #202124;
+}
+
+.help-document th,
+.help-document td {
+  border-color: var(--theme-border-strong);
+}
+
+.help-document th {
+  background: #303236;
+}
+
+.help-note {
+  border-left-color: var(--theme-accent);
+  background: #243c39;
+}
+
+.help-warning {
+  border-left-color: #d8a443;
+  background: #453921;
+}
+
 .lookup-list-row,
 .tag-list-row {
   border-color: var(--theme-border);
