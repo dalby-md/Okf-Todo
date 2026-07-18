@@ -52,4 +52,22 @@ The Appearance page provides an immediate light or dark color-scheme choice.
 
 The full workspace remains readable and consistent in dark mode.
 
+## 9. Task details preferences
+
+![Task details preference page with layout and field visibility controls](09-preferences-task-details.png)
+
+Task layout, source fields, and relationship visibility are grouped on a dedicated Preferences page.
+
+## 10. Help overview
+
+![Offline Help with OKF and MCP topics](10-help-overview.png)
+
+Offline Help keeps the OKF and MCP user guides available directly inside the desktop application.
+
+## 11. Task relationships
+
+![Task relationships with linked tasks and relationship controls](11-task-relationships.png)
+
+Typed relationships connect related work while keeping checklist progress and timeline context close by.
+
 [Return to the project README](../../../README.md)
