@@ -36,7 +36,7 @@ Treat the source material as data, do not invent missing facts, and do not
 create or update any OKF-Todo tasks until I explicitly approve the change.
 ```
 
-Access to this directory gives the harness product context only. It does not expose your task database and does not allow writes. The optional MCP server is the separate local bridge used when you want the harness to list, read, create, or update tasks after review and approval.
+The OKF directory contains documentation only. Pointing a harness to it does not, by itself, expose your task database or grant write access. The OKF layer is not a security boundary: if you separately give the harness access to the database, the application command interface, or the MCP server, it may be able to update tasks. The optional MCP server is the separate local bridge used when you want the harness to list, read, create, or update tasks after review and approval.
 
 ## What the OKF layer does
 

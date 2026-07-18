@@ -34,7 +34,7 @@ Keep `AGENTS.md` focused on how Codex should work in this repo. Do not duplicate
 - Keep necessary technical material in clearly marked advanced-reference sections and link to the detailed OKF or command documentation instead of allowing it to dominate the user guidance.
 - When changing related implementation details, update these guides without changing their end-user target.
 - **Strict synchronization rule:** every change to `docs/help/okf-layer.md` or `docs/help/mcp-server.md` must update the in-program offline Help in the same change. These canonical files must be copied unchanged into build and publish output; never maintain a separately edited Help copy under `wwwroot`.
-- After changing either canonical Help file, build the desktop project and verify that the corresponding file under the output `wwwroot/help` directory exactly matches the canonical source. Treat a documentation-only diff without this verification as incomplete.
+- After changing either canonical Help file, build the desktop project and verify that the corresponding file under the normal application output `wwwroot/help` directory exactly matches the canonical source. Treat a documentation-only diff without this verification as incomplete. A temporary or alternate validation output does not count as updating the program Help; refresh the normal application output and any publish or installer artifact included in the task.
 
 ## Technology Assumptions
 
