@@ -25,6 +25,10 @@ The [OKF](docs/help/okf-layer.md) and [MCP](docs/help/mcp-server.md) Markdown gu
 
 The CLI and MCP server are thin adapters over the same shared application command service used by the Photino bridge. A task created or updated through any supported interface therefore follows the same business rules and produces the same task history.
 
+[![OKF-Todo task workspace showing task views, rich task details, tags, waiting status, Markdown editing, and a checklist](docs/images/okf-todo-task-workspace.png)](docs/images/okf-todo-task-workspace.png)
+
+<sub>Data was created by Codex directly.</sub>
+
 ## Coming Next
 
 Planned improvements:
@@ -60,10 +64,6 @@ Windows users can install the self-contained application with [OKF-Todo 0.1.0 fo
 The installer includes the desktop application and OKF context layer. Installing the MCP server is offered as a user choice and is selected by default.). The installer includes the desktop application and OKF context layer. Installing the MCP server is offered as a user choice and is selected by default. You don't need to be a local administrator to install this.
 
 ## Screenshots
-
-[![OKF-Todo task workspace showing task views, rich task details, tags, waiting status, Markdown editing, and a checklist](docs/images/okf-todo-task-workspace.png)](docs/images/okf-todo-task-workspace.png)
-
-<sub>Data was created by Codex directly.</sub>
 
 [Browse the OKF-Todo screenshot gallery](docs/images/promotional/README.md) to see the workspace, task workflow, offline Help, Preferences, backup, and dark mode. All screenshots use fictional demonstration data.
 
