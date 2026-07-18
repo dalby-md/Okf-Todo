@@ -61,6 +61,10 @@ The installer includes the desktop application and OKF context layer. Installing
 
 ## Screenshots
 
+[![OKF-Todo task workspace showing task views, rich task details, tags, waiting status, Markdown editing, and a checklist](docs/images/okf-todo-task-workspace.png)](docs/images/okf-todo-task-workspace.png)
+
+<sub>Data was created by Codex directly.</sub>
+
 [Browse the OKF-Todo screenshot gallery](docs/images/promotional/README.md) to see the workspace, task workflow, offline Help, Preferences, backup, and dark mode. All screenshots use fictional demonstration data.
 
 ## Getting Started
