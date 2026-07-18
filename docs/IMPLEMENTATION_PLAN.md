@@ -479,7 +479,7 @@ Status: implemented.
 
 Scope:
 
-- Add a database backup command under user preferences.
+- Add a dedicated Backup page under user preferences with the database backup command.
 - Select the destination with the native save-file dialog.
 - Use SQLite's online backup API.
 - Validate the temporary backup before replacing the selected destination.

@@ -1621,30 +1621,32 @@ body.is-resizing-editor * {
 }
 
 .preferences-content-header h3,
-.preferences-group h4 {
+.preferences-page h4 {
   margin: 0;
   color: #20262d;
   font-size: 0.98rem;
   font-weight: 600;
 }
 
-.preferences-group {
-  scroll-margin-top: 18px;
-  padding-top: 19px;
+.preferences-page {
+  padding-top: 24px;
 }
 
-.preferences-group + .preferences-group {
-  margin-top: 2px;
+.preferences-page[hidden] {
+  display: none;
 }
 
-.preferences-group h4 {
+.preferences-page h4 {
   padding-bottom: 4px;
   font-size: 0.83rem;
 }
 
-.preferences-scroll-anchor {
-  height: 0;
-  scroll-margin-top: 18px;
+.preferences-page-intro {
+  max-width: 560px;
+  margin: 4px 0 18px;
+  color: #65717d;
+  font-size: 0.78rem;
+  line-height: 1.5;
 }
 
 .preference-row,
@@ -1964,7 +1966,7 @@ body.is-resizing-editor * {
   }
 
   .preferences-nav {
-    grid-template-columns: repeat(4, minmax(120px, 1fr));
+    grid-template-columns: repeat(5, minmax(110px, 1fr));
     padding: 8px 12px;
     overflow-x: auto;
     overflow-y: hidden;

@@ -54,7 +54,7 @@ final result: passed
 
 ## Functional review
 
-- Section navigation updates the active rail item, panel title, and scroll position.
+- Section navigation updates the active rail item and panel title, then shows only the selected page.
 - Editor mode, color scheme, and task layout segmented controls remain wired to the existing persisted preferences.
 - Source-field and relationship switches remain wired to the existing persisted task-detail visibility settings.
 - Database backup preserves its working state and reports the saved filename without replacing the row markup.
@@ -68,5 +68,19 @@ final result: passed
 - `node --check Okf-Todo/wwwroot/js/app.js`
 - `dotnet build Okf-Todo.slnx -c Release --no-restore --verbosity minimal`
 - In-app browser interaction checks for navigation, theme switching, and database backup status.
+
+Result: passed
+
+---
+
+# Preferences isolated-page follow-up
+
+- General exposes only Editor mode.
+- Appearance exposes only Color scheme.
+- Task details exposes only layout and task-detail visibility controls.
+- Data & values exposes only lookup and tag management.
+- Backup exposes only the database backup workflow.
+- Backup success status remains visible without replacing the page structure.
+- Browser evidence: `artifacts/design-qa/preferences-backup-page.png`.
 
 Result: passed

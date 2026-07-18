@@ -29,7 +29,8 @@
     general: 'General',
     appearance: 'Appearance',
     'task-details': 'Task details',
-    'data-values': 'Data & values'
+    'data-values': 'Data & values',
+    backup: 'Backup'
   }
   const supportedEditorImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
   const maxEditorImageBytes = 5 * 1024 * 1024
@@ -854,6 +855,7 @@
                 <button class="preferences-nav-button is-active" type="button" data-preference-section="appearance" aria-current="page">Appearance</button>
                 <button class="preferences-nav-button" type="button" data-preference-section="task-details">Task details</button>
                 <button class="preferences-nav-button" type="button" data-preference-section="data-values">Data &amp; values</button>
+                <button class="preferences-nav-button" type="button" data-preference-section="backup">Backup</button>
               </nav>
 
               <div class="preferences-content" tabindex="0">
@@ -861,7 +863,7 @@
                   <h3 id="preferences-panel-title">Appearance</h3>
                 </header>
 
-                <section class="preferences-group" data-preference-anchor="general" aria-labelledby="preferences-editor-title">
+                <section class="preferences-page" data-preference-panel="general" aria-labelledby="preferences-editor-title" hidden>
                   <h4 id="preferences-editor-title">Editor</h4>
                   <div class="preference-row">
                     <div class="preference-row-copy">
@@ -879,7 +881,7 @@
                   </div>
                 </section>
 
-                <section class="preferences-group" data-preference-anchor="appearance" aria-labelledby="preferences-display-title">
+                <section class="preferences-page" data-preference-panel="appearance" aria-labelledby="preferences-display-title">
                   <h4 id="preferences-display-title">Display</h4>
                   <div class="preference-row">
                     <div class="preference-row-copy">
@@ -895,7 +897,10 @@
                       <option value="DARK">Dark</option>
                     </select>
                   </div>
-                  <div class="preferences-scroll-anchor" data-preference-anchor="task-details" aria-hidden="true"></div>
+                </section>
+
+                <section class="preferences-page" data-preference-panel="task-details" aria-labelledby="preferences-task-details-title" hidden>
+                  <h4 id="preferences-task-details-title">Task details</h4>
                   <div class="preference-row">
                     <div class="preference-row-copy">
                       <strong>Task layout</strong>
@@ -930,17 +935,8 @@
                   </label>
                 </section>
 
-                <section class="preferences-group preferences-data-group" data-preference-anchor="data-values" aria-labelledby="settings-data-title">
-                  <h4 id="settings-data-title">Data management</h4>
-                  <button id="backup-database-button" class="preference-action-row" type="button">
-                    <span class="preference-row-copy">
-                      <strong>Database backup</strong>
-                      <span>Create a portable backup of the current database.</span>
-                    </span>
-                    <span class="preference-row-action">Back up</span>
-                  </button>
-                  <p id="backup-database-status" class="settings-help preference-status" role="status" aria-live="polite"></p>
-
+                <section class="preferences-page preferences-data-group" data-preference-panel="data-values" aria-labelledby="preferences-data-values-title" hidden>
+                  <h4 id="preferences-data-values-title">Lookup values</h4>
                   <div id="lookup-settings-groups" class="lookup-group-buttons preferences-management-list" aria-label="Lookup groups"></div>
                   <button id="tag-settings-button" class="lookup-group-button preference-action-row" type="button">
                     <span class="preference-row-copy">
@@ -949,6 +945,19 @@
                     </span>
                     <span class="preference-row-action"><span id="tag-settings-count"></span> Manage</span>
                   </button>
+                </section>
+
+                <section class="preferences-page preferences-backup-page" data-preference-panel="backup" aria-labelledby="preferences-backup-title" hidden>
+                  <h4 id="preferences-backup-title">Database backup</h4>
+                  <p class="preferences-page-intro">Create a portable copy of all OKF-Todo data and attachments.</p>
+                  <button id="backup-database-button" class="preference-action-row" type="button">
+                    <span class="preference-row-copy">
+                      <strong>Create backup</strong>
+                      <span>Choose where to save a validated copy of the current database.</span>
+                    </span>
+                    <span class="preference-row-action">Back up</span>
+                  </button>
+                  <p id="backup-database-status" class="settings-help preference-status" role="status" aria-live="polite"></p>
                 </section>
               </div>
             </div>
@@ -3384,7 +3393,7 @@
     syncPreferenceChoiceGroup('layout-mode')
   }
 
-  function setActivePreferenceSection(section, shouldScroll) {
+  function setActivePreferenceSection(section) {
     if (!Object.prototype.hasOwnProperty.call(preferenceSectionLabels, section)) {
       return
     }
@@ -3397,13 +3406,10 @@
         .attr('aria-current', isActive ? 'page' : null)
     })
     $('#preferences-panel-title').text(preferenceSectionLabels[section])
-
-    if (shouldScroll) {
-      const target = document.querySelector(`[data-preference-anchor="${section}"]`)
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }
-    }
+    $('[data-preference-panel]').each(function () {
+      $(this).prop('hidden', $(this).attr('data-preference-panel') !== section)
+    })
+    $('.preferences-content').scrollTop(0)
   }
 
   function choosePreferenceValue(button) {
@@ -3421,7 +3427,7 @@
 
   function openSettings() {
     $('#settings-overlay').prop('hidden', false)
-    setActivePreferenceSection(activePreferenceSection, false)
+    setActivePreferenceSection(activePreferenceSection)
     syncPreferenceControls()
     $('#settings-close-button').trigger('focus')
     loadLookupSettings().catch(function (error) {
@@ -3523,7 +3529,7 @@
       }
     })
     $('.preferences-nav-button').on('click', function () {
-      setActivePreferenceSection($(this).attr('data-preference-section'), true)
+      setActivePreferenceSection($(this).attr('data-preference-section'))
     })
     $('#settings-overlay').on('click', '.preference-choice', function () {
       choosePreferenceValue(this)

@@ -469,12 +469,13 @@ textarea.is-invalid {
 }
 
 .preferences-content-header h3,
-.preferences-group h4,
+.preferences-page h4,
 .preference-row-copy strong {
   color: var(--theme-text);
 }
 
 .preferences-content-header p,
+.preferences-page-intro,
 .preference-row-copy > span,
 .preferences-data-group .preference-row-copy > span {
   color: var(--theme-muted);
