@@ -427,6 +427,127 @@ textarea.is-invalid {
   box-shadow: 0 20px 70px rgb(0 0 0 / 58%);
 }
 
+.preferences-header,
+.preferences-nav,
+.preferences-content-header,
+.preference-row,
+.preference-action-row {
+  border-color: var(--theme-border);
+}
+
+.preferences-nav {
+  background: #0d0e0f;
+}
+
+.preferences-content {
+  background: var(--theme-surface-raised);
+}
+
+.preferences-nav-button,
+.preferences-nav-button:hover:not(:disabled) {
+  color: var(--theme-muted);
+  background: transparent;
+}
+
+.preferences-nav-button:hover:not(:disabled) {
+  color: var(--theme-text);
+  background: var(--theme-surface-hover);
+}
+
+.preferences-nav-button.is-active,
+.preferences-nav-button.is-active:hover:not(:disabled) {
+  color: var(--theme-text);
+  background: var(--theme-accent-soft);
+  box-shadow: inset 4px 0 var(--theme-accent);
+}
+
+.preferences-nav-button:focus-visible,
+.preference-action-row:focus-visible,
+.preferences-segmented-control .preference-choice:focus-visible,
+.preference-toggle-row input[role='switch']:focus-visible {
+  outline-color: rgb(255 189 62 / 28%);
+}
+
+.preferences-content-header h3,
+.preferences-group h4,
+.preference-row-copy strong {
+  color: var(--theme-text);
+}
+
+.preferences-content-header p,
+.preference-row-copy > span,
+.preferences-data-group .preference-row-copy > span {
+  color: var(--theme-muted);
+}
+
+.preference-action-row:hover:not(:disabled) {
+  color: var(--theme-text);
+  background: var(--theme-surface-hover);
+}
+
+.preferences-segmented-control {
+  border-color: var(--theme-border-strong);
+  background: var(--theme-surface);
+}
+
+.preferences-segmented-control .preference-choice,
+.preferences-segmented-control .preference-choice:hover:not(:disabled) {
+  border-color: var(--theme-border-strong);
+  color: var(--theme-text);
+  background: var(--theme-surface);
+}
+
+.preferences-segmented-control .preference-choice:hover:not(:disabled) {
+  background: var(--theme-surface-hover);
+}
+
+.preferences-segmented-control .preference-choice.is-selected,
+.preferences-segmented-control .preference-choice.is-selected:hover:not(:disabled) {
+  color: #111111;
+  background: var(--theme-accent);
+}
+
+.preferences-segmented-control .preference-choice:disabled {
+  color: #777777;
+  background: #242628;
+}
+
+.preferences-segmented-control .preference-choice.is-selected:disabled {
+  color: #111111;
+  background: #a47d32;
+}
+
+.preference-toggle-row input[role='switch'] {
+  border-color: var(--theme-border-strong);
+  background: #42454a;
+}
+
+.preference-toggle-row input[role='switch']::after {
+  background: #e7e5e4;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 70%);
+}
+
+.preference-toggle-row input[role='switch']:checked {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
+}
+
+.preference-toggle-row input[role='switch']:checked::after {
+  background: #111111;
+}
+
+.preference-row-action,
+.preferences-data-group .preference-row-action {
+  color: var(--theme-accent);
+}
+
+@media (max-width: 760px) {
+  .preferences-nav-button.is-active,
+  .preferences-nav-button.is-active:hover:not(:disabled) {
+    box-shadow: inset 0 -3px var(--theme-accent);
+  }
+}
+
 .help-topic-button {
   border-color: var(--theme-border-strong);
   color: var(--theme-text);

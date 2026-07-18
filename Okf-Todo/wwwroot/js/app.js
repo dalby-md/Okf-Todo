@@ -20,6 +20,17 @@
     taskPriorities: 'priority',
     taskStatuses: 'status'
   }
+  const lookupSettingsGroupDescriptions = {
+    taskTypes: 'Add, edit, or remove task types.',
+    taskPriorities: 'Add, edit, or remove priorities.',
+    taskStatuses: 'Add, edit, or remove statuses.'
+  }
+  const preferenceSectionLabels = {
+    general: 'General',
+    appearance: 'Appearance',
+    'task-details': 'Task details',
+    'data-values': 'Data & values'
+  }
   const supportedEditorImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
   const maxEditorImageBytes = 5 * 1024 * 1024
   const wideLayoutMediaQuery = window.matchMedia('(min-width: 901px)')
@@ -78,6 +89,7 @@
   let markdownEditTypeSwitchCleanUntil = 0
   let markdownEditTypeSwitchWasClean = false
   let activeHelpTopic = 'okf-layer'
+  let activePreferenceSection = 'appearance'
   const helpDocumentCache = new Map()
 
   function createMessageId() {
@@ -830,69 +842,116 @@
         </div>
 
         <div id="settings-overlay" class="modal-overlay" hidden>
-          <section class="settings-dialog setup-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-            <header class="settings-header">
-              <h2 id="settings-title">Settings</h2>
-              <button id="settings-close-button" class="icon-button" type="button" aria-label="Close settings" title="Close">&times;</button>
+          <section class="settings-dialog setup-dialog preferences-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+            <header class="settings-header preferences-header">
+              <h2 id="settings-title">Preferences</h2>
+              <button id="settings-close-button" class="secondary-button preferences-close-button" type="button">Close</button>
             </header>
 
-            <label class="settings-field" for="editor-mode">
-              <span>Editor mode</span>
-              <select id="editor-mode" disabled>
-                <option value="HTML">HTML</option>
-                <option value="MARKDOWN">Markdown</option>
-              </select>
-            </label>
+            <div class="preferences-layout">
+              <nav class="preferences-nav" aria-label="Preference sections">
+                <button class="preferences-nav-button" type="button" data-preference-section="general">General</button>
+                <button class="preferences-nav-button is-active" type="button" data-preference-section="appearance" aria-current="page">Appearance</button>
+                <button class="preferences-nav-button" type="button" data-preference-section="task-details">Task details</button>
+                <button class="preferences-nav-button" type="button" data-preference-section="data-values">Data &amp; values</button>
+              </nav>
 
-            <p class="settings-help">If you do not understand this option, choose HTML.</p>
+              <div class="preferences-content" tabindex="0">
+                <header class="preferences-content-header">
+                  <h3 id="preferences-panel-title">Appearance</h3>
+                </header>
 
-            <label class="settings-field" for="editor-height">
-              <span>Editor height (px)</span>
-              <input id="editor-height" type="number" min="${minimumEditorHeight}" max="${maximumEditorHeight}" step="1" disabled>
-            </label>
+                <section class="preferences-group" data-preference-anchor="general" aria-labelledby="preferences-editor-title">
+                  <h4 id="preferences-editor-title">Editor</h4>
+                  <div class="preference-row">
+                    <div class="preference-row-copy">
+                      <strong>Editor mode</strong>
+                      <span>Choose the default editor for viewing and editing task notes.</span>
+                    </div>
+                    <div class="preferences-segmented-control" data-preference-select="editor-mode" role="group" aria-label="Editor mode">
+                      <button class="preference-choice" type="button" data-value="HTML" aria-pressed="false">HTML</button>
+                      <button class="preference-choice" type="button" data-value="MARKDOWN" aria-pressed="false">Markdown</button>
+                    </div>
+                    <select id="editor-mode" class="sr-only preference-native-control" aria-hidden="true" tabindex="-1" disabled>
+                      <option value="HTML">HTML</option>
+                      <option value="MARKDOWN">Markdown</option>
+                    </select>
+                  </div>
+                </section>
 
-            <label class="settings-field" for="color-scheme">
-              <span>Color scheme</span>
-              <select id="color-scheme">
-                <option value="LIGHT">Light</option>
-                <option value="DARK">Dark</option>
-              </select>
-            </label>
+                <section class="preferences-group" data-preference-anchor="appearance" aria-labelledby="preferences-display-title">
+                  <h4 id="preferences-display-title">Display</h4>
+                  <div class="preference-row">
+                    <div class="preference-row-copy">
+                      <strong>Color scheme</strong>
+                      <span>Choose how OKF-Todo looks.</span>
+                    </div>
+                    <div class="preferences-segmented-control" data-preference-select="color-scheme" role="group" aria-label="Color scheme">
+                      <button class="preference-choice" type="button" data-value="LIGHT" aria-pressed="false">Light</button>
+                      <button class="preference-choice" type="button" data-value="DARK" aria-pressed="false">Dark</button>
+                    </div>
+                    <select id="color-scheme" class="sr-only preference-native-control" aria-hidden="true" tabindex="-1">
+                      <option value="LIGHT">Light</option>
+                      <option value="DARK">Dark</option>
+                    </select>
+                  </div>
+                  <div class="preferences-scroll-anchor" data-preference-anchor="task-details" aria-hidden="true"></div>
+                  <div class="preference-row">
+                    <div class="preference-row-copy">
+                      <strong>Task layout</strong>
+                      <span>Choose how the task list and task details are arranged.</span>
+                    </div>
+                    <div class="preferences-segmented-control preferences-layout-control" data-preference-select="layout-mode" role="group" aria-label="Task layout">
+                      <button class="preference-choice" type="button" data-value="AUTO" aria-pressed="false">Auto</button>
+                      <button class="preference-choice" type="button" data-value="SIDE_BY_SIDE" aria-pressed="false">Side by side</button>
+                      <button class="preference-choice" type="button" data-value="STACKED" aria-pressed="false">Stacked</button>
+                    </div>
+                    <select id="layout-mode" class="sr-only preference-native-control" aria-hidden="true" tabindex="-1">
+                      <option value="AUTO">Auto</option>
+                      <option value="SIDE_BY_SIDE">Side by side</option>
+                      <option value="STACKED">Stacked</option>
+                    </select>
+                  </div>
 
-            <label class="settings-field" for="layout-mode">
-              <span>Task layout</span>
-              <select id="layout-mode">
-                <option value="AUTO">Auto</option>
-                <option value="SIDE_BY_SIDE">Side by side</option>
-                <option value="STACKED">Stacked</option>
-              </select>
-            </label>
+                  <label class="preference-row preference-toggle-row" for="show-source-fields">
+                    <span class="preference-row-copy">
+                      <strong>Show source fields</strong>
+                      <span>Display source, source reference, and source URL fields.</span>
+                    </span>
+                    <input id="show-source-fields" type="checkbox" role="switch">
+                  </label>
 
-            <div class="settings-visibility-options" aria-label="Task detail sections">
-              <label class="lookup-check">
-                <input id="show-source-fields" type="checkbox">
-                <span>Show source fields</span>
-              </label>
-              <label class="lookup-check">
-                <input id="show-relationships" type="checkbox">
-                <span>Show relationships</span>
-              </label>
+                  <label class="preference-row preference-toggle-row" for="show-relationships">
+                    <span class="preference-row-copy">
+                      <strong>Show relationships</strong>
+                      <span>Display related tasks and linked items.</span>
+                    </span>
+                    <input id="show-relationships" type="checkbox" role="switch">
+                  </label>
+                </section>
+
+                <section class="preferences-group preferences-data-group" data-preference-anchor="data-values" aria-labelledby="settings-data-title">
+                  <h4 id="settings-data-title">Data management</h4>
+                  <button id="backup-database-button" class="preference-action-row" type="button">
+                    <span class="preference-row-copy">
+                      <strong>Database backup</strong>
+                      <span>Create a portable backup of the current database.</span>
+                    </span>
+                    <span class="preference-row-action">Back up</span>
+                  </button>
+                  <p id="backup-database-status" class="settings-help preference-status" role="status" aria-live="polite"></p>
+
+                  <div id="lookup-settings-groups" class="lookup-group-buttons preferences-management-list" aria-label="Lookup groups"></div>
+                  <button id="tag-settings-button" class="lookup-group-button preference-action-row" type="button">
+                    <span class="preference-row-copy">
+                      <strong>Tags</strong>
+                      <span>Rename, merge, or remove task tags.</span>
+                    </span>
+                    <span class="preference-row-action"><span id="tag-settings-count"></span> Manage</span>
+                  </button>
+                </section>
+              </div>
             </div>
-
-            <section class="settings-data-panel" aria-labelledby="settings-data-title">
-              <h3 id="settings-data-title">Data</h3>
-              <button id="backup-database-button" class="secondary-button" type="button">Back up database</button>
-              <p id="backup-database-status" class="settings-help" role="status" aria-live="polite"></p>
-            </section>
-
-            <section class="lookup-settings-panel" aria-labelledby="lookup-settings-title">
-              <h3 id="lookup-settings-title">Lookup values</h3>
-              <div id="lookup-settings-groups" class="lookup-group-buttons" aria-label="Lookup groups"></div>
-              <button id="tag-settings-button" class="lookup-group-button secondary-button" type="button">
-                Tags
-                <span id="tag-settings-count"></span>
-              </button>
-            </section>
           </section>
         </div>
 
@@ -1096,6 +1155,7 @@
     renderLookupOptions('#editor-mode', lookups.bodyFormats, false)
     renderTagOptions(lookups.tags || [])
     renderTaskTagFilterOptions(lookups.tags || [])
+    syncPreferenceControls()
   }
 
   function resolveConfirmationDialog(isConfirmed) {
@@ -1415,8 +1475,14 @@
   function renderLookupSettings() {
     $('#lookup-settings-groups').html(Object.keys(lookupSettingsGroups).map(function (group) {
       const count = lookupSettings && lookupSettings[group] ? lookupSettings[group].length : 0
-      const countLabel = lookupSettings ? `<span>${count}</span>` : ''
-      return `<button class="lookup-group-button secondary-button" type="button" data-lookup-group="${group}">${lookupSettingsGroups[group]}${countLabel}</button>`
+      const countLabel = lookupSettings ? `${count} Manage` : 'Manage'
+      return `<button class="lookup-group-button preference-action-row" type="button" data-lookup-group="${group}">
+        <span class="preference-row-copy">
+          <strong>${lookupSettingsGroups[group]}</strong>
+          <span>${lookupSettingsGroupDescriptions[group]}</span>
+        </span>
+        <span class="preference-row-action">${countLabel}</span>
+      </button>`
     }).join(''))
   }
 
@@ -1428,8 +1494,10 @@
 
   async function backupDatabase() {
     const $button = $('#backup-database-button')
+    const $buttonAction = $button.find('.preference-row-action')
     const $backupStatus = $('#backup-database-status')
-    $button.prop('disabled', true).text('Backing up...')
+    $button.prop('disabled', true)
+    $buttonAction.text('Backing up...')
     $backupStatus.text('')
 
     try {
@@ -1447,7 +1515,8 @@
       $backupStatus.text(getErrorMessage(error, 'Could not back up database'))
       throw error
     } finally {
-      $button.prop('disabled', false).text('Back up database')
+      $button.prop('disabled', false)
+      $buttonAction.text('Back up')
     }
   }
 
@@ -1866,7 +1935,6 @@
   }
 
   function syncEditorHeightControls() {
-    $('#editor-height').val(preferredEditorHeight)
     $('#editor-height-resizer')
       .attr('aria-valuenow', preferredEditorHeight)
       .attr('aria-valuetext', `${preferredEditorHeight} pixels`)
@@ -1891,7 +1959,7 @@
     $('#editor-mode').val(preferredBodyFormatCode)
     $('#editor-mode').prop('disabled', false)
     syncEditorHeightControls()
-    $('#editor-height').prop('disabled', false)
+    syncPreferenceControls()
   }
 
   function saveEditorPreference(bodyFormatCode, markdownEditType, editorHeight) {
@@ -1919,27 +1987,6 @@
       markdownEditType: preferredMarkdownEditType,
       editorHeight: preferredEditorHeight
     })
-  }
-
-  function saveEditorHeightPreferenceFromSettings() {
-    const heightInput = $('#editor-height')
-    if (heightInput.prop('disabled')) {
-      return Promise.resolve()
-    }
-
-    const height = heightInput.val()
-    const nextHeight = getSupportedEditorHeight(height)
-    heightInput.val(nextHeight)
-
-    if (nextHeight === preferredEditorHeight) {
-      return Promise.resolve()
-    }
-
-    return saveEditorPreference(preferredBodyFormatCode, preferredMarkdownEditType, nextHeight)
-      .then(function () {
-        applyEditorHeightPreference()
-        setStatus('Editor height preference saved', 'saved')
-      })
   }
 
   function applyEditorHeightPreference() {
@@ -2178,6 +2225,8 @@
     if (window.Editor && typeof window.Editor.setColorScheme === 'function') {
       window.Editor.setColorScheme(normalizedColorScheme)
     }
+
+    syncPreferenceControls()
   }
 
   function saveLayoutPreference() {
@@ -2273,6 +2322,7 @@
       .toggleClass('layout-mode-side-by-side', layoutPreference.layoutMode === layoutModeCodes.sideBySide)
       .toggleClass('layout-mode-stacked', layoutPreference.layoutMode === layoutModeCodes.stacked)
     $('#layout-mode').val(layoutPreference.layoutMode)
+    syncPreferenceControls()
   }
 
   function applyTaskSectionVisibility() {
@@ -3019,6 +3069,7 @@
         setStatus('Editor preference saved', 'saved')
       } finally {
         $('#editor-mode').prop('disabled', false)
+        syncPreferenceControls()
       }
 
       return
@@ -3027,6 +3078,7 @@
     const activeModeCode = window.Editor.getMode() === 'markdown' ? 'MARKDOWN' : 'HTML'
 
     if (targetModeCode === activeModeCode) {
+      syncPreferenceControls()
       return
     }
 
@@ -3066,6 +3118,7 @@
       setStatus(getErrorMessage(error, 'Could not switch editor'), 'error')
     } finally {
       releaseDirtyTracking()
+      syncPreferenceControls()
     }
   }
 
@@ -3310,8 +3363,66 @@
     $('#help-button').trigger('focus')
   }
 
+  function syncPreferenceChoiceGroup(selectId) {
+    const $select = $(`#${selectId}`)
+    const selectedValue = String($select.val() || '')
+    const isDisabled = $select.prop('disabled')
+    const $group = $(`[data-preference-select="${selectId}"]`)
+
+    $group.find('.preference-choice').each(function () {
+      const isSelected = String($(this).attr('data-value')) === selectedValue
+      $(this)
+        .toggleClass('is-selected', isSelected)
+        .attr('aria-pressed', String(isSelected))
+        .prop('disabled', isDisabled)
+    })
+  }
+
+  function syncPreferenceControls() {
+    syncPreferenceChoiceGroup('editor-mode')
+    syncPreferenceChoiceGroup('color-scheme')
+    syncPreferenceChoiceGroup('layout-mode')
+  }
+
+  function setActivePreferenceSection(section, shouldScroll) {
+    if (!Object.prototype.hasOwnProperty.call(preferenceSectionLabels, section)) {
+      return
+    }
+
+    activePreferenceSection = section
+    $('.preferences-nav-button').each(function () {
+      const isActive = $(this).attr('data-preference-section') === section
+      $(this)
+        .toggleClass('is-active', isActive)
+        .attr('aria-current', isActive ? 'page' : null)
+    })
+    $('#preferences-panel-title').text(preferenceSectionLabels[section])
+
+    if (shouldScroll) {
+      const target = document.querySelector(`[data-preference-anchor="${section}"]`)
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }
+  }
+
+  function choosePreferenceValue(button) {
+    const $button = $(button)
+    const selectId = $button.closest('[data-preference-select]').attr('data-preference-select')
+    const $select = $(`#${selectId}`)
+
+    if (!selectId || $select.prop('disabled')) {
+      return
+    }
+
+    $select.val($button.attr('data-value')).trigger('change')
+    syncPreferenceChoiceGroup(selectId)
+  }
+
   function openSettings() {
     $('#settings-overlay').prop('hidden', false)
+    setActivePreferenceSection(activePreferenceSection, false)
+    syncPreferenceControls()
     $('#settings-close-button').trigger('focus')
     loadLookupSettings().catch(function (error) {
       setStatus(getErrorMessage(error, 'Could not load lookup settings'), 'error')
@@ -3410,6 +3521,12 @@
       if (event.target === this) {
         closeSettings()
       }
+    })
+    $('.preferences-nav-button').on('click', function () {
+      setActivePreferenceSection($(this).attr('data-preference-section'), true)
+    })
+    $('#settings-overlay').on('click', '.preference-choice', function () {
+      choosePreferenceValue(this)
     })
     $('#settings-overlay').on('click', '.lookup-group-button[data-lookup-group]', function () {
       openLookupList($(this).attr('data-lookup-group')).catch(function (error) {
@@ -3741,19 +3858,6 @@
       switchEditorMode().catch(function (error) {
         setStatus(getErrorMessage(error, 'Could not switch editor'), 'error')
       })
-    })
-    $('#editor-height').on('change', function () {
-      saveEditorHeightPreferenceFromSettings().catch(function (error) {
-        setStatus(getErrorMessage(error, 'Could not save editor height'), 'error')
-      })
-    })
-    $('#editor-height').on('keydown', function (event) {
-      if (event.key === 'Enter') {
-        event.preventDefault()
-        saveEditorHeightPreferenceFromSettings().catch(function (error) {
-          setStatus(getErrorMessage(error, 'Could not save editor height'), 'error')
-        })
-      }
     })
     const editorHeightResizer = document.getElementById('editor-height-resizer')
     editorHeightResizer.addEventListener('pointerdown', beginEditorHeightResize)

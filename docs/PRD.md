@@ -76,7 +76,7 @@ The task body is free text.
 
 The user should not be forced to choose Markdown or HTML directly. The editor decides the format and the app stores the selected format with the content.
 
-The editor provides a shared horizontal resize bar directly below the editing surface in both Markdown and HTML modes. Dragging the bar vertically previews height changes immediately, with a minimum height of 200 pixels, and the selected height persists as a user preference across application restarts.
+The editor provides a shared horizontal resize bar directly below the editing surface in both Markdown and HTML modes. Dragging the bar vertically previews height changes immediately, with a minimum height of 200 pixels, and the selected height persists as a user preference across application restarts. Editor height is controlled only through this resize bar; the preferences dialog does not expose a numeric height field.
 
 Store:
 
@@ -433,6 +433,8 @@ Add a settings/admin area for editable lookup values:
 - Task types
 - Statuses
 - Priorities
+
+The Preferences dialog uses section navigation for General, Appearance, Task details, and Data & values. Preference changes apply immediately. Backup, lookup, and tag-management actions remain available as clearly labelled rows in Data & values.
 
 Task sources, relationship types, body formats, and log types are system-managed in the first version and are not editable in the preferences UI.
 
