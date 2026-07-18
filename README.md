@@ -61,17 +61,7 @@ The installer includes the desktop application and OKF context layer. Installing
 
 ## Screenshots
 
-| Workspace and task workflow | Help and integrations |
-| --- | --- |
-| [![OKF-Todo light workspace with task list and rich-text editor](docs/images/promotional/01-workspace-light.png)](docs/images/promotional/01-workspace-light.png) | [![OKF layer Help guide](docs/images/promotional/03-help-okf-layer.png)](docs/images/promotional/03-help-okf-layer.png) |
-| [![Task relationships, checklist, attachments, and timeline](docs/images/promotional/02-task-workflow.png)](docs/images/promotional/02-task-workflow.png) | [![MCP server Help guide](docs/images/promotional/04-help-mcp-server.png)](docs/images/promotional/04-help-mcp-server.png) |
-
-| Preferences | Dark mode |
-| --- | --- |
-| [![Data and values preferences](docs/images/promotional/05-preferences-data-values.png)](docs/images/promotional/05-preferences-data-values.png) | [![Dark-mode appearance preferences](docs/images/promotional/07-preferences-appearance-dark.png)](docs/images/promotional/07-preferences-appearance-dark.png) |
-| [![Database backup preferences](docs/images/promotional/06-preferences-backup.png)](docs/images/promotional/06-preferences-backup.png) | [![OKF-Todo dark workspace](docs/images/promotional/08-workspace-dark.png)](docs/images/promotional/08-workspace-dark.png) |
-
-All screenshots use fictional demonstration data. See the [promotional screenshot index](docs/images/promotional/README.md) for descriptions.
+[Browse the OKF-Todo screenshot gallery](docs/images/promotional/README.md) to see the workspace, task workflow, offline Help, Preferences, backup, and dark mode. All screenshots use fictional demonstration data.
 
 ## Getting Started
 
