@@ -57,11 +57,13 @@ It is designed for the work that often falls between formal systems: production 
 - Complete database backup from inside the application.
 - Offline in-app Help for using the OKF layer and optional MCP server.
 
-Windows users can install the self-contained application with [OKF-Todo 0.1.0 for Windows x64](Windows users can install the self-contained application with 
+## Windows Installer
 
-[OKF-Todo 0.1 installer for Windows x64](https://github.com/dalby-md/OKF-Todo/releases/download/latest-alpha/Okf-Todo-0.1-win-x64-setup.exe). 
+Windows users can install the self-contained application with the [OKF-Todo 0.1 installer for Windows x64](https://github.com/dalby-md/OKF-Todo/releases/download/latest-alpha/Okf-Todo-0.1-win-x64-setup.exe).
 
-The installer includes the desktop application and OKF context layer. Installing the MCP server is offered as a user choice and is selected by default.). The installer includes the desktop application and OKF context layer. Installing the MCP server is offered as a user choice and is selected by default. You don't need to be a local administrator to install this.
+The installer includes the desktop application and OKF context layer. Installing the MCP server is offered as a user choice and is selected by default.
+
+**You don't need to be a local administrator to install this.**
 
 ## Screenshots
 
