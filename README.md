@@ -4,6 +4,11 @@
 
 An open-source, offline To-Do application for developers and supporters built with SQLite supporting Open Knowledge Format and MCP. 
 
+[![OKF-Todo task workspace showing task views, rich task details, tags, waiting status, Markdown editing, and a checklist](docs/images/okf-todo-task-workspace.png)](docs/images/okf-todo-task-workspace.png)
+
+<sub>Data was created by Codex directly.</sub>
+
+
 ## AI-First Data
 
 OKF-Todo is designed to help an AI coding harness turn unstructured work into practical artifacts. Give Codex, Claude Code, or another compatible harness a customer mail thread, support transcript, meeting notes, or diagnostic output and ask it to prepare an internal task, investigation plan, customer reply, handover, status update, or other useful artifact.
@@ -25,9 +30,6 @@ The [OKF](docs/help/okf-layer.md) and [MCP](docs/help/mcp-server.md) Markdown gu
 
 The CLI and MCP server are thin adapters over the same shared application command service used by the Photino bridge. A task created or updated through any supported interface therefore follows the same business rules and produces the same task history.
 
-[![OKF-Todo task workspace showing task views, rich task details, tags, waiting status, Markdown editing, and a checklist](docs/images/okf-todo-task-workspace.png)](docs/images/okf-todo-task-workspace.png)
-
-<sub>Data was created by Codex directly.</sub>
 
 ## Coming Next
 
@@ -59,7 +61,9 @@ It is designed for the work that often falls between formal systems: production 
 
 ## Windows Installer
 
-Windows users can install the self-contained application with the [OKF-Todo 0.1 installer for Windows x64](https://github.com/dalby-md/OKF-Todo/releases/download/latest-alpha/Okf-Todo-0.1-win-x64-setup.exe).
+Windows users can install the self-contained application with the 
+
+[OKF-Todo 0.1 installer for Windows x64](https://github.com/dalby-md/OKF-Todo/releases/download/latest-alpha/Okf-Todo-0.1-win-x64-setup.exe).
 
 The installer includes the desktop application and OKF context layer. Installing the MCP server is offered as a user choice and is selected by default.
 
