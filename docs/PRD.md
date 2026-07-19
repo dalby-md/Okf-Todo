@@ -476,6 +476,8 @@ The task list also offers purpose-driven alternatives for developer and support 
 
 The control explains the practical effect of the selected order, shows the visible result count, works after text and tag filtering, and persists a separate selection for each task view. Lookup-based ordering follows the configured lookup sort order rather than display names.
 
+Task browsing uses one compact control row: a labeled view selector, a shared task-or-tag search, an on-demand tag filter, and the sort selector. Selected tag filters appear as removable chips in a slim contextual row with the result count and a clear action. The controls reflow at narrow sidebar widths so the task list keeps as much vertical space as possible.
+
 ## Out of scope for first version
 
 - Multi-user support.

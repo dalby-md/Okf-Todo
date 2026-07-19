@@ -84,3 +84,28 @@ Result: passed
 - Browser evidence: `artifacts/design-qa/preferences-backup-page.png`.
 
 Result: passed
+
+---
+
+# Design QA — compact task browsing
+
+## Evidence
+
+- Source of truth: `C:\Users\soere\.codex\generated_images\019f64d1-7fc6-7900-afb4-ee49130ff5eb\exec-0c5a47a1-1c76-435c-bac4-f9ced1a22678.png`
+- Implementation capture: `artifacts/design-qa/compact-task-controls-implementation.png`
+- Same-input comparison: `artifacts/design-qa/compact-task-controls-comparison.png`
+- Comparison layout: selected design on the left, running Photino implementation on the right.
+- Viewport and state: 1584 × 933, Active view, Smart priority, `incident` and `servicedesk` tag filters selected.
+
+## Findings
+
+- P0: none.
+- P1: none.
+- P2: none in the redesigned browse controls.
+- View, unified task-or-tag search, Filter, and Sort form one compact row at the tested sidebar width.
+- Selected tags appear as removable contextual chips; the Filter badge reports two selections; Clear is available without reopening the filter.
+- The live OR filter reports `3 of 30 tasks`. The selected concept displayed `30 tasks` despite active filters; the implementation intentionally reports the accurate filtered count.
+- The controls reflow into two or three rows only at narrower sidebar container widths.
+- The comparison preserves the user's saved task-list divider width. Existing detail-header and editor-toolbar responsive behavior is outside this change.
+
+final result: passed

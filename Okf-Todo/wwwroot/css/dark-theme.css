@@ -157,52 +157,79 @@ textarea.is-invalid {
   background: var(--theme-accent);
 }
 
-.view-tabs {
-  border-color: var(--theme-border);
-  background: var(--theme-surface);
-}
-
-.view-tab {
-  color: #b8b8b8;
-}
-
-.view-tab:hover:not(:disabled) {
-  color: var(--theme-text);
-  background: var(--theme-surface-hover);
-}
-
-.view-tab.is-active,
-.view-tab.is-active:hover:not(:disabled) {
-  color: #111111;
-  background: var(--theme-accent);
-}
-
-.task-search {
-  background: var(--theme-surface);
-}
-
-.task-list-toolbar {
-  border-color: var(--theme-border);
-  background: var(--theme-surface-raised);
-}
-
-.task-list-summary strong {
-  color: var(--theme-text);
-}
-
-.task-list-summary span,
-.task-sort-field > span {
-  color: var(--theme-muted);
-}
-
-.task-sort-field select {
+.task-view-field select,
+.task-search,
+.task-filter-button,
+.task-sort-field,
+.task-filter-popover {
   border-color: var(--theme-border-strong);
   color: var(--theme-text);
   background: var(--theme-surface);
 }
 
-.task-sort-field select:focus-visible {
-  outline-color: var(--theme-accent);
+.task-search-field kbd,
+.task-filter-chip {
+  color: var(--theme-muted);
+  background: var(--theme-surface-hover);
+}
+
+.task-filter-button {
+  color: var(--theme-text);
+}
+
+.task-filter-button[aria-expanded="true"],
+.task-filter-clear:hover:not(:disabled) {
+  color: #111;
+  background: var(--theme-accent);
+}
+
+.task-filter-count-badge {
+  color: #111;
+  background: var(--theme-accent);
+}
+
+.task-filter-popover > label,
+.task-sort-field > span {
+  color: var(--theme-text);
+}
+
+.task-filter-popover > small,
+.task-result-count {
+  color: var(--theme-muted);
+}
+
+.task-filter-popover .select2-container .select2-selection--multiple {
+  background: var(--theme-surface-raised) !important;
+}
+
+.task-sort-field select {
+  border: 0;
+  color: var(--theme-text);
+  background: transparent;
+}
+
+.task-view-field select:focus-visible,
+.task-sort-field:focus-within {
+  border-color: var(--theme-accent);
+  outline-color: rgba(231, 177, 74, 0.24);
+}
+
+.task-filter-summary {
+  border-bottom-color: var(--theme-border);
+}
+
+.task-sidebar .sidebar-header {
+  border-bottom-color: var(--theme-border);
+}
+
+.task-filter-chip:hover:not(:disabled) {
+  color: #111;
+  background: var(--theme-accent);
+}
+
+.task-filter-clear {
+  color: var(--theme-muted);
+  background: transparent;
 }
 
 .task-row {
