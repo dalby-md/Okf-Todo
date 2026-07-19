@@ -80,7 +80,7 @@ OKF-Todo itself is built using Codex, but its AI-assisted workflows are not tied
 You can select between a classic WYSIWYG editor and a Markdown editor
 
 
-## Section for IT professionals
+# Section for IT professionals
 
 ### Database file
 The database is stored under the operating system's local application-data directory:
