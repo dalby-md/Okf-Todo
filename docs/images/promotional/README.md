@@ -2,7 +2,7 @@
 
 [Return to the project README](../../../README.md)
 
-These screenshots use fictional customer and task data. They were captured from the current production UI at 1280 × 720 and are displayed without forced dimensions.
+These screenshots use fictional customer and task data. They were captured from the current production UI at Full HD (1920 × 1080) and are displayed without forced dimensions.
 
 ## Light interface
 
