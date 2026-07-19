@@ -72,13 +72,6 @@ The installer includes the desktop application and OKF context layer. Installing
 
 [Browse the OKF-Todo screenshot gallery](docs/images/promotional/README.md) to see the workspace, task workflow, offline Help, Preferences, backup, and dark mode. All screenshots use fictional demonstration data.
 
-## AI harness
-OKF-Todo itself is built using Codex, but its AI-assisted workflows are not tied to Codex: any AI harness can use the OKF guidance, and MCP-compatible harnesses can also use the optional MCP server.
-
-## Editor
-You can select between a classic WYSIWYG editor and a Markdown editor
-
-
 # Section for IT professionals
 
 ### Database file
@@ -269,3 +262,6 @@ For a signed production build, provide the Windows SDK `signtool.exe`, certifica
 ```
 
 The build signs the GUI executable and MCP executable before packaging, then signs the resulting setup executable. Ordinary development builds remain unsigned.
+
+## AI harness
+OKF-Todo is built using Codex but is not tied to Codex. It uses AGENTS.md and skills and other crosss platform designs.
