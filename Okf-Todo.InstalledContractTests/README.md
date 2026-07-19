@@ -1,5 +1,7 @@
 # Installed contract tests
 
+> This project is disabled in `Okf-Todo.slnx` by default because it requires a Windows installation of OKF-Todo. Normal solution builds and test runs must not depend on which product version happens to be installed on the developer's computer.
+
 These Windows-only black-box tests exercise only an installed OKF-Todo product:
 
 - `Okf-Todo.exe --okf-command`
@@ -31,3 +33,7 @@ dotnet test .\Okf-Todo.InstalledContractTests\Okf-Todo.InstalledContractTests.cs
 ```
 
 The MCP installer component is mandatory. Missing installed files fail environment validation rather than skipping tests.
+
+See [Installed contract test user stories](../docs/testing/installed-contract-test-user-stories.md) for the business scenarios covered by the suite.
+
+See [Enable or disable the installed contract tests](../docs/testing/installed-contract-tests.md) for the solution commands and the difference between normal and installed-product test runs.
