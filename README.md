@@ -11,7 +11,7 @@ An open-source, offline To-Do application for developers and supporters built wi
 
 ## AI-First Data
 
-OKF-Todo is designed to help an AI coding harness turn unstructured work into practical artifacts. Give Codex, Claude Code, or another compatible harness a customer mail thread, support transcript, meeting notes, or diagnostic output and ask it to prepare an internal task, investigation plan, customer reply, handover, status update, or other useful artifact.
+OKF-Todo can also be used as a traditional To-Do application through its desktop user interface; AI assistance is optional. It is designed to help an AI coding harness turn unstructured work into practical artifacts. Give Codex, Claude Code, or another compatible harness a customer mail thread, support transcript, meeting notes, or diagnostic output and ask it to prepare an internal task, investigation plan, customer reply, handover, status update, or other useful artifact.
 
 The recommended workflow is **draft, review, save, verify**: ask the harness to analyze the source without changing anything, review its proposal, explicitly approve any task creation or update, and read the saved result back afterward. Start with the [OKF user guide](docs/help/okf-layer.md) and [MCP user guide](docs/help/mcp-server.md) for complete examples and reusable prompts.
 
