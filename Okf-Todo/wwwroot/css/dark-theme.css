@@ -181,6 +181,30 @@ textarea.is-invalid {
   background: var(--theme-surface);
 }
 
+.task-list-toolbar {
+  border-color: var(--theme-border);
+  background: var(--theme-surface-raised);
+}
+
+.task-list-summary strong {
+  color: var(--theme-text);
+}
+
+.task-list-summary span,
+.task-sort-field > span {
+  color: var(--theme-muted);
+}
+
+.task-sort-field select {
+  border-color: var(--theme-border-strong);
+  color: var(--theme-text);
+  background: var(--theme-surface);
+}
+
+.task-sort-field select:focus-visible {
+  outline-color: var(--theme-accent);
+}
+
 .task-row {
   border-color: var(--theme-border);
   color: var(--theme-text);

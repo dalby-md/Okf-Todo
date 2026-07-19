@@ -30,6 +30,7 @@ public sealed class AppPreferenceService(
     private const int MinimumWindowCoordinate = -20000;
     private const int MaximumWindowCoordinate = 20000;
     private const bool DefaultWindowIsMaximized = true;
+    private static readonly string[] TaskViews = ["active", "urgent", "waiting", "overdue", "completed", "all"];
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
@@ -84,6 +85,7 @@ public sealed class AppPreferenceService(
         var preferences = await ReadPreferencesAsync(cancellationToken);
         var layoutMode = NormalizeOrDefaultLayoutMode(preferences.LayoutMode);
         var colorScheme = NormalizeOrDefaultColorScheme(preferences.ColorScheme);
+        var taskSortModes = NormalizeStoredTaskSortModes(preferences.TaskSortModes);
 
         return new LayoutPreferenceDto(
             preferences.TaskListWidth,
@@ -91,7 +93,8 @@ public sealed class AppPreferenceService(
             layoutMode,
             preferences.ShowSourceFields ?? DefaultShowSourceFields,
             preferences.ShowRelationships ?? DefaultShowRelationships,
-            colorScheme);
+            colorScheme,
+            taskSortModes);
     }
 
     public async Task<LayoutPreferenceDto> SaveLayoutPreferenceAsync(
@@ -125,6 +128,9 @@ public sealed class AppPreferenceService(
         var colorScheme = request.ColorScheme is null
             ? NormalizeOrDefaultColorScheme(preferences.ColorScheme)
             : NormalizeColorScheme(request.ColorScheme);
+        var taskSortModes = MergeTaskSortModes(
+            NormalizeStoredTaskSortModes(preferences.TaskSortModes),
+            request.TaskSortModes);
 
         preferences = preferences with
         {
@@ -133,18 +139,20 @@ public sealed class AppPreferenceService(
             LayoutMode = layoutMode,
             ShowSourceFields = showSourceFields,
             ShowRelationships = showRelationships,
-            ColorScheme = colorScheme
+            ColorScheme = colorScheme,
+            TaskSortModes = taskSortModes
         };
         await WritePreferencesAsync(preferences, cancellationToken);
 
         logger.LogInformation(
-            "Saved layout preference with task list width {TaskListWidth}, height {TaskListHeight}, mode {LayoutMode}, source fields {ShowSourceFields}, relationships {ShowRelationships}, and color scheme {ColorScheme}.",
+            "Saved layout preference with task list width {TaskListWidth}, height {TaskListHeight}, mode {LayoutMode}, source fields {ShowSourceFields}, relationships {ShowRelationships}, color scheme {ColorScheme}, and task sort modes {TaskSortModes}.",
             taskListWidth,
             taskListHeight,
             layoutMode,
             showSourceFields,
             showRelationships,
-            colorScheme);
+            colorScheme,
+            taskSortModes);
 
         return new LayoutPreferenceDto(
             taskListWidth,
@@ -152,7 +160,8 @@ public sealed class AppPreferenceService(
             layoutMode,
             showSourceFields,
             showRelationships,
-            colorScheme);
+            colorScheme,
+            taskSortModes);
     }
 
     public async Task<WindowPreferenceDto> GetWindowPreferenceAsync(CancellationToken cancellationToken)
@@ -454,6 +463,82 @@ public sealed class AppPreferenceService(
         throw new ValidationException("Color scheme is invalid.", "colorScheme");
     }
 
+    private static IReadOnlyDictionary<string, string> NormalizeStoredTaskSortModes(
+        IReadOnlyDictionary<string, string>? taskSortModes)
+    {
+        var normalized = TaskViews.ToDictionary(
+            view => view,
+            _ => TaskListSortModes.Attention,
+            StringComparer.OrdinalIgnoreCase);
+
+        if (taskSortModes is null)
+        {
+            return normalized;
+        }
+
+        foreach (var pair in taskSortModes)
+        {
+            var view = pair.Key.Trim().ToLowerInvariant();
+            if (!normalized.ContainsKey(view))
+            {
+                continue;
+            }
+
+            try
+            {
+                normalized[view] = NormalizeTaskSortMode(pair.Value);
+            }
+            catch (ValidationException)
+            {
+                normalized[view] = TaskListSortModes.Attention;
+            }
+        }
+
+        return normalized;
+    }
+
+    private static IReadOnlyDictionary<string, string> MergeTaskSortModes(
+        IReadOnlyDictionary<string, string> current,
+        IReadOnlyDictionary<string, string>? requested)
+    {
+        var merged = current.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value,
+            StringComparer.OrdinalIgnoreCase);
+
+        if (requested is null)
+        {
+            return merged;
+        }
+
+        foreach (var pair in requested)
+        {
+            var view = pair.Key.Trim().ToLowerInvariant();
+            if (!TaskViews.Contains(view, StringComparer.Ordinal))
+            {
+                throw new ValidationException("Task sort view is invalid.", "taskSortModes");
+            }
+
+            merged[view] = NormalizeTaskSortMode(pair.Value);
+        }
+
+        return merged;
+    }
+
+    private static string NormalizeTaskSortMode(string? taskSortMode)
+    {
+        var normalized = string.IsNullOrWhiteSpace(taskSortMode)
+            ? TaskListSortModes.Attention
+            : taskSortMode.Trim().ToUpperInvariant();
+
+        if (TaskListSortModes.All.Contains(normalized, StringComparer.Ordinal))
+        {
+            return normalized;
+        }
+
+        throw new ValidationException("Task sort mode is invalid.", "taskSortModes");
+    }
+
     private WindowPreferenceDto NormalizeOrDefaultWindowPreference(StoredPreferences preferences)
     {
         try
@@ -541,13 +626,46 @@ public static class ColorSchemes
     public const string Dark = "DARK";
 }
 
+public static class TaskListSortModes
+{
+    public const string Attention = "ATTENTION";
+    public const string Priority = "PRIORITY";
+    public const string DueDate = "DUE_DATE";
+    public const string WaitingLongest = "WAITING_LONGEST";
+    public const string RecentlyUpdated = "RECENTLY_UPDATED";
+    public const string StaleFirst = "STALE_FIRST";
+    public const string NewestCreated = "NEWEST_CREATED";
+    public const string OldestCreated = "OLDEST_CREATED";
+    public const string TitleAscending = "TITLE_ASC";
+    public const string TitleDescending = "TITLE_DESC";
+    public const string TaskType = "TASK_TYPE";
+    public const string Status = "STATUS";
+
+    public static readonly string[] All =
+    [
+        Attention,
+        Priority,
+        DueDate,
+        WaitingLongest,
+        RecentlyUpdated,
+        StaleFirst,
+        NewestCreated,
+        OldestCreated,
+        TitleAscending,
+        TitleDescending,
+        TaskType,
+        Status
+    ];
+}
+
 public sealed record LayoutPreferenceDto(
     double? TaskListWidth,
     double? TaskListHeight,
     string LayoutMode,
     bool ShowSourceFields,
     bool ShowRelationships,
-    string ColorScheme);
+    string ColorScheme,
+    IReadOnlyDictionary<string, string> TaskSortModes);
 
 public sealed record LayoutPreferenceSaveRequest(
     double? TaskListWidth,
@@ -555,7 +673,8 @@ public sealed record LayoutPreferenceSaveRequest(
     string? LayoutMode,
     bool? ShowSourceFields = null,
     bool? ShowRelationships = null,
-    string? ColorScheme = null);
+    string? ColorScheme = null,
+    IReadOnlyDictionary<string, string>? TaskSortModes = null);
 
 public sealed record WindowPreferenceDto(int? Left, int? Top, int? Width, int? Height, bool IsMaximized);
 
@@ -576,4 +695,5 @@ internal sealed record StoredPreferences(
     int? WindowHeight,
     bool? WindowIsMaximized,
     string? ColorScheme,
-    string? BackupDirectory = null);
+    string? BackupDirectory = null,
+    IReadOnlyDictionary<string, string>? TaskSortModes = null);

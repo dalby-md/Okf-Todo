@@ -472,6 +472,9 @@ Acceptance criteria:
 - Completed tasks are hidden by default in active views.
 - Cancelled tasks appear in All, not Completed, and use red struck-through titles with gray pills in the list.
 - Waiting tasks remain easy to find.
+- Every view defaults to smart priority and offers focus, activity, and organization sort modes suited to developer and support triage.
+- Lookup-based modes use configured sort order; time-based modes use due, waiting, created, and updated timestamps.
+- The sort control explains the selected order, reports the filtered result count, and persists a separate selection for each view.
 
 ## Milestone 14 — Database backup
 

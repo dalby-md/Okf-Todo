@@ -96,12 +96,20 @@ public sealed class TaskServiceTests
         var listed = Assert.Single(activeTasks);
         Assert.Equal(created.Id, listed.Id);
         Assert.Equal("Fix failed deployment", listed.Title);
+        Assert.Equal("ERROR", listed.TaskTypeCode);
+        Assert.True(listed.TaskTypeSortOrder > 0);
         Assert.Equal(TaskStatusCodes.Active, listed.TaskStatusCode);
+        Assert.True(listed.TaskStatusSortOrder > 0);
+        Assert.Equal("NORMAL", listed.TaskPriorityCode);
+        Assert.True(listed.TaskPrioritySortOrder > 0);
         Assert.Equal("#facc15", listed.TaskTypeBackgroundColor);
         Assert.Equal("#111827", listed.TaskTypeForegroundColor);
         Assert.Equal("#6b7280", listed.TaskStatusBackgroundColor);
         Assert.Equal("#ffffff", listed.TaskStatusForegroundColor);
+        Assert.NotNull(listed.WaitingSince);
         Assert.Equal(["Initial"], listed.Tags);
+        Assert.Equal(created.CreatedAt, listed.CreatedAt);
+        Assert.Equal(created.UpdatedAt, listed.UpdatedAt);
 
         var completedTasks = await database.Tasks.ListAsync(new TaskListRequest("completed"), CancellationToken.None);
         Assert.DoesNotContain(completedTasks, task => task.Id == created.Id);

@@ -350,14 +350,19 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             .Select(task => new TaskListItemDto(
                 task.Id,
                 task.Title,
+                task.TaskType!.Code,
                 task.TaskType!.Name,
+                task.TaskType.SortOrder,
                 task.TaskType.BackgroundColor,
                 task.TaskType.ForegroundColor,
                 task.TaskStatus!.Code,
                 task.TaskStatus.Name,
+                task.TaskStatus.SortOrder,
                 task.TaskStatus.BackgroundColor,
                 task.TaskStatus.ForegroundColor,
+                task.TaskPriority == null ? null : task.TaskPriority.Code,
                 task.TaskPriority == null ? null : task.TaskPriority.Name,
+                task.TaskPriority == null ? null : task.TaskPriority.SortOrder,
                 task.TaskPriority == null ? null : task.TaskPriority.BackgroundColor,
                 task.TaskPriority == null ? null : task.TaskPriority.ForegroundColor,
                 task.Deadline,
@@ -365,6 +370,7 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
                     .Where(waitingFor => waitingFor.ResolvedAt == null)
                     .Select(waitingFor => waitingFor.Label)
                     .SingleOrDefault(),
+                task.WaitingSince,
                 task.ChecklistItems.Count(item => item.IsCompleted),
                 task.ChecklistItems.Count,
                 task.Tags
@@ -372,6 +378,7 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
                     .Select(taskTag => taskTag.TaskTag!.Value)
                     .OrderBy(value => value)
                     .ToList(),
+                task.CreatedAt,
                 task.UpdatedAt))
             .ToListAsync(cancellationToken);
     }
@@ -1263,21 +1270,28 @@ public sealed record TaskSaveRequest(
 public sealed record TaskListItemDto(
     int Id,
     string Title,
+    string TaskTypeCode,
     string TaskTypeName,
+    int TaskTypeSortOrder,
     string? TaskTypeBackgroundColor,
     string? TaskTypeForegroundColor,
     string TaskStatusCode,
     string TaskStatusName,
+    int TaskStatusSortOrder,
     string? TaskStatusBackgroundColor,
     string? TaskStatusForegroundColor,
+    string? TaskPriorityCode,
     string? TaskPriorityName,
+    int? TaskPrioritySortOrder,
     string? TaskPriorityBackgroundColor,
     string? TaskPriorityForegroundColor,
     DateTime? Deadline,
     string? ActiveWaitingForLabel,
+    DateTime? WaitingSince,
     int CompletedChecklistCount,
     int ChecklistCount,
     IReadOnlyCollection<string> Tags,
+    DateTime CreatedAt,
     DateTime UpdatedAt);
 
 public sealed record TaskDetailDto(

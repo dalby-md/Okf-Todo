@@ -10,6 +10,39 @@
     completed: 'Completed',
     all: 'All'
   }
+  const defaultTaskSortMode = 'ATTENTION'
+  const taskSortGroups = [
+    {
+      label: 'Focus',
+      options: [
+        { code: 'ATTENTION', label: 'Smart priority', description: 'Overdue and urgent work rises first.' },
+        { code: 'PRIORITY', label: 'Priority', description: 'Your configured priority order, then due date.' },
+        { code: 'DUE_DATE', label: 'Due date', description: 'Earliest deadlines first; undated work stays visible.' },
+        { code: 'WAITING_LONGEST', label: 'Waiting longest', description: 'Surface external dependencies that need a follow-up.' }
+      ]
+    },
+    {
+      label: 'Activity',
+      options: [
+        { code: 'RECENTLY_UPDATED', label: 'Recently updated', description: 'Resume the work that changed most recently.' },
+        { code: 'STALE_FIRST', label: 'Stale first', description: 'Find investigations and support work going quiet.' },
+        { code: 'NEWEST_CREATED', label: 'Newest created', description: 'Triage the most recently captured work.' },
+        { code: 'OLDEST_CREATED', label: 'Oldest created', description: 'Review aging backlog items first.' }
+      ]
+    },
+    {
+      label: 'Organize',
+      options: [
+        { code: 'TITLE_ASC', label: 'Title A–Z', description: 'Find a known task by name.' },
+        { code: 'TITLE_DESC', label: 'Title Z–A', description: 'Reverse alphabetical order.' },
+        { code: 'TASK_TYPE', label: 'Task type', description: 'Group errors, investigations, requests, and notes.' },
+        { code: 'STATUS', label: 'Status', description: 'Group active, completed, and cancelled work.' }
+      ]
+    }
+  ]
+  const taskSortOptions = taskSortGroups.reduce(function (options, group) {
+    return options.concat(group.options)
+  }, [])
   const lookupSettingsGroups = {
     taskTypes: 'Task types',
     taskPriorities: 'Priorities',
@@ -59,6 +92,7 @@
   let tasks = []
   let currentTask = null
   let currentView = 'active'
+  let taskSortModes = createDefaultTaskSortModes()
   let isEditorReady = false
   let isDirty = false
   let cleanTaskSnapshot = null
@@ -76,6 +110,7 @@
     layoutMode: layoutModeCodes.auto,
     showSourceFields: false,
     showRelationships: false,
+    taskSortModes: taskSortModes,
     colorScheme: document.documentElement.classList.contains('theme-dark')
       ? colorSchemeCodes.dark
       : colorSchemeCodes.light
@@ -635,6 +670,49 @@
     })
   }
 
+  function renderTaskSortOptions() {
+    return taskSortGroups.map(function (group) {
+      const options = group.options.map(function (option) {
+        return `<option value="${option.code}">${option.label}</option>`
+      }).join('')
+      return `<optgroup label="${group.label}">${options}</optgroup>`
+    }).join('')
+  }
+
+  function getTaskSortOption(code) {
+    return taskSortOptions.find(function (option) {
+      return option.code === code
+    }) || taskSortOptions[0]
+  }
+
+  function createDefaultTaskSortModes() {
+    return Object.keys(viewLabels).reduce(function (modes, view) {
+      modes[view] = defaultTaskSortMode
+      return modes
+    }, {})
+  }
+
+  function normalizeTaskSortModes(values) {
+    const normalized = createDefaultTaskSortModes()
+    Object.keys(normalized).forEach(function (view) {
+      const candidate = values && typeof values[view] === 'string'
+        ? values[view].trim().toUpperCase()
+        : defaultTaskSortMode
+      normalized[view] = getTaskSortOption(candidate).code
+    })
+    return normalized
+  }
+
+  function getCurrentTaskSortMode() {
+    return taskSortModes[currentView] || defaultTaskSortMode
+  }
+
+  function syncTaskSortControl() {
+    const option = getTaskSortOption(getCurrentTaskSortMode())
+    $('#task-sort').val(option.code)
+    $('#task-sort-description').text(option.description)
+  }
+
   function renderShell() {
     $('#app').html(`
       <main class="app-shell">
@@ -661,6 +739,19 @@
               <select id="task-tag-filter" multiple aria-label="Filter tasks by tags"></select>
               <small class="field-help">Type a tag, then press Enter to filter.</small>
             </div>
+          </div>
+
+          <div class="task-list-toolbar" aria-label="Task list sorting">
+            <div class="task-list-summary" aria-live="polite">
+              <strong id="task-result-count">0 tasks</strong>
+              <span id="task-sort-description">Overdue and urgent work rises first.</span>
+            </div>
+            <label class="task-sort-field" for="task-sort">
+              <span>Sort by</span>
+              <select id="task-sort" aria-describedby="task-sort-description">
+                ${renderTaskSortOptions()}
+              </select>
+            </label>
           </div>
 
           <div id="task-list" class="task-list" aria-label="Tasks" tabindex="0"></div>
@@ -2250,7 +2341,8 @@
       layoutMode: layoutPreference.layoutMode,
       showSourceFields: layoutPreference.showSourceFields,
       showRelationships: layoutPreference.showRelationships,
-      colorScheme: layoutPreference.colorScheme
+      colorScheme: layoutPreference.colorScheme,
+      taskSortModes: taskSortModes
     }).then(function () {
       return true
     }).catch(function (error) {
@@ -2274,8 +2366,14 @@
     layoutPreference.layoutMode = normalizeLayoutMode(preference.layoutMode)
     layoutPreference.showSourceFields = preference.showSourceFields === true
     layoutPreference.showRelationships = preference.showRelationships === true
+    taskSortModes = normalizeTaskSortModes(preference.taskSortModes)
+    layoutPreference.taskSortModes = taskSortModes
     applyColorScheme(preference.colorScheme)
     applyStoredLayoutSplit(false)
+    syncTaskSortControl()
+    if (tasks.length > 0) {
+      renderTaskList()
+    }
   }
 
   function clampSplitValue(value, minimum, maximum) {
@@ -2461,11 +2559,124 @@
     })
   }
 
+  function compareTaskText(left, right) {
+    return String(left || '').localeCompare(String(right || ''), undefined, {
+      sensitivity: 'base',
+      numeric: true
+    })
+  }
+
+  function parseTaskDate(value) {
+    if (!value) {
+      return null
+    }
+
+    const parsed = Date.parse(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  function compareNullableValues(left, right, direction) {
+    if (left === null && right === null) return 0
+    if (left === null) return 1
+    if (right === null) return -1
+    return (left - right) * direction
+  }
+
+  function compareTaskTieBreakers(left, right) {
+    return compareTaskText(left.title, right.title) || left.id - right.id
+  }
+
+  function sortTasksForCurrentView(filteredTasks) {
+    const mode = getCurrentTaskSortMode()
+    if (mode === defaultTaskSortMode) {
+      return filteredTasks
+    }
+
+    return filteredTasks.slice().sort(function (left, right) {
+      let comparison = 0
+
+      switch (mode) {
+        case 'PRIORITY':
+          comparison = compareNullableValues(
+            Number.isFinite(left.taskPrioritySortOrder) ? left.taskPrioritySortOrder : null,
+            Number.isFinite(right.taskPrioritySortOrder) ? right.taskPrioritySortOrder : null,
+            1)
+          comparison = comparison || compareNullableValues(
+            parseTaskDate(left.deadline),
+            parseTaskDate(right.deadline),
+            1)
+          break
+        case 'DUE_DATE':
+          comparison = compareNullableValues(
+            parseTaskDate(left.deadline),
+            parseTaskDate(right.deadline),
+            1)
+          comparison = comparison || compareNullableValues(
+            Number.isFinite(left.taskPrioritySortOrder) ? left.taskPrioritySortOrder : null,
+            Number.isFinite(right.taskPrioritySortOrder) ? right.taskPrioritySortOrder : null,
+            1)
+          break
+        case 'WAITING_LONGEST':
+          comparison = compareNullableValues(
+            parseTaskDate(left.waitingSince),
+            parseTaskDate(right.waitingSince),
+            1)
+          break
+        case 'RECENTLY_UPDATED':
+          comparison = compareNullableValues(
+            parseTaskDate(left.updatedAt),
+            parseTaskDate(right.updatedAt),
+            -1)
+          break
+        case 'STALE_FIRST':
+          comparison = compareNullableValues(
+            parseTaskDate(left.updatedAt),
+            parseTaskDate(right.updatedAt),
+            1)
+          break
+        case 'NEWEST_CREATED':
+          comparison = compareNullableValues(
+            parseTaskDate(left.createdAt),
+            parseTaskDate(right.createdAt),
+            -1)
+          break
+        case 'OLDEST_CREATED':
+          comparison = compareNullableValues(
+            parseTaskDate(left.createdAt),
+            parseTaskDate(right.createdAt),
+            1)
+          break
+        case 'TITLE_ASC':
+          comparison = compareTaskText(left.title, right.title)
+          break
+        case 'TITLE_DESC':
+          comparison = compareTaskText(right.title, left.title)
+          break
+        case 'TASK_TYPE':
+          comparison = compareNullableValues(
+            Number.isFinite(left.taskTypeSortOrder) ? left.taskTypeSortOrder : null,
+            Number.isFinite(right.taskTypeSortOrder) ? right.taskTypeSortOrder : null,
+            1)
+          comparison = comparison || compareTaskText(left.taskTypeName, right.taskTypeName)
+          break
+        case 'STATUS':
+          comparison = compareNullableValues(
+            Number.isFinite(left.taskStatusSortOrder) ? left.taskStatusSortOrder : null,
+            Number.isFinite(right.taskStatusSortOrder) ? right.taskStatusSortOrder : null,
+            1)
+          comparison = comparison || compareTaskText(left.taskStatusName, right.taskStatusName)
+          break
+      }
+
+      return comparison || compareTaskTieBreakers(left, right)
+    })
+  }
+
   function getVisibleTasks() {
     const query = getTaskSearchQuery()
     const selectedTags = getSelectedTaskTagFilters()
 
-    return tasks.filter(function (task) {
+    const filteredTasks = tasks.filter(function (task) {
       const taskTags = (task.tags || []).map(function (tag) {
         return String(tag).toLocaleLowerCase()
       })
@@ -2483,6 +2694,8 @@
 
       return matchesSearch && matchesTags
     })
+
+    return sortTasksForCurrentView(filteredTasks)
   }
 
   function renderTaskList() {
@@ -2490,13 +2703,19 @@
     const selectedTags = getSelectedTaskTagFilters()
     const visibleTasks = getVisibleTasks()
 
+    syncTaskSortControl()
+    const hasFilters = query.length > 0 || selectedTags.length > 0
+    const countLabel = hasFilters
+      ? `${visibleTasks.length} of ${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`
+      : `${visibleTasks.length} ${visibleTasks.length === 1 ? 'task' : 'tasks'}`
+    $('#task-result-count').text(countLabel)
+
     $('.view-tab').removeClass('is-active')
     $(`.view-tab[data-view="${currentView}"]`).addClass('is-active')
 
     if (visibleTasks.length === 0) {
-      const hasSearch = query.length > 0 || selectedTags.length > 0
-      const title = hasSearch ? 'No matching tasks' : `No ${viewLabels[currentView].toLowerCase()} tasks`
-      const detail = hasSearch ? 'Adjust the search text or tag filters' : 'Create a task or switch view'
+      const title = hasFilters ? 'No matching tasks' : `No ${viewLabels[currentView].toLowerCase()} tasks`
+      const detail = hasFilters ? 'Adjust the search text or tag filters' : 'Create a task or switch view'
 
       $('#task-list').html(`
         <div class="empty-list">
@@ -3776,12 +3995,20 @@
         }
 
         currentView = targetView
+        syncTaskSortControl()
         loadTasks({ selectFirst: true }).catch(showFatalError)
       })
     })
 
     $('#task-search').on('input', renderTaskList)
     $('#task-tag-filter').on('change', renderTaskList)
+    $('#task-sort').on('change', function () {
+      taskSortModes[currentView] = getTaskSortOption($(this).val().toString()).code
+      layoutPreference.taskSortModes = taskSortModes
+      syncTaskSortControl()
+      renderTaskList()
+      scheduleLayoutPreferenceSave()
+    })
     $('#relationship-add-button').on('click', function () {
       addRelationship().catch(function (error) { setStatus(getErrorMessage(error, 'Could not add relationship'), 'error') })
     })

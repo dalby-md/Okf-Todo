@@ -148,7 +148,7 @@ textarea.is-invalid {
 
 .task-sidebar {
   display: grid;
-  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto auto minmax(0, 1fr);
   gap: 8px;
   min-width: 0;
   min-height: 0;
@@ -156,6 +156,7 @@ textarea.is-invalid {
   padding: 12px;
   border-right: 1px solid #d8dee5;
   background: #ffffff;
+  container-type: inline-size;
 }
 
 .layout-resizer {
@@ -282,6 +283,71 @@ h2 {
 
 .task-tag-filter-field .field-help {
   margin-top: 0;
+}
+
+.task-list-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(126px, 1.1fr);
+  gap: 10px;
+  align-items: end;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #d8dee5;
+  border-radius: 7px;
+  background: #f8fafb;
+}
+
+.task-list-summary {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.task-list-summary strong {
+  color: #26323c;
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.task-list-summary span {
+  color: #697580;
+  font-size: 0.7rem;
+  line-height: 1.3;
+}
+
+.task-sort-field {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.task-sort-field > span {
+  color: #5f6872;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.task-sort-field select {
+  width: 100%;
+  min-height: 34px;
+  padding: 4px 7px;
+  border-color: #b8c2cc;
+  background: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.task-sort-field select:focus-visible {
+  outline: 2px solid #1f6f68;
+  outline-offset: 1px;
+}
+
+@container (max-width: 255px) {
+  .task-list-toolbar {
+    grid-template-columns: 1fr;
+  }
 }
 
 .task-list {

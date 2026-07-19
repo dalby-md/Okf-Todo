@@ -623,6 +623,8 @@ public sealed class BridgeTaskMessageTests
         Assert.False(initial.GetProperty("showSourceFields").GetBoolean());
         Assert.False(initial.GetProperty("showRelationships").GetBoolean());
         Assert.Equal("LIGHT", initial.GetProperty("colorScheme").GetString());
+        Assert.Equal("ATTENTION", initial.GetProperty("taskSortModes").GetProperty("active").GetString());
+        Assert.Equal("ATTENTION", initial.GetProperty("taskSortModes").GetProperty("waiting").GetString());
 
         await fixture.SendAsync("editor.preference.save", new
         {
@@ -636,7 +638,12 @@ public sealed class BridgeTaskMessageTests
             layoutMode = "STACKED",
             showSourceFields = true,
             showRelationships = true,
-            colorScheme = "DARK"
+            colorScheme = "DARK",
+            taskSortModes = new Dictionary<string, string>
+            {
+                ["active"] = "STALE_FIRST",
+                ["waiting"] = "WAITING_LONGEST"
+            }
         });
         Assert.Equal(412, saved.GetProperty("taskListWidth").GetDouble());
         Assert.Equal(275, saved.GetProperty("taskListHeight").GetDouble());
@@ -644,6 +651,9 @@ public sealed class BridgeTaskMessageTests
         Assert.True(saved.GetProperty("showSourceFields").GetBoolean());
         Assert.True(saved.GetProperty("showRelationships").GetBoolean());
         Assert.Equal("DARK", saved.GetProperty("colorScheme").GetString());
+        Assert.Equal("STALE_FIRST", saved.GetProperty("taskSortModes").GetProperty("active").GetString());
+        Assert.Equal("WAITING_LONGEST", saved.GetProperty("taskSortModes").GetProperty("waiting").GetString());
+        Assert.Equal("ATTENTION", saved.GetProperty("taskSortModes").GetProperty("all").GetString());
 
         var loaded = await fixture.SendAsync("layout.preference.get", new { });
         Assert.Equal(412, loaded.GetProperty("taskListWidth").GetDouble());
@@ -652,6 +662,8 @@ public sealed class BridgeTaskMessageTests
         Assert.True(loaded.GetProperty("showSourceFields").GetBoolean());
         Assert.True(loaded.GetProperty("showRelationships").GetBoolean());
         Assert.Equal("DARK", loaded.GetProperty("colorScheme").GetString());
+        Assert.Equal("STALE_FIRST", loaded.GetProperty("taskSortModes").GetProperty("active").GetString());
+        Assert.Equal("WAITING_LONGEST", loaded.GetProperty("taskSortModes").GetProperty("waiting").GetString());
 
         var editorPreference = await fixture.SendAsync("editor.preference.get", new { });
         Assert.Equal("MARKDOWN", editorPreference.GetProperty("bodyFormatCode").GetString());
@@ -749,6 +761,24 @@ public sealed class BridgeTaskMessageTests
         Assert.False(response.RootElement.GetProperty("ok").GetBoolean());
         Assert.Equal("ValidationFailed", response.RootElement.GetProperty("error").GetProperty("code").GetString());
         Assert.Equal("colorScheme", response.RootElement.GetProperty("error").GetProperty("details").GetProperty("field").GetString());
+    }
+
+    [Fact]
+    public async Task Bridge_RejectsInvalidTaskSortModePreference()
+    {
+        await using var fixture = await BridgeFixture.CreateAsync();
+
+        using var response = await fixture.SendRawAsync("layout.preference.save", new
+        {
+            taskSortModes = new Dictionary<string, string>
+            {
+                ["active"] = "MAGIC"
+            }
+        });
+
+        Assert.False(response.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Equal("ValidationFailed", response.RootElement.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal("taskSortModes", response.RootElement.GetProperty("error").GetProperty("details").GetProperty("field").GetString());
     }
 
     [Fact]

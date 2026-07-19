@@ -453,9 +453,9 @@ All tasks
 
 Cancelled tasks appear only in `All tasks`, where their titles use red struck-through text and all pills are gray. They do not appear in `Completed tasks`.
 
-## Sorting ideas
+## Task-list sorting
 
-Initial sorting can be simple:
+Every view defaults to smart priority:
 
 ```text
 1. Overdue tasks
@@ -467,6 +467,14 @@ Initial sorting can be simple:
 ```
 
 Waiting tasks should not disappear. They should be easy to review.
+
+The task list also offers purpose-driven alternatives for developer and support work:
+
+- Focus: configured priority, due date, and longest waiting time.
+- Activity: recently updated, stale first, newest created, and oldest created.
+- Organize: title A-Z or Z-A, task type, and status.
+
+The control explains the practical effect of the selected order, shows the visible result count, works after text and tag filtering, and persists a separate selection for each task view. Lookup-based ordering follows the configured lookup sort order rather than display names.
 
 ## Out of scope for first version
 
