@@ -262,5 +262,30 @@ For a signed production build, provide the Windows SDK `signtool.exe`, certifica
 
 The build signs the GUI executable and MCP executable before packaging, then signs the resulting setup executable. Ordinary development builds remain unsigned.
 
+To build and publish the next alpha release in one operation, install and authenticate the GitHub CLI, then run:
+
+```powershell
+gh auth login
+.\installer\update_release_exe.ps1
+```
+
+With no parameters, the script finds the highest existing `v<major>.<minor>.<patch>-alpha` release, increments its patch number, builds that installer version, copies it to the stable `<major>.<minor>` asset name, creates the new release, and marks it as GitHub's latest release. For example, `v0.1.4-alpha` produces `v0.1.5-alpha`, builds `Okf-Todo-0.1.5-win-x64-setup.exe`, and uploads it as `Okf-Todo-0.1-win-x64-setup.exe`.
+
+The tag and title identify the build as alpha, but the GitHub release is intentionally not flagged as a prerelease. GitHub excludes prereleases from `/releases/latest`, so marking it as a prerelease would break the stable installer URL used near the top of this README.
+
+Override the calculated tag when necessary:
+
+```powershell
+.\installer\update_release_exe.ps1 -Tag v0.1.8-alpha
+```
+
+Preview the derived version, asset name, and stable URL without building or contacting GitHub when an explicit tag is supplied:
+
+```powershell
+.\installer\update_release_exe.ps1 -Tag v0.1.8-alpha -WhatIf
+```
+
+Use `publish-github-release.ps1` only for the alternative versioned, non-alpha release workflow. Do not run both publishing scripts for the same installer.
+
 ## AI harness
 OKF-Todo is built using Codex but is not tied to Codex. It uses AGENTS.md and skills and other crosss platform designs.

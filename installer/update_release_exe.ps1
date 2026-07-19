@@ -1,64 +1,166 @@
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param(
-    [string]$Tag
+    [string]$Tag,
+
+    [string]$SignToolPath,
+
+    [string]$CertificateThumbprint,
+
+    [string]$TimestampUrl = 'http://timestamp.digicert.com'
 )
 
 $ErrorActionPreference = 'Stop'
-$tagPattern = '^v\d+\.\d+\.\d+-alpha$'
+$tagPattern = '^v(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)-alpha$'
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$buildScript = Join-Path $PSScriptRoot 'build-installer.ps1'
+$artifactRoot = Join-Path $repoRoot 'artifacts\installer'
 
-if ([string]::IsNullOrWhiteSpace($Tag)) {
-    $latestTag = gh release view --json tagName --jq '.tagName'
+function Assert-GitHubCli {
+    if ($null -eq (Get-Command gh -ErrorAction SilentlyContinue)) {
+        throw 'GitHub CLI (gh) was not found. Install it and authenticate with gh auth login.'
+    }
+}
 
+function Get-GitHubReleaseTags {
+    $releaseTags = @(& gh release list --limit 1000 --json tagName --jq '.[].tagName')
     if ($LASTEXITCODE -ne 0) {
-        throw "Could not read the latest GitHub release tag. GitHub CLI exited with code $LASTEXITCODE."
+        throw "Could not read GitHub release tags. GitHub CLI exited with code $LASTEXITCODE."
     }
 
-    $latestTag = $latestTag.Trim()
-    $tagMatch = [regex]::Match($latestTag, '^v(\d+)\.(\d+)\.(\d+)-alpha$')
+    return @(
+        $releaseTags |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+}
 
-    if (-not $tagMatch.Success) {
-        throw "Cannot calculate the next alpha tag from '$latestTag'."
+function Get-NextAlphaTag {
+    param([string[]]$ReleaseTags)
+
+    $alphaVersions = foreach ($releaseTag in $ReleaseTags) {
+        $match = [regex]::Match($releaseTag.Trim(), $tagPattern)
+        if ($match.Success) {
+            [pscustomobject]@{
+                Major = [int]$match.Groups['major'].Value
+                Minor = [int]$match.Groups['minor'].Value
+                Patch = [int]$match.Groups['patch'].Value
+            }
+        }
     }
 
-    $major = [int]$tagMatch.Groups[1].Value
-    $minor = [int]$tagMatch.Groups[2].Value
-    $patch = [int]$tagMatch.Groups[3].Value + 1
-    $suggestedTag = "v$major.$minor.$patch-alpha"
-    $enteredTag = Read-Host "New release tag [$suggestedTag]"
+    $latestAlpha = $alphaVersions |
+        Sort-Object Major, Minor, Patch -Descending |
+        Select-Object -First 1
 
-    $Tag = if ([string]::IsNullOrWhiteSpace($enteredTag)) {
-        $suggestedTag
+    if ($null -eq $latestAlpha) {
+        return 'v0.1.0-alpha'
+    }
+
+    return "v$($latestAlpha.Major).$($latestAlpha.Minor).$($latestAlpha.Patch + 1)-alpha"
+}
+
+if (-not (Test-Path -LiteralPath $buildScript -PathType Leaf)) {
+    throw "Installer build script not found: $buildScript"
+}
+
+Push-Location $repoRoot
+try {
+    $knownReleaseTags = $null
+
+    if ([string]::IsNullOrWhiteSpace($Tag)) {
+        Assert-GitHubCli
+        $knownReleaseTags = @(Get-GitHubReleaseTags)
+        $Tag = Get-NextAlphaTag -ReleaseTags $knownReleaseTags
     }
     else {
-        $enteredTag.Trim()
+        $Tag = $Tag.Trim()
     }
+
+    $tagMatch = [regex]::Match($Tag, $tagPattern)
+    if (-not $tagMatch.Success) {
+        throw "Invalid release tag '$Tag'. Expected a tag such as v0.1.5-alpha."
+    }
+
+    $major = [int]$tagMatch.Groups['major'].Value
+    $minor = [int]$tagMatch.Groups['minor'].Value
+    $patch = [int]$tagMatch.Groups['patch'].Value
+    $version = "$major.$minor.$patch"
+    $stableVersion = "$major.$minor"
+    $versionedInstallerPath = Join-Path `
+        $artifactRoot `
+        "Okf-Todo-$version-win-x64-setup.exe"
+    $stableAssetName = "Okf-Todo-$stableVersion-win-x64-setup.exe"
+    $stableAssetPath = Join-Path $artifactRoot $stableAssetName
+    $stableInstallerUrl = `
+        "https://github.com/dalby-md/OKF-Todo/releases/latest/download/$stableAssetName"
+
+    Write-Output "Release tag: $Tag"
+    Write-Output "Installer version: $version"
+    Write-Output "Stable asset name: $stableAssetName"
+
+    if (-not $PSCmdlet.ShouldProcess(
+        $Tag,
+        "Build installer $version and publish a new GitHub release as latest")) {
+        Write-Output "Stable installer URL: $stableInstallerUrl"
+        return
+    }
+
+    Assert-GitHubCli
+
+    if ($null -eq $knownReleaseTags) {
+        $knownReleaseTags = @(Get-GitHubReleaseTags)
+    }
+
+    if ($knownReleaseTags -contains $Tag) {
+        throw "GitHub release '$Tag' already exists. Choose a new tag."
+    }
+
+    $buildParameters = @{
+        Version = $version
+    }
+    if (-not [string]::IsNullOrWhiteSpace($SignToolPath)) {
+        $buildParameters.SignToolPath = $SignToolPath
+    }
+    if (-not [string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
+        $buildParameters.CertificateThumbprint = $CertificateThumbprint
+    }
+    if (-not [string]::IsNullOrWhiteSpace($TimestampUrl)) {
+        $buildParameters.TimestampUrl = $TimestampUrl
+    }
+
+    & $buildScript @buildParameters
+    if ($LASTEXITCODE -ne 0) {
+        throw "Installer build failed with exit code $LASTEXITCODE."
+    }
+
+    if (-not (Test-Path -LiteralPath $versionedInstallerPath -PathType Leaf)) {
+        throw "Installer not found after build: $versionedInstallerPath"
+    }
+
+    Copy-Item `
+        -LiteralPath $versionedInstallerPath `
+        -Destination $stableAssetPath `
+        -Force
+
+    & gh release create `
+        $Tag `
+        $stableAssetPath `
+        --title "OKF-Todo $version alpha" `
+        --notes 'Windows installer.' `
+        --latest
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "GitHub release creation failed with exit code $LASTEXITCODE."
+    }
+
+    Write-Output "Release $Tag created."
+    Write-Output 'Versioned installer:'
+    Write-Output $versionedInstallerPath
+    Write-Output 'Stable release asset:'
+    Write-Output $stableAssetPath
+    Write-Output 'Stable installer URL:'
+    Write-Output $stableInstallerUrl
 }
-
-if ($Tag -notmatch $tagPattern) {
-    throw "Invalid release tag '$Tag'. Expected a tag such as v0.1.5-alpha."
+finally {
+    Pop-Location
 }
-
-$assetPath = Join-Path `
-    $PSScriptRoot `
-    '..\artifacts\installer\Okf-Todo-0.1-win-x64-setup.exe'
-
-if (-not (Test-Path -LiteralPath $assetPath -PathType Leaf)) {
-    throw "Installer not found: $assetPath"
-}
-
-$assetPath = (Resolve-Path -LiteralPath $assetPath).Path
-$displayVersion = $Tag -replace '^v', '' -replace '-alpha$', ' alpha'
-
-gh release create $Tag `
-    $assetPath `
-    --title "OKF-Todo $displayVersion" `
-    --notes 'Windows installer.' `
-    --latest
-
-if ($LASTEXITCODE -ne 0) {
-    throw "GitHub release creation failed with exit code $LASTEXITCODE."
-}
-
-Write-Output "Release $Tag created."
-Write-Output 'Stable installer URL:'
-Write-Output 'https://github.com/dalby-md/OKF-Todo/releases/latest/download/Okf-Todo-0.1-win-x64-setup.exe'
