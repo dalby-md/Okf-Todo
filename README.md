@@ -73,6 +73,8 @@ The installer includes the desktop application and OKF context layer. Installing
 
 [Browse the OKF-Todo screenshot gallery](docs/images/promotional/README.md) to see the workspace, task workflow, offline Help, Preferences, backup, and dark mode. All screenshots use fictional demonstration data.
 
+OKF-Todo itself is built using Codex, but its AI-assisted workflows are not tied to Codex: any AI harness can use the OKF guidance, and MCP-compatible harnesses can also use the optional MCP server.
+
 ## Section for IT professionals
 
 ### Database file
