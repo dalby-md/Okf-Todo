@@ -43,10 +43,19 @@ public sealed class NewTaskDialogUiTests
         })();
         """;
 
-    [Fact]
-    public async Task SaveNewTask_WithoutMainSave_PersistsTaskAndEnablesTaskOwnedControls()
+    [Theory]
+    [InlineData("HTML")]
+    [InlineData("MARKDOWN")]
+    public async Task SaveNewTask_WithoutMainSave_PersistsTaskEnablesControlsAndFocusesEditor(
+        string bodyFormatCode)
     {
         await using var fixture = await UiAppFixture.CreateAsync();
+        await fixture.SendBridgeAsync("editor.preference.save", new
+        {
+            bodyFormatCode,
+            markdownEditType = "MARKDOWN",
+            editorHeight = 360
+        });
         using var playwright = await Playwright.CreateAsync();
         await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
         {
@@ -76,7 +85,7 @@ public sealed class NewTaskDialogUiTests
         await page.WaitForFunctionAsync("() => document.querySelectorAll('#task-type option').length > 0");
         Assert.Contains($"v={startupVersion}", appScriptUrl);
 
-        const string taskTitle = "New task dialog browser contract";
+        var taskTitle = $"New task dialog {bodyFormatCode} browser contract";
         await page.Locator("#new-task-button").ClickAsync();
         await page.Locator("#new-task-title-input").FillAsync(taskTitle);
         await page.Locator("#new-task-save-button").ClickAsync();
@@ -87,6 +96,8 @@ public sealed class NewTaskDialogUiTests
         });
 
         Assert.Equal(taskTitle, await page.Locator("#task-title").InputValueAsync());
+        Assert.Equal(bodyFormatCode, await page.Locator("#editor-mode").InputValueAsync());
+        Assert.True(await IsEditorFocusedAsync(page), $"Expected the {bodyFormatCode} editor to have focus.");
 
         await AssertEnabledAsync(page, "#checklist-new-text");
         await AssertEnabledAsync(page, "#checklist-add-button");
@@ -136,6 +147,18 @@ public sealed class NewTaskDialogUiTests
         Assert.False(await page.Locator(selector).IsDisabledAsync(), $"Expected {selector} to be enabled.");
     }
 
+    private static Task<bool> IsEditorFocusedAsync(IPage page)
+    {
+        return page.EvaluateAsync<bool>(
+            """
+            () => {
+              const host = document.querySelector('#editor-host')
+              const activeElement = document.activeElement
+              return Boolean(host && activeElement && host.contains(activeElement))
+            }
+            """);
+    }
+
     private sealed class UiAppFixture : IAsyncDisposable
     {
         private readonly WebApplication application;
@@ -160,6 +183,25 @@ public sealed class NewTaskDialogUiTests
         public string BaseUrl { get; }
 
         public IReadOnlyCollection<string> BridgeMessageTypes => bridgeMessageTypes.ToArray();
+
+        public async Task SendBridgeAsync(string type, object payload)
+        {
+            var request = JsonSerializer.Serialize(new
+            {
+                messageId = Guid.NewGuid().ToString("N"),
+                type,
+                payload
+            });
+            using var client = new HttpClient { BaseAddress = new Uri(BaseUrl) };
+            using var content = new StringContent(request, Encoding.UTF8, "application/json");
+            using var response = await client.PostAsync("/__ui-test/bridge", content);
+            response.EnsureSuccessStatusCode();
+
+            using var responseDocument = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.True(
+                responseDocument.RootElement.GetProperty("ok").GetBoolean(),
+                responseDocument.RootElement.ToString());
+        }
 
         public static async Task<UiAppFixture> CreateAsync()
         {

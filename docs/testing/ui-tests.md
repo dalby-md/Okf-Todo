@@ -10,7 +10,7 @@ Run the UI tests on Windows with Microsoft Edge installed:
 dotnet test .\Okf-Todo.UiTests\Okf-Todo.UiTests.csproj -c Release
 ```
 
-`SaveNewTask_WithoutMainSave_PersistsTaskAndEnablesTaskOwnedControls` verifies the complete New task workflow:
+`SaveNewTask_WithoutMainSave_PersistsTaskEnablesControlsAndFocusesEditor` verifies the complete New task workflow in both HTML and Markdown modes:
 
 1. Open the New task dialog.
 2. Enter a title and select **Save**.
@@ -19,3 +19,4 @@ dotnet test .\Okf-Todo.UiTests\Okf-Todo.UiTests.csproj -c Release
 5. Add a checklist item, attachment, and comment.
 6. Query the isolated SQLite database and verify that the task and added content were persisted.
 7. Verify that the browser loaded the startup-versioned `app.js` and that no `task.update` message was sent through the main **Save** action.
+8. Verify that keyboard focus moves into the active body editor when the modal closes.

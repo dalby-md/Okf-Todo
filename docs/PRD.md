@@ -70,7 +70,7 @@ Everything else should be optional.
 
 A newly created task starts with status `ACTIVE`.
 
-Confirming the title in the **New task** dialog immediately creates the task in SQLite. The returned saved task opens in the editor with task-owned controls such as attachments, checklist items, relationships, comments, Complete, and Cancel available immediately. A second press of the main **Save** button is not required to finish creation; that button saves subsequent edits.
+Confirming the title in the **New task** dialog immediately creates the task in SQLite. The returned saved task opens in the editor with task-owned controls such as attachments, checklist items, relationships, comments, Complete, and Cancel available immediately. A second press of the main **Save** button is not required to finish creation; that button saves subsequent edits. When the dialog closes after a successful creation, keyboard focus moves directly into the active HTML or Markdown body editor.
 
 ## Task body
 

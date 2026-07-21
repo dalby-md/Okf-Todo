@@ -1,0 +1,1 @@
+installer\update_release_exe.ps1

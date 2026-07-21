@@ -3940,6 +3940,7 @@
       requireSavedTaskId(savedTask)
       await renderTaskEditor(savedTask)
       closeNewTaskDialog()
+      window.Editor.focus()
       selectViewForTask(savedTask)
       await loadTasks({ keepSelection: true })
       isDirty = false
