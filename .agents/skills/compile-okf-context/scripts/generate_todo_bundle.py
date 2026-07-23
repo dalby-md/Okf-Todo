@@ -31,6 +31,14 @@ DESCRIPTIONS = {
     "TaskWaitingFors": "Stores task wait-target history with at most one active target per task.",
 }
 
+APPLICATION_SEMANTICS = {
+    "TaskItems": [
+        "`Owner` is optional free text identifying the person or team accountable for the task.",
+        "`Responsible` is optional free text identifying the person currently expected to perform or coordinate the work.",
+        "The overview text search includes both values even when their independently controlled task-detail fields are hidden.",
+    ],
+}
+
 
 def slug(value: str) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "-", value).lower()
@@ -119,6 +127,11 @@ def table_document(table: dict[str, object], table_names: set[str], timestamp: s
             "## Application Semantics",
             "",
             "Structural facts are generated from the inspected SQLite database. Application behavior is governed by the product data model and services.",
+        ]
+    )
+    content.extend(f"- {semantic}" for semantic in APPLICATION_SEMANTICS.get(name, []))
+    content.extend(
+        [
             "",
             "## Sources",
             "",
@@ -137,7 +150,15 @@ def main() -> int:
     parser.add_argument("--timestamp", default=datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"))
     args = parser.parse_args()
     schema = json.loads(args.schema.read_text(encoding="utf-8"))
-    tables = sorted(schema["tables"], key=lambda item: str(item["name"]))
+    tables = sorted(
+        (
+            table
+            for table in schema["tables"]
+            if str(table["name"]) != "__EFMigrationsHistory"
+            and not str(table["name"]).startswith("sqlite_")
+        ),
+        key=lambda item: str(item["name"]),
+    )
     table_names = {str(table["name"]) for table in tables}
 
     root = args.out
@@ -184,6 +205,7 @@ See [Database Schema Lifecycle](../references/schema-lifecycle.md).
 """)
 
     reference_entries = [
+        ("Task Application Command Interface", "application-command-interface.md", "Defines the supported command path for agents that consume the OKF bundle and need to read or mutate tasks."),
         ("Database Integrity Rules", "integrity-rules.md", "Summarizes database-enforced and service-level integrity rules."),
         ("Database Relationships", "relationships.md", "Summarizes the foreign-key graph and delete behavior."),
         ("Database Schema Lifecycle", "schema-lifecycle.md", "Explains fresh-database creation and development reset behavior."),
@@ -215,6 +237,8 @@ Lifecycle transitions and append-oriented history behavior are service-level rul
     write(root / "references" / "schema-lifecycle.md", frontmatter("Database Schema Lifecycle", "Database Schema Lifecycle", reference_entries[2][2], "Okf-Todo/Program.cs", args.timestamp) + """# Database Schema Lifecycle
 
 The application calls EF Core `Database.Migrate()` at startup before seeding or normal data access. EF Core creates a missing database and applies every migration not recorded in `__EFMigrationsHistory`.
+
+Normal desktop startup uses the personal database resolved by `DatabasePathProvider`. The [Task Application Command Interface](application-command-interface.md) may instead receive an absolute database file through `--okf-database-path`. This override is restricted to `--okf-command`; the selected database follows the same migration-before-seeding startup sequence as the personal database.
 
 `InitialCreate` is the earliest supported database version. Every future physical schema change must include a reviewed migration. Builds and normal startup must not delete the database automatically.
 

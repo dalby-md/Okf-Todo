@@ -104,6 +104,8 @@ Create a task with `task.create`:
     "taskSourceCode": "DEPLOYMENT",
     "sourceReference": "Release 1842",
     "sourceUrl": null,
+    "owner": "Platform team",
+    "responsible": "Anna Jensen",
     "deadline": null,
     "activeWaitingForLabel": null,
     "tags": ["deployment", "investigation"]
@@ -141,6 +143,8 @@ Replace editable task fields with `task.update`:
     "taskSourceCode": "DEPLOYMENT",
     "sourceReference": "Release 1842",
     "sourceUrl": null,
+    "owner": "Platform team",
+    "responsible": "Anna Jensen",
     "deadline": null,
     "activeWaitingForLabel": null,
     "tags": ["deployment", "investigation"]

@@ -151,6 +151,8 @@ Scope:
   - Source
   - Source reference
   - Source URL
+  - Owner
+  - Responsible
   - Body
 
 Acceptance criteria:
@@ -158,6 +160,8 @@ Acceptance criteria:
 - User can create a task quickly.
 - New task starts as `ACTIVE`.
 - User can edit title/body/type/priority/deadline/source.
+- User can edit optional owner and responsible values when their independently persisted visibility switches are enabled.
+- Overview text search includes owner and responsible values even when their detail fields are hidden.
 - Changes update `UpdatedAt`.
 - Meaningful changes create log entries where appropriate.
 

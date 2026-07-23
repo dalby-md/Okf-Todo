@@ -142,6 +142,113 @@ public sealed class NewTaskDialogUiTests
         Assert.DoesNotContain("task.update", fixture.BridgeMessageTypes);
     }
 
+    [Fact]
+    public async Task OwnershipFields_HaveIndependentPersistedVisibilityAndParticipateInOverviewSearch()
+    {
+        await using var fixture = await UiAppFixture.CreateAsync();
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+        {
+            Channel = "msedge",
+            Headless = true
+        });
+        await using var context = await browser.NewContextAsync(new BrowserNewContextOptions
+        {
+            ViewportSize = new ViewportSize { Width = 1600, Height = 1000 }
+        });
+        await context.AddInitScriptAsync(BridgeAdapterScript);
+
+        var page = await context.NewPageAsync();
+        await page.GotoAsync($"{fixture.BaseUrl}/index.html?v=ownership-fields-contract", new PageGotoOptions
+        {
+            WaitUntil = WaitUntilState.DOMContentLoaded
+        });
+        await page.WaitForFunctionAsync("() => document.querySelectorAll('#task-type option').length > 0");
+
+        const string taskTitle = "Ownership search browser contract";
+        await page.Locator("#new-task-button").ClickAsync();
+        await page.Locator("#new-task-title-input").FillAsync(taskTitle);
+        await page.Locator("#new-task-save-button").ClickAsync();
+        await page.Locator("#new-task-overlay").WaitForAsync(new LocatorWaitForOptions
+        {
+            State = WaitForSelectorState.Hidden
+        });
+
+        Assert.True(await page.Locator(".ownership-grid").IsHiddenAsync());
+        Assert.True(await page.Locator(".owner-field").IsHiddenAsync());
+        Assert.True(await page.Locator(".responsible-field").IsHiddenAsync());
+
+        await OpenTaskDetailsPreferencesAsync(page);
+        Assert.False(await page.Locator("#show-owner").IsCheckedAsync());
+        Assert.False(await page.Locator("#show-responsible").IsCheckedAsync());
+
+        await page.Locator("#show-owner").CheckAsync();
+        await WaitForDisplayPreferenceSavedAsync(page);
+        await page.Locator("#settings-close-button").ClickAsync();
+
+        Assert.False(await page.Locator(".ownership-grid").IsHiddenAsync());
+        Assert.False(await page.Locator(".owner-field").IsHiddenAsync());
+        Assert.True(await page.Locator(".responsible-field").IsHiddenAsync());
+
+        await page.ReloadAsync(new PageReloadOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
+        await page.WaitForFunctionAsync("() => document.querySelectorAll('#task-type option').length > 0");
+        await page.Locator("#task-title").WaitForAsync();
+        Assert.False(await page.Locator(".owner-field").IsHiddenAsync());
+        Assert.True(await page.Locator(".responsible-field").IsHiddenAsync());
+
+        await OpenTaskDetailsPreferencesAsync(page);
+        Assert.True(await page.Locator("#show-owner").IsCheckedAsync());
+        Assert.False(await page.Locator("#show-responsible").IsCheckedAsync());
+        await page.Locator("#show-responsible").CheckAsync();
+        await WaitForDisplayPreferenceSavedAsync(page);
+        await page.Locator("#settings-close-button").ClickAsync();
+
+        var ownerBox = await page.Locator(".owner-field").BoundingBoxAsync();
+        var responsibleBox = await page.Locator(".responsible-field").BoundingBoxAsync();
+        Assert.NotNull(ownerBox);
+        Assert.NotNull(responsibleBox);
+        Assert.InRange(Math.Abs(ownerBox.Y - responsibleBox.Y), 0, 1);
+        Assert.True(ownerBox.X < responsibleBox.X);
+
+        await page.Locator("#task-owner").FillAsync("North Support");
+        await page.Locator("#task-responsible").FillAsync("Anna Jensen");
+        await page.Locator("#save-button").ClickAsync();
+        await page.WaitForFunctionAsync("() => document.querySelector('#save-status').textContent === 'Saved'");
+
+        await page.Locator("#task-search").FillAsync("north support");
+        await page.Locator("#task-list .task-row").GetByText(taskTitle).WaitForAsync();
+        Assert.Single(await page.Locator("#task-list .task-row").AllAsync());
+
+        await page.Locator("#task-search").FillAsync("anna jensen");
+        await page.Locator("#task-list .task-row").GetByText(taskTitle).WaitForAsync();
+        Assert.Single(await page.Locator("#task-list .task-row").AllAsync());
+
+        await page.Locator("#task-search").FillAsync("");
+        await OpenTaskDetailsPreferencesAsync(page);
+        await page.Locator("#show-owner").UncheckAsync();
+        await WaitForDisplayPreferenceSavedAsync(page);
+        await page.Locator("#settings-close-button").ClickAsync();
+        Assert.True(await page.Locator(".owner-field").IsHiddenAsync());
+        Assert.False(await page.Locator(".responsible-field").IsHiddenAsync());
+
+        await page.ReloadAsync(new PageReloadOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
+        await page.WaitForFunctionAsync("() => document.querySelectorAll('#task-type option').length > 0");
+        Assert.True(await page.Locator(".owner-field").IsHiddenAsync());
+        Assert.False(await page.Locator(".responsible-field").IsHiddenAsync());
+    }
+
+    private static async Task OpenTaskDetailsPreferencesAsync(IPage page)
+    {
+        await page.Locator("#settings-button").ClickAsync();
+        await page.Locator("[data-preference-section='task-details']").ClickAsync();
+    }
+
+    private static Task WaitForDisplayPreferenceSavedAsync(IPage page)
+    {
+        return page.WaitForFunctionAsync(
+            "() => document.querySelector('#save-status').textContent === 'Display preference saved'");
+    }
+
     private static async Task AssertEnabledAsync(IPage page, string selector)
     {
         Assert.False(await page.Locator(selector).IsDisabledAsync(), $"Expected {selector} to be enabled.");

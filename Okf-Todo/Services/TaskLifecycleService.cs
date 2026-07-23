@@ -44,6 +44,8 @@ public sealed class TaskLifecycleService(
             TaskSourceId = source?.Id,
             SourceReference = NormalizeOptional(request.SourceReference),
             SourceUrl = NormalizeOptional(request.SourceUrl),
+            Owner = NormalizeOptional(request.Owner),
+            Responsible = NormalizeOptional(request.Responsible),
             Deadline = request.Deadline,
             CreatedAt = now,
             UpdatedAt = now,
@@ -419,7 +421,9 @@ public sealed record TaskCreateRequest(
     string? TaskSourceCode = null,
     string? SourceReference = null,
     string? SourceUrl = null,
-    DateTime? Deadline = null);
+    DateTime? Deadline = null,
+    string? Owner = null,
+    string? Responsible = null);
 
 public sealed record TaskWaitingForRequest(string? Label);
 

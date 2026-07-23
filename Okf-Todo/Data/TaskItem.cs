@@ -32,6 +32,10 @@ public sealed class TaskItem
 
     public string? SourceUrl { get; set; }
 
+    public string? Owner { get; set; }
+
+    public string? Responsible { get; set; }
+
     public DateTime? Deadline { get; set; }
 
     public DateTime CreatedAt { get; set; }

@@ -378,6 +378,8 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
                     .Select(taskTag => taskTag.TaskTag!.Value)
                     .OrderBy(value => value)
                     .ToList(),
+                task.Owner,
+                task.Responsible,
                 task.CreatedAt,
                 task.UpdatedAt))
             .ToListAsync(cancellationToken);
@@ -415,7 +417,9 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
             request.TaskSourceCode,
             request.SourceReference,
             request.SourceUrl,
-            request.Deadline), cancellationToken);
+            request.Deadline,
+            request.Owner,
+            request.Responsible), cancellationToken);
 
         await ApplyInitialWaitingForAsync(task.Id, request.ActiveWaitingForLabel, cancellationToken);
         await ApplyTagsAsync(task.Id, request.Tags, logChanges: false, cancellationToken);
@@ -460,12 +464,16 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
         var newTitle = request.Title.Trim();
         var newSourceReference = NormalizeOptional(request.SourceReference);
         var newSourceUrl = NormalizeOptional(request.SourceUrl);
+        var newOwner = NormalizeOptional(request.Owner);
+        var newResponsible = NormalizeOptional(request.Responsible);
         var updateLogType = await GetOrCreateTaskUpdatedLogTypeAsync(cancellationToken);
 
         AddFieldChangeLog(task, updateLogType, "Title", task.Title, newTitle, now);
         AddFieldChangeLog(task, updateLogType, "Source", task.TaskSource?.Name, source?.Name, now);
         AddFieldChangeLog(task, updateLogType, "Source reference", task.SourceReference, newSourceReference, now);
         AddFieldChangeLog(task, updateLogType, "Source URL", task.SourceUrl, newSourceUrl, now);
+        AddFieldChangeLog(task, updateLogType, "Owner", task.Owner, newOwner, now);
+        AddFieldChangeLog(task, updateLogType, "Responsible", task.Responsible, newResponsible, now);
 
         if (!string.Equals(task.Body, request.Body, StringComparison.Ordinal)
             || task.BodyFormatId != bodyFormat?.Id)
@@ -479,6 +487,8 @@ public sealed class TaskService(AppDbContext dbContext, TaskLifecycleService lif
         task.TaskSourceId = source?.Id;
         task.SourceReference = newSourceReference;
         task.SourceUrl = newSourceUrl;
+        task.Owner = newOwner;
+        task.Responsible = newResponsible;
         task.UpdatedAt = now;
 
         await lifecycleService.ChangeTypeAsync(task.Id, request.TaskTypeCode, cancellationToken);
@@ -1265,7 +1275,9 @@ public sealed record TaskSaveRequest(
     string? SourceUrl,
     DateTime? Deadline,
     string? ActiveWaitingForLabel = null,
-    IReadOnlyCollection<string>? Tags = null);
+    IReadOnlyCollection<string>? Tags = null,
+    string? Owner = null,
+    string? Responsible = null);
 
 public sealed record TaskListItemDto(
     int Id,
@@ -1291,6 +1303,8 @@ public sealed record TaskListItemDto(
     int CompletedChecklistCount,
     int ChecklistCount,
     IReadOnlyCollection<string> Tags,
+    string? Owner,
+    string? Responsible,
     DateTime CreatedAt,
     DateTime UpdatedAt);
 
@@ -1309,6 +1323,8 @@ public sealed record TaskDetailDto(
     string? TaskSourceName,
     string? SourceReference,
     string? SourceUrl,
+    string? Owner,
+    string? Responsible,
     DateTime? Deadline,
     IReadOnlyCollection<string> Tags,
     TaskWaitingForDto? ActiveWaitingFor,
@@ -1332,6 +1348,8 @@ public sealed record TaskDetailDto(
             task.TaskSource?.Name,
             task.SourceReference,
             task.SourceUrl,
+            task.Owner,
+            task.Responsible,
             task.Deadline,
             task.Tags
                 .Where(taskTag => taskTag.TaskTag is not null)

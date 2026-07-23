@@ -15,6 +15,8 @@ public sealed class AppPreferenceService(
     private const string DefaultLayoutMode = LayoutPreferenceModes.Auto;
     private const string DefaultColorScheme = ColorSchemes.Light;
     private const bool DefaultShowSourceFields = false;
+    private const bool DefaultShowOwner = false;
+    private const bool DefaultShowResponsible = false;
     private const bool DefaultShowRelationships = false;
     private const int DefaultEditorHeight = 360;
     private const int MinimumEditorHeight = 200;
@@ -93,6 +95,8 @@ public sealed class AppPreferenceService(
             preferences.TaskListHeight,
             layoutMode,
             preferences.ShowSourceFields ?? DefaultShowSourceFields,
+            preferences.ShowOwner ?? DefaultShowOwner,
+            preferences.ShowResponsible ?? DefaultShowResponsible,
             preferences.ShowRelationships ?? DefaultShowRelationships,
             colorScheme,
             taskSortModes,
@@ -124,6 +128,12 @@ public sealed class AppPreferenceService(
         var showSourceFields = request.ShowSourceFields
             ?? preferences.ShowSourceFields
             ?? DefaultShowSourceFields;
+        var showOwner = request.ShowOwner
+            ?? preferences.ShowOwner
+            ?? DefaultShowOwner;
+        var showResponsible = request.ShowResponsible
+            ?? preferences.ShowResponsible
+            ?? DefaultShowResponsible;
         var showRelationships = request.ShowRelationships
             ?? preferences.ShowRelationships
             ?? DefaultShowRelationships;
@@ -143,6 +153,8 @@ public sealed class AppPreferenceService(
             TaskListHeight = taskListHeight,
             LayoutMode = layoutMode,
             ShowSourceFields = showSourceFields,
+            ShowOwner = showOwner,
+            ShowResponsible = showResponsible,
             ShowRelationships = showRelationships,
             ColorScheme = colorScheme,
             TaskSortModes = taskSortModes,
@@ -151,11 +163,13 @@ public sealed class AppPreferenceService(
         await WritePreferencesAsync(preferences, cancellationToken);
 
         logger.LogInformation(
-            "Saved layout preference with task list width {TaskListWidth}, height {TaskListHeight}, mode {LayoutMode}, source fields {ShowSourceFields}, relationships {ShowRelationships}, color scheme {ColorScheme}, task sort modes {TaskSortModes}, and task sort directions {TaskSortDirections}.",
+            "Saved layout preference with task list width {TaskListWidth}, height {TaskListHeight}, mode {LayoutMode}, source fields {ShowSourceFields}, owner {ShowOwner}, responsible {ShowResponsible}, relationships {ShowRelationships}, color scheme {ColorScheme}, task sort modes {TaskSortModes}, and task sort directions {TaskSortDirections}.",
             taskListWidth,
             taskListHeight,
             layoutMode,
             showSourceFields,
+            showOwner,
+            showResponsible,
             showRelationships,
             colorScheme,
             taskSortModes,
@@ -166,6 +180,8 @@ public sealed class AppPreferenceService(
             taskListHeight,
             layoutMode,
             showSourceFields,
+            showOwner,
+            showResponsible,
             showRelationships,
             colorScheme,
             taskSortModes,
@@ -359,6 +375,8 @@ public sealed class AppPreferenceService(
             null,
             DefaultLayoutMode,
             DefaultShowSourceFields,
+            DefaultShowOwner,
+            DefaultShowResponsible,
             DefaultShowRelationships,
             null,
             null,
@@ -765,6 +783,8 @@ public sealed record LayoutPreferenceDto(
     double? TaskListHeight,
     string LayoutMode,
     bool ShowSourceFields,
+    bool ShowOwner,
+    bool ShowResponsible,
     bool ShowRelationships,
     string ColorScheme,
     IReadOnlyDictionary<string, string> TaskSortModes,
@@ -775,6 +795,8 @@ public sealed record LayoutPreferenceSaveRequest(
     double? TaskListHeight,
     string? LayoutMode,
     bool? ShowSourceFields = null,
+    bool? ShowOwner = null,
+    bool? ShowResponsible = null,
     bool? ShowRelationships = null,
     string? ColorScheme = null,
     IReadOnlyDictionary<string, string>? TaskSortModes = null,
@@ -792,6 +814,8 @@ internal sealed record StoredPreferences(
     double? TaskListHeight,
     string? LayoutMode,
     bool? ShowSourceFields,
+    bool? ShowOwner,
+    bool? ShowResponsible,
     bool? ShowRelationships,
     int? WindowLeft,
     int? WindowTop,

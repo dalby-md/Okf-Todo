@@ -1,12 +1,12 @@
 ---
 type: Database Relationships
 title: Database Relationships
-description: Summarizes the foreign-key graph and delete behavior.
+description: Summarizes database-enforced and service-level integrity rules.
 resource: Okf-Todo/Data/AppDbContext.cs
 tags:
   - sqlite
   - todo
-timestamp: 2026-07-13T00:00:00Z
+timestamp: 2026-07-23T18:14:52Z
 ---
 
 # Database Relationships

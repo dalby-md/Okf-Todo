@@ -117,6 +117,8 @@
     taskListHeight: null,
     layoutMode: layoutModeCodes.auto,
     showSourceFields: false,
+    showOwner: false,
+    showResponsible: false,
     showRelationships: false,
     taskSortModes: taskSortModes,
     taskSortDirections: taskSortDirections,
@@ -951,6 +953,17 @@
               <span class="editor-height-resizer-grip" aria-hidden="true"></span>
             </div>
 
+            <div class="ownership-grid" hidden>
+              <label class="field-block owner-field" for="task-owner" hidden>
+                <span>Owner</span>
+                <input id="task-owner" type="text" autocomplete="off" disabled>
+              </label>
+              <label class="field-block responsible-field" for="task-responsible" hidden>
+                <span>Responsible</span>
+                <input id="task-responsible" type="text" autocomplete="off" disabled>
+              </label>
+            </div>
+
             <div class="source-grid" hidden>
               <label class="field-block" for="task-source">
                 <span>Source</span>
@@ -1127,6 +1140,22 @@
                       <span>Display source, source reference, and source URL fields.</span>
                     </span>
                     <input id="show-source-fields" type="checkbox" role="switch">
+                  </label>
+
+                  <label class="preference-row preference-toggle-row" for="show-owner">
+                    <span class="preference-row-copy">
+                      <strong>Show owner</strong>
+                      <span>Display the optional task owner field below the editor.</span>
+                    </span>
+                    <input id="show-owner" type="checkbox" role="switch">
+                  </label>
+
+                  <label class="preference-row preference-toggle-row" for="show-responsible">
+                    <span class="preference-row-copy">
+                      <strong>Show responsible</strong>
+                      <span>Display the optional responsible person field below the editor.</span>
+                    </span>
+                    <input id="show-responsible" type="checkbox" role="switch">
                   </label>
 
                   <label class="preference-row preference-toggle-row" for="show-relationships">
@@ -2380,6 +2409,8 @@
     $('#task-source').val('')
     $('#task-source-reference').val('')
     $('#task-source-url').val('')
+    $('#task-owner').val('')
+    $('#task-responsible').val('')
     setTaskTags([])
     $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
     $('#waiting-text').val('')
@@ -2465,6 +2496,8 @@
       taskListHeight: layoutPreference.taskListHeight,
       layoutMode: layoutPreference.layoutMode,
       showSourceFields: layoutPreference.showSourceFields,
+      showOwner: layoutPreference.showOwner,
+      showResponsible: layoutPreference.showResponsible,
       showRelationships: layoutPreference.showRelationships,
       colorScheme: layoutPreference.colorScheme,
       taskSortModes: taskSortModes,
@@ -2491,6 +2524,8 @@
     layoutPreference.taskListHeight = preference.taskListHeight || Math.round(window.innerHeight * 0.42)
     layoutPreference.layoutMode = normalizeLayoutMode(preference.layoutMode)
     layoutPreference.showSourceFields = preference.showSourceFields === true
+    layoutPreference.showOwner = preference.showOwner === true
+    layoutPreference.showResponsible = preference.showResponsible === true
     layoutPreference.showRelationships = preference.showRelationships === true
     taskSortModes = normalizeTaskSortModes(preference.taskSortModes)
     layoutPreference.taskSortModes = taskSortModes
@@ -2561,9 +2596,19 @@
   }
 
   function applyTaskSectionVisibility() {
+    const showOwnershipFields = layoutPreference.showOwner || layoutPreference.showResponsible
     $('.source-grid').prop('hidden', !layoutPreference.showSourceFields)
+    $('.ownership-grid')
+      .prop('hidden', !showOwnershipFields)
+      .toggleClass(
+        'is-single-field',
+        showOwnershipFields && !(layoutPreference.showOwner && layoutPreference.showResponsible))
+    $('.owner-field').prop('hidden', !layoutPreference.showOwner)
+    $('.responsible-field').prop('hidden', !layoutPreference.showResponsible)
     $('.relationships-section').prop('hidden', !layoutPreference.showRelationships)
     $('#show-source-fields').prop('checked', layoutPreference.showSourceFields)
+    $('#show-owner').prop('checked', layoutPreference.showOwner)
+    $('#show-responsible').prop('checked', layoutPreference.showResponsible)
     $('#show-relationships').prop('checked', layoutPreference.showRelationships)
   }
 
@@ -2587,6 +2632,8 @@
 
   function saveTaskSectionVisibility() {
     layoutPreference.showSourceFields = $('#show-source-fields').prop('checked')
+    layoutPreference.showOwner = $('#show-owner').prop('checked')
+    layoutPreference.showResponsible = $('#show-responsible').prop('checked')
     layoutPreference.showRelationships = $('#show-relationships').prop('checked')
     applyTaskSectionVisibility()
     saveLayoutPreference().then(function (wasSaved) {
@@ -2889,6 +2936,8 @@
           || task.taskStatusName.toLowerCase().includes(query)
           || (task.taskPriorityName || '').toLowerCase().includes(query)
           || (task.activeWaitingForLabel || '').toLowerCase().includes(query)
+          || (task.owner || '').toLowerCase().includes(query)
+          || (task.responsible || '').toLowerCase().includes(query)
           || taskTags.some(function (tag) { return tag.includes(query) })
       const matchesTags = selectedTags.length === 0
         || selectedTags.some(function (selectedTag) {
@@ -3436,6 +3485,8 @@
       $('#task-source').val(task.taskSourceCode || '')
       $('#task-source-reference').val(task.sourceReference || '')
       $('#task-source-url').val(task.sourceUrl || '')
+      $('#task-owner').val(task.owner || '')
+      $('#task-responsible').val(task.responsible || '')
       setTaskTags(task.tags || [])
       $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
       $('#task-form input, #task-form select').prop('disabled', false)
@@ -3463,6 +3514,8 @@
       $('#task-source').val(task.taskSourceCode || '')
       $('#task-source-reference').val(task.sourceReference || '')
       $('#task-source-url').val(task.sourceUrl || '')
+      $('#task-owner').val(task.owner || '')
+      $('#task-responsible').val(task.responsible || '')
       setTaskTags(task.tags || [])
       $('#editor-mode').val(getSupportedBodyFormatCode(preferredBodyFormatCode))
       renderWaitingPanel(task)
@@ -3501,6 +3554,8 @@
       taskSourceCode: $('#task-source').val().toString() || null,
       sourceReference: $('#task-source-reference').val().toString().trim() || null,
       sourceUrl: $('#task-source-url').val().toString().trim() || null,
+      owner: $('#task-owner').val().toString().trim() || null,
+      responsible: $('#task-responsible').val().toString().trim() || null,
       deadline: $('#task-deadline').val().toString() || null,
       activeWaitingForLabel: $('#waiting-text').val().toString().trim() || null,
       tags: $('#task-tags').val() || []
@@ -4356,7 +4411,7 @@
       if (!await showConfirmationDialog('Remove attachment?', `Remove “${fileName}”? This cannot be undone.`, 'Remove file')) return
       deleteAttachment(Number($(this).attr('data-attachment-id'))).catch(function (error) { setStatus(getErrorMessage(error, 'Could not remove attachment'), 'error') })
     })
-    $('#task-form').on('input change', '#task-title, #task-type, #task-priority, #task-deadline, #task-tags, #task-source, #task-source-reference, #task-source-url, #waiting-text', markDirty)
+    $('#task-form').on('input change', '#task-title, #task-type, #task-priority, #task-deadline, #task-tags, #task-source, #task-source-reference, #task-source-url, #task-owner, #task-responsible, #waiting-text', markDirty)
     $('#comment-add-button').on('click', function () {
       addComment().catch(function (error) {
         setStatus(getErrorMessage(error, 'Could not add comment'), 'error')
@@ -4397,7 +4452,7 @@
     $('#editor-height-resizer').on('keydown', resizeEditorFromKeyboard)
     $('#layout-mode').on('change', switchLayoutMode)
     $('#color-scheme').on('change', switchColorScheme)
-    $('#show-source-fields, #show-relationships').on('change', saveTaskSectionVisibility)
+    $('#show-source-fields, #show-owner, #show-responsible, #show-relationships').on('change', saveTaskSectionVisibility)
     $('#backup-database-button').on('click', function () {
       backupDatabase().catch(function (error) {
         setStatus(getErrorMessage(error, 'Could not back up database'), 'error')

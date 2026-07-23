@@ -20,3 +20,10 @@ dotnet test .\Okf-Todo.UiTests\Okf-Todo.UiTests.csproj -c Release
 6. Query the isolated SQLite database and verify that the task and added content were persisted.
 7. Verify that the browser loaded the startup-versioned `app.js` and that no `task.update` message was sent through the main **Save** action.
 8. Verify that keyboard focus moves into the active body editor when the modal closes.
+
+`OwnershipFields_HaveIndependentPersistedVisibilityAndParticipateInOverviewSearch` verifies that:
+
+1. Owner and Responsible are hidden by default.
+2. **Show owner** and **Show responsible** are independent persisted preferences.
+3. Both fields appear side by side when enabled together.
+4. Saved owner and responsible values are found by the overview text search.

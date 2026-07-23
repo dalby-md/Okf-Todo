@@ -773,7 +773,21 @@ h2 {
   margin-top: 2px;
 }
 
+.ownership-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.ownership-grid.is-single-field {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .source-grid[hidden],
+.ownership-grid[hidden],
+.owner-field[hidden],
+.responsible-field[hidden],
 .relationships-section[hidden] {
   display: none;
 }
@@ -2193,6 +2207,10 @@ body.is-resizing-editor * {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .ownership-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
 }
 
 :root.layout-mode-stacked .app-shell {
@@ -2355,6 +2373,10 @@ body.is-resizing-editor * {
   }
 
   .source-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ownership-grid {
     grid-template-columns: 1fr;
   }
 

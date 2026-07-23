@@ -6,7 +6,7 @@ resource: Okf-Todo/Data/AppDbContext.cs
 tags:
   - sqlite
   - todo
-timestamp: 2026-07-13T00:00:00Z
+timestamp: 2026-07-23T18:14:52Z
 ---
 
 
@@ -37,6 +37,8 @@ Stores the primary task records and lifecycle state.
 | `WaitingSince` | `TEXT` | Yes | `-` | value |
 | `CompletedAt` | `TEXT` | Yes | `-` | value |
 | `CancelledAt` | `TEXT` | Yes | `-` | value |
+| `Owner` | `TEXT` | Yes | `-` | value |
+| `Responsible` | `TEXT` | Yes | `-` | value |
 
 ## Relationships
 
@@ -61,6 +63,9 @@ See [Database Integrity Rules](../references/integrity-rules.md) for cross-table
 ## Application Semantics
 
 Structural facts are generated from the inspected SQLite database. Application behavior is governed by the product data model and services.
+- `Owner` is optional free text identifying the person or team accountable for the task.
+- `Responsible` is optional free text identifying the person currently expected to perform or coordinate the work.
+- The overview text search includes both values even when their independently controlled task-detail fields are hidden.
 
 ## Sources
 

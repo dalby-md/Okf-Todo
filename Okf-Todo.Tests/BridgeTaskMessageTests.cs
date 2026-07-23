@@ -621,6 +621,8 @@ public sealed class BridgeTaskMessageTests
         Assert.Equal(JsonValueKind.Null, initial.GetProperty("taskListHeight").ValueKind);
         Assert.Equal("AUTO", initial.GetProperty("layoutMode").GetString());
         Assert.False(initial.GetProperty("showSourceFields").GetBoolean());
+        Assert.False(initial.GetProperty("showOwner").GetBoolean());
+        Assert.False(initial.GetProperty("showResponsible").GetBoolean());
         Assert.False(initial.GetProperty("showRelationships").GetBoolean());
         Assert.Equal("LIGHT", initial.GetProperty("colorScheme").GetString());
         Assert.Equal("ATTENTION", initial.GetProperty("taskSortModes").GetProperty("active").GetString());
@@ -639,6 +641,8 @@ public sealed class BridgeTaskMessageTests
             taskListHeight = 275,
             layoutMode = "STACKED",
             showSourceFields = true,
+            showOwner = true,
+            showResponsible = false,
             showRelationships = true,
             colorScheme = "DARK",
             taskSortModes = new Dictionary<string, string>
@@ -656,6 +660,8 @@ public sealed class BridgeTaskMessageTests
         Assert.Equal(275, saved.GetProperty("taskListHeight").GetDouble());
         Assert.Equal("STACKED", saved.GetProperty("layoutMode").GetString());
         Assert.True(saved.GetProperty("showSourceFields").GetBoolean());
+        Assert.True(saved.GetProperty("showOwner").GetBoolean());
+        Assert.False(saved.GetProperty("showResponsible").GetBoolean());
         Assert.True(saved.GetProperty("showRelationships").GetBoolean());
         Assert.Equal("DARK", saved.GetProperty("colorScheme").GetString());
         Assert.Equal("RECENTLY_UPDATED", saved.GetProperty("taskSortModes").GetProperty("active").GetString());
@@ -669,6 +675,8 @@ public sealed class BridgeTaskMessageTests
         Assert.Equal(275, loaded.GetProperty("taskListHeight").GetDouble());
         Assert.Equal("STACKED", loaded.GetProperty("layoutMode").GetString());
         Assert.True(loaded.GetProperty("showSourceFields").GetBoolean());
+        Assert.True(loaded.GetProperty("showOwner").GetBoolean());
+        Assert.False(loaded.GetProperty("showResponsible").GetBoolean());
         Assert.True(loaded.GetProperty("showRelationships").GetBoolean());
         Assert.Equal("DARK", loaded.GetProperty("colorScheme").GetString());
         Assert.Equal("RECENTLY_UPDATED", loaded.GetProperty("taskSortModes").GetProperty("active").GetString());

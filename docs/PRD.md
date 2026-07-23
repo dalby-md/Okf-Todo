@@ -58,6 +58,8 @@ Each task should support:
 - Checklist items
 - Task relationships
 - Optional source
+- Optional owner
+- Optional responsible person
 
 ## Required fields
 
@@ -372,15 +374,18 @@ The relationships section is hidden in task details by default. User preferences
 
 Only `Blocks` / `Depends on` may affect sorting later.
 
-## Owner/responsible person
+## Owner and responsible
 
-Do not add owner/responsible person in the first version.
+Tasks can optionally record two separate free-text values:
 
-This is a personal local system, so ownership is implicit:
+- `Owner`: the person or team accountable for the task.
+- `Responsible`: the person currently expected to perform or coordinate the work.
 
-```text
-Owner = me
-```
+The fields do not require a user directory or lookup table. They appear side by side directly below the body editor when both are enabled.
+
+Owner and Responsible are hidden independently by default. User preferences provide separate **Show owner** and **Show responsible** switches, and each choice persists across application restarts.
+
+The overview text search matches both fields even when either field is hidden in task details.
 
 ## Lookup values
 

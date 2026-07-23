@@ -6,7 +6,7 @@ resource: Okf-Todo/Data/AppDbContext.cs
 tags:
   - sqlite
   - todo
-timestamp: 2026-07-14T00:00:00Z
+timestamp: 2026-07-23T18:14:52Z
 ---
 
 
@@ -45,8 +45,6 @@ See [Database Integrity Rules](../references/integrity-rules.md) for cross-table
 ## Application Semantics
 
 Structural facts are generated from the inspected SQLite database. Application behavior is governed by the product data model and services.
-
-Agents that consume the OKF bundle must use the [Task Application Command Interface](../references/application-command-interface.md) for task mutations. Direct SQLite writes bypass automatic log creation.
 
 ## Sources
 

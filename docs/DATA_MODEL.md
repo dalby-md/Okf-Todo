@@ -184,6 +184,8 @@ TaskPriorityId nullable
 TaskSourceId nullable
 SourceReference nullable
 SourceUrl nullable
+Owner nullable
+Responsible nullable
 Deadline nullable
 CreatedAt
 UpdatedAt
@@ -202,6 +204,7 @@ Notes:
 - `BodyFormatId` is controlled by the editor.
 - `TaskSourceId` is optional.
 - `SourceUrl` is information only. No automatic opening behavior.
+- `Owner` and `Responsible` are optional free-text values with separate meanings.
 - `WaitingSince` is set only while the task has an active wait target.
 
 ## TaskWaitingFor

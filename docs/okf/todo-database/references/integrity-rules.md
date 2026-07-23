@@ -1,12 +1,12 @@
 ---
 type: Database Integrity Rules
 title: Database Integrity Rules
-description: Summarizes database-enforced and service-level integrity rules.
+description: Defines the supported command path for agents that consume the OKF bundle and need to read or mutate tasks.
 resource: docs/DATA_MODEL.md
 tags:
   - sqlite
   - todo
-timestamp: 2026-07-13T00:00:00Z
+timestamp: 2026-07-23T18:14:52Z
 ---
 
 # Database Integrity Rules

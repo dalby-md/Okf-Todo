@@ -39,7 +39,7 @@ Do not use any write tools yet.
 
 Propose:
 - an internal task title and task type;
-- priority, source, and tags;
+- priority, source, owner, responsible person, and tags where relevant;
 - a Markdown task body containing facts, impact, evidence,
   assumptions, open questions, and an investigation plan;
 - a customer reply draft.
@@ -99,7 +99,7 @@ the complete proposed replacement before using task_update.
 [paste the new information]
 ```
 
-`task_update` replaces all editable task fields. The harness must read the task first and preserve everything that should remain. A partial update can clear optional fields or tags.
+`task_update` replaces all editable task fields, including Owner and Responsible. The harness must read the task first and preserve everything that should remain. A partial update can clear optional fields or tags.
 
 ### Review priorities without changing anything
 

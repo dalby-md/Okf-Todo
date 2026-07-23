@@ -78,7 +78,9 @@ public sealed class TaskServiceTests
             SourceUrl: "  https://example.test/inc/123456  ",
             Deadline: deadline,
             ActiveWaitingForLabel: "Initial wait",
-            Tags: ["Initial"]), CancellationToken.None);
+            Tags: ["Initial"],
+            Owner: "  Support team  ",
+            Responsible: "  Anna Jensen  "), CancellationToken.None);
 
         Assert.Equal("Fix failed deployment", created.Title);
         Assert.Equal(TaskStatusCodes.Active, created.TaskStatusCode);
@@ -87,6 +89,8 @@ public sealed class TaskServiceTests
         Assert.Equal("EMAIL", created.TaskSourceCode);
         Assert.Equal("INC123456", created.SourceReference);
         Assert.Equal("https://example.test/inc/123456", created.SourceUrl);
+        Assert.Equal("Support team", created.Owner);
+        Assert.Equal("Anna Jensen", created.Responsible);
         Assert.Equal("Initial wait", created.ActiveWaitingFor?.Label);
         var creationTimeline = await database.Tasks.GetTimelineAsync(new TaskTimelineRequest(created.Id), CancellationToken.None);
         Assert.Single(creationTimeline);
@@ -108,6 +112,8 @@ public sealed class TaskServiceTests
         Assert.Equal("#ffffff", listed.TaskStatusForegroundColor);
         Assert.NotNull(listed.WaitingSince);
         Assert.Equal(["Initial"], listed.Tags);
+        Assert.Equal("Support team", listed.Owner);
+        Assert.Equal("Anna Jensen", listed.Responsible);
         Assert.Equal(created.CreatedAt, listed.CreatedAt);
         Assert.Equal(created.UpdatedAt, listed.UpdatedAt);
 
@@ -130,7 +136,9 @@ public sealed class TaskServiceTests
             SourceUrl: null,
             Deadline: updatedDeadline,
             ActiveWaitingForLabel: "Initial wait",
-            Tags: ["Support"]), CancellationToken.None);
+            Tags: ["Support"],
+            Owner: "Platform team",
+            Responsible: null), CancellationToken.None);
 
         Assert.Equal("Investigate failed deployment", updated.Title);
         Assert.Equal("<p>Updated body</p>", updated.Body);
@@ -139,6 +147,8 @@ public sealed class TaskServiceTests
         Assert.Equal("TEAMS", updated.TaskSourceCode);
         Assert.Equal("Release room", updated.SourceReference);
         Assert.Null(updated.SourceUrl);
+        Assert.Equal("Platform team", updated.Owner);
+        Assert.Null(updated.Responsible);
         Assert.Equal(updatedDeadline, updated.Deadline);
         Assert.True(updated.UpdatedAt >= created.UpdatedAt);
 
@@ -151,6 +161,8 @@ public sealed class TaskServiceTests
         Assert.Contains(savedTask.LogEntries, log => log.Message == "Source: Changed 'Email' to 'Teams'");
         Assert.Contains(savedTask.LogEntries, log => log.Message == "Source reference: Changed 'INC123456' to 'Release room'");
         Assert.Contains(savedTask.LogEntries, log => log.Message == "Source URL: Changed 'https://example.test/inc/123456' to '(none)'");
+        Assert.Contains(savedTask.LogEntries, log => log.Message == "Owner: Changed 'Support team' to 'Platform team'");
+        Assert.Contains(savedTask.LogEntries, log => log.Message == "Responsible: Changed 'Anna Jensen' to '(none)'");
         Assert.Contains(savedTask.LogEntries, log => log.Message == "Editor changed");
         Assert.Contains(savedTask.LogEntries, log => log.Message == "Tags: Changed 'Initial' to 'Support'");
     }

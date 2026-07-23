@@ -82,7 +82,7 @@ Do not change the database yet.
 Produce:
 1. A short factual incident summary for an internal task.
 2. A proposed investigation task with title, type, priority, source,
-   tags, and a Markdown body.
+   owner, responsible person, tags, and a Markdown body.
 3. An investigation plan with clear next steps and open questions.
 4. A customer reply draft that acknowledges the issue without claiming
    a cause that has not been confirmed.

@@ -1,12 +1,12 @@
 ---
 type: Database Schema Lifecycle
 title: Database Schema Lifecycle
-description: Explains fresh-database creation and development reset behavior.
+description: Summarizes the foreign-key graph and delete behavior.
 resource: Okf-Todo/Program.cs
 tags:
   - sqlite
   - todo
-timestamp: 2026-07-14T00:00:00Z
+timestamp: 2026-07-23T18:14:52Z
 ---
 
 # Database Schema Lifecycle

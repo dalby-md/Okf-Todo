@@ -50,6 +50,8 @@ public static class TaskTools
         [Description("Optional deadline in ISO 8601 form.")] DateTime? deadline = null,
         [Description("Optional waiting-for label. Supplying it places the task in waiting state.")] string? activeWaitingForLabel = null,
         [Description("Optional plain-string tags.")] IReadOnlyCollection<string>? tags = null,
+        [Description("Optional task owner.")] string? owner = null,
+        [Description("Optional person responsible for the task.")] string? responsible = null,
         CancellationToken cancellationToken = default) =>
         ExecuteAsync<TaskDetailDto>(
             commandService,
@@ -66,7 +68,9 @@ public static class TaskTools
                 sourceUrl,
                 deadline,
                 activeWaitingForLabel,
-                tags),
+                tags,
+                owner,
+                responsible),
             cancellationToken);
 
     [McpServerTool(Name = "task_update", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false)]
@@ -85,6 +89,8 @@ public static class TaskTools
         [Description("Replacement deadline; null clears it.")] DateTime? deadline = null,
         [Description("Replacement waiting-for label; null clears active waiting.")] string? activeWaitingForLabel = null,
         [Description("Replacement plain-string tag set; null or empty removes all tags.")] IReadOnlyCollection<string>? tags = null,
+        [Description("Replacement task owner; null clears it.")] string? owner = null,
+        [Description("Replacement person responsible for the task; null clears it.")] string? responsible = null,
         CancellationToken cancellationToken = default) =>
         ExecuteAsync<TaskDetailDto>(
             commandService,
@@ -101,7 +107,9 @@ public static class TaskTools
                 sourceUrl,
                 deadline,
                 activeWaitingForLabel,
-                tags),
+                tags,
+                owner,
+                responsible),
             cancellationToken);
 
     [McpServerTool(Name = "task_get_timeline", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false)]
