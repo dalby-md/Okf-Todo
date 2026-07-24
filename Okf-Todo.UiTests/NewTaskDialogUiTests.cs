@@ -331,6 +331,80 @@ public sealed class NewTaskDialogUiTests
     }
 
     [Fact]
+    public async Task FinalTaskEditingPreferences_LockEachStateIndependentlyAndKeepReopenAvailable()
+    {
+        await using var fixture = await UiAppFixture.CreateAsync();
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+        {
+            Channel = "msedge",
+            Headless = true
+        });
+        await using var context = await browser.NewContextAsync(new BrowserNewContextOptions
+        {
+            ViewportSize = new ViewportSize { Width = 1487, Height = 1058 }
+        });
+        await context.AddInitScriptAsync(BridgeAdapterScript);
+
+        var page = await context.NewPageAsync();
+        await page.GotoAsync(
+            $"{fixture.BaseUrl}/index.html?v=final-task-editing-preference-contract",
+            new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
+        await page.WaitForFunctionAsync("() => document.querySelectorAll('#task-type option').length > 0");
+
+        const string taskTitle = "Final task editing browser contract";
+        await page.Locator("#new-task-button").ClickAsync();
+        await page.Locator("#new-task-title-input").FillAsync(taskTitle);
+        await page.Locator("#new-task-save-button").ClickAsync();
+        await page.Locator("#new-task-overlay").WaitForAsync(new LocatorWaitForOptions
+        {
+            State = WaitForSelectorState.Hidden
+        });
+
+        await page.Locator("#complete-button").ClickAsync();
+        await page.WaitForFunctionAsync(
+            "() => document.querySelector('#complete-button')?.textContent === 'Reopen'");
+
+        await OpenTaskDetailsPreferencesAsync(page);
+        Assert.True(await page.Locator("#allow-editing-completed-tasks").IsCheckedAsync());
+        Assert.True(await page.Locator("#allow-editing-cancelled-tasks").IsCheckedAsync());
+        await page.Locator("#allow-editing-completed-tasks").SetCheckedAsync(false);
+        await page.Locator("#settings-close-button").ClickAsync();
+
+        await AssertCurrentTaskReadOnlyAsync(page, "Completed task — read only");
+
+        await page.Locator("#task-read-only-reopen-button").ClickAsync();
+        await page.WaitForFunctionAsync(
+            "() => document.querySelector('#task-read-only-notice')?.hidden === true"
+                + " && document.querySelector('#task-title')?.disabled === false"
+                + " && document.querySelector('#complete-button')?.textContent === 'Complete'");
+
+        await page.Locator("#cancel-button").ClickAsync();
+        await page.WaitForFunctionAsync(
+            "() => document.querySelector('#complete-button')?.textContent === 'Reopen'"
+                + " && document.querySelector('#task-read-only-notice')?.hidden === true"
+                + " && document.querySelector('#task-title')?.disabled === false");
+
+        await OpenTaskDetailsPreferencesAsync(page);
+        Assert.False(await page.Locator("#allow-editing-completed-tasks").IsCheckedAsync());
+        Assert.True(await page.Locator("#allow-editing-cancelled-tasks").IsCheckedAsync());
+        await page.Locator("#allow-editing-cancelled-tasks").SetCheckedAsync(false);
+        await page.Locator("#settings-close-button").ClickAsync();
+
+        await AssertCurrentTaskReadOnlyAsync(page, "Cancelled task — read only");
+        await page.Locator("#settings-button").ClickAsync();
+        await page.Locator("[data-preference-section='general']").ClickAsync();
+        await page.Locator("[data-preference-select='editor-mode'] [data-value='MARKDOWN']").ClickAsync();
+        await page.Locator("#settings-close-button").ClickAsync();
+        await AssertMarkdownEditorReadOnlyAsync(page);
+
+        Assert.Contains("layout.preference.save", fixture.BridgeMessageTypes);
+        Assert.Contains("task.complete", fixture.BridgeMessageTypes);
+        Assert.Contains("task.reopen", fixture.BridgeMessageTypes);
+        Assert.Contains("task.cancel", fixture.BridgeMessageTypes);
+    }
+
+    [Fact]
     public async Task TriageCommandWorkspace_AdaptsAcrossLargeCompactAndSmallWindows()
     {
         await using var fixture = await UiAppFixture.CreateAsync(seedSampleTasks: true);
@@ -552,6 +626,55 @@ public sealed class NewTaskDialogUiTests
                 1);
         }
         await AssertNoHorizontalPageOverflowAsync(page);
+    }
+
+    private static async Task AssertCurrentTaskReadOnlyAsync(IPage page, string expectedTitle)
+    {
+        await page.WaitForFunctionAsync(
+            """
+            expectedTitle => {
+              const notice = document.querySelector('#task-read-only-notice')
+              return notice?.hidden === false
+                && document.querySelector('#task-read-only-title')?.textContent === expectedTitle
+                && document.querySelector('#task-title')?.disabled === true
+                && document.querySelector('#task-type')?.disabled === true
+                && document.querySelector('#task-priority')?.disabled === true
+                && document.querySelector('#task-deadline')?.disabled === true
+                && document.querySelector('#task-tags')?.disabled === true
+                && document.querySelector('#save-button')?.disabled === true
+                && document.querySelector('#complete-button')?.disabled === false
+                && document.querySelector('#complete-button')?.textContent === 'Reopen'
+                && document.querySelector('#task-read-only-reopen-button')?.disabled === false
+                && document.querySelector('#checklist-new-text')?.disabled === true
+                && document.querySelector('#checklist-add-button')?.disabled === true
+                && document.querySelector('#attachment-add-button')?.disabled === true
+                && document.querySelector('#comment-text')?.disabled === true
+                && document.querySelector('#comment-add-button')?.disabled === true
+                && document.querySelector('#editor-host')?.getAttribute('aria-readonly') === 'true'
+            }
+            """,
+            expectedTitle);
+
+        var editorBody = page.FrameLocator("#editor-host iframe").Locator("body");
+        await editorBody.WaitForAsync();
+        Assert.Equal("false", await editorBody.GetAttributeAsync("contenteditable"));
+    }
+
+    private static Task AssertMarkdownEditorReadOnlyAsync(IPage page)
+    {
+        return page.WaitForFunctionAsync(
+            """
+            () => {
+              const codeMirror = document.querySelector('#editor-host .CodeMirror')?.CodeMirror
+              const wysiwygRoot = document.querySelector('#editor-host [contenteditable][aria-readonly]')
+              const toolbarButtons = [...document.querySelectorAll('#editor-host [data-markdown-command]')]
+              return codeMirror?.getOption('readOnly') === true
+                && wysiwygRoot?.getAttribute('contenteditable') === 'false'
+                && wysiwygRoot?.getAttribute('aria-readonly') === 'true'
+                && toolbarButtons.length > 0
+                && toolbarButtons.every(button => button.disabled)
+            }
+            """);
     }
 
     private static Task<double[]> ReadWorkspaceScrollPositionAsync(IPage page)

@@ -263,6 +263,7 @@
 
   function createTinyMceAdapter(options) {
     let editor = null
+    let readOnly = false
     const selector = options.selector || defaultSelector
     const elementId = getElementId(selector)
     const host = getHost(options)
@@ -287,6 +288,32 @@
       const isDark = String(colorScheme || '').toUpperCase() === 'DARK'
       body.style.setProperty('color', isDark ? '#e7e5e4' : '#202124')
       body.style.setProperty('background-color', isDark ? '#101112' : '#ffffff')
+    }
+
+    function applyReadOnlyState() {
+      host.classList.toggle('is-read-only', readOnly)
+
+      if (!editor) {
+        return
+      }
+
+      editor.mode.set(readOnly ? 'readonly' : 'design')
+
+      const body = typeof editor.getBody === 'function' ? editor.getBody() : null
+      if (body) {
+        body.setAttribute('contenteditable', String(!readOnly))
+        body.setAttribute('aria-readonly', String(readOnly))
+      }
+
+      const container = typeof editor.getContainer === 'function'
+        ? editor.getContainer()
+        : null
+      if (container) {
+        container.querySelectorAll('.tox-toolbar button').forEach(function (button) {
+          button.disabled = readOnly
+          button.setAttribute('aria-disabled', String(readOnly))
+        })
+      }
     }
 
     return {
@@ -322,6 +349,7 @@
             editor = tinyEditor
             tinyEditor.on('init', function () {
               applyColorScheme(activeColorScheme)
+              applyReadOnlyState()
             })
             tinyEditor.on('change keyup undo redo setcontent', notifyChanged)
           }
@@ -333,6 +361,7 @@
         }
 
         applyColorScheme(activeColorScheme)
+        applyReadOnlyState()
 
         const loading = host.querySelector('.editor-loading')
         if (loading) {
@@ -357,12 +386,14 @@
       },
 
       insertImage: function (src, attributes) {
+        if (readOnly) return
         const imageAttributes = Object.assign({}, attributes || {}, { src })
         const attributeHtml = toAttributeHtml(imageAttributes)
         editor.insertContent(`<img ${attributeHtml}>`)
       },
 
       insertLink: function (url, text) {
+        if (readOnly) return
         const selectedText = text || editor.selection.getContent({ format: 'text' }) || url
         editor.insertContent(`<a href="${encodeAttribute(url)}">${encodeText(selectedText)}</a>`)
       },
@@ -372,15 +403,19 @@
       },
 
       setSelectedText: function (text) {
+        if (readOnly) return
         editor.insertContent(encodeText(text || ''))
       },
 
       execute: function (command, value) {
+        if (readOnly) return
         editor.execCommand(command, false, value)
       },
 
-      setReadOnly: function (readOnly) {
-        editor.mode.set(readOnly ? 'readonly' : 'design')
+      setReadOnly: function (value) {
+        readOnly = value === true
+        applyReadOnlyState()
+        window.requestAnimationFrame(applyReadOnlyState)
       },
 
       setColorScheme: function (colorScheme) {
@@ -422,6 +457,7 @@
 
       destroy: function () {
         clearHostEditorHeight(host)
+        host.classList.remove('is-read-only')
 
         if (editor) {
           if (typeof editor.destroy === 'function') {
@@ -438,6 +474,7 @@
 
   function createToastUiAdapter(options) {
     let editor = null
+    let readOnly = false
     let suppressChangeUntil = 0
     const host = getHost(options)
     const initialMarkdownEditType = String(options.markdownEditType || '').toLowerCase() === 'wysiwyg'
@@ -457,6 +494,35 @@
       }
 
       return editor.isWysiwygMode && editor.isWysiwygMode() ? 'WYSIWYG' : 'MARKDOWN'
+    }
+
+    function applyReadOnlyState() {
+      host.classList.toggle('is-read-only', readOnly)
+      host.querySelectorAll('[data-markdown-command]').forEach(function (button) {
+        button.disabled = readOnly
+      })
+
+      if (!editor) {
+        return
+      }
+
+      const codeMirror = typeof editor.getCodeMirror === 'function'
+        ? editor.getCodeMirror()
+        : null
+      if (codeMirror && typeof codeMirror.setOption === 'function') {
+        codeMirror.setOption('readOnly', readOnly)
+      }
+
+      const squire = typeof editor.getSquire === 'function'
+        ? editor.getSquire()
+        : null
+      const root = squire && typeof squire.getRoot === 'function'
+        ? squire.getRoot()
+        : null
+      if (root) {
+        root.setAttribute('contenteditable', String(!readOnly))
+        root.setAttribute('aria-readonly', String(readOnly))
+      }
     }
 
     function notifyMarkdownEditTypeChanged(markdownEditType) {
@@ -513,6 +579,10 @@
     function bindToolbar() {
       host.querySelectorAll('[data-markdown-command]').forEach(function (button) {
         button.addEventListener('click', async function () {
+          if (readOnly) {
+            return
+          }
+
           const command = button.getAttribute('data-markdown-command')
           const codeMirror = typeof editor.getCodeMirror === 'function' ? editor.getCodeMirror() : null
 
@@ -649,6 +719,7 @@
           suppressModeSwitchChanges()
           const markdownEditType = mode === 'wysiwyg' ? 'WYSIWYG' : 'MARKDOWN'
           notifyMarkdownEditTypeChanged(markdownEditType)
+          window.requestAnimationFrame(applyReadOnlyState)
         })
 
         editor.on('change', function () {
@@ -659,6 +730,7 @@
           notifyChanged()
         })
         bindToolbar()
+        applyReadOnlyState()
       },
 
       load: function (markdown) {
@@ -678,11 +750,13 @@
       },
 
       insertImage: function (src, attributes) {
+        if (readOnly) return
         const alt = escapeMarkdown((attributes && attributes.alt) || 'image')
         editor.insertText(`![${alt}](${src})`)
       },
 
       insertLink: function (url, text) {
+        if (readOnly) return
         const selectedText = text || this.getSelectedText() || url
         editor.insertText(`[${escapeMarkdown(selectedText)}](${url})`)
       },
@@ -692,10 +766,12 @@
       },
 
       setSelectedText: function (text) {
+        if (readOnly) return
         editor.insertText(text || '')
       },
 
       execute: function (command, value) {
+        if (readOnly) return
         if (command === 'Bold') {
           this.setSelectedText(`**${this.getSelectedText() || value || ''}**`)
           return
@@ -706,8 +782,9 @@
         }
       },
 
-      setReadOnly: function () {
-        // TOAST UI v2 does not expose a stable read-only API in the browser bundle.
+      setReadOnly: function (value) {
+        readOnly = value === true
+        applyReadOnlyState()
       },
 
       setColorScheme: function () {
@@ -748,6 +825,7 @@
 
       destroy: function () {
         clearHostEditorHeight(host)
+        host.classList.remove('is-read-only')
 
         if (editor) {
           host.removeEventListener('pointerdown', handleModeSwitchIntent, true)

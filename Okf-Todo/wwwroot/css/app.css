@@ -744,6 +744,69 @@ h2 {
   min-height: 0;
 }
 
+.task-read-only-notice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #cfdadd;
+  border-left: 4px solid #55717b;
+  border-radius: 8px;
+  color: #31444d;
+  background: #f1f6f7;
+}
+
+.task-read-only-notice[hidden] {
+  display: none;
+}
+
+.task-read-only-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  color: #315e68;
+  background: #dcebed;
+  font-size: 1rem;
+}
+
+.task-read-only-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.task-read-only-copy strong {
+  color: #243840;
+  font-size: 0.82rem;
+}
+
+.task-read-only-copy > span {
+  color: #60727a;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.task-form.is-task-read-only input:disabled,
+.task-form.is-task-read-only select:disabled,
+.task-form.is-task-read-only textarea:disabled {
+  color: #52616a;
+  background: #f3f6f7;
+  opacity: 1;
+}
+
+.editor-host[aria-readonly="true"] {
+  border-color: #cbd6da;
+  background: #f7f9fa;
+  box-shadow: none;
+}
+
+.editor-host.is-read-only .markdown-toolbar button:disabled {
+  opacity: 0.45;
+}
+
 .field-label,
 .field-block span,
 .mode-field span,
@@ -1996,6 +2059,30 @@ body.is-resizing-editor * {
   color: #65717d;
   font-size: 0.76rem;
   font-weight: 400;
+  line-height: 1.4;
+}
+
+.preferences-subsection-heading {
+  display: grid;
+  gap: 4px;
+  margin-top: 18px;
+  padding: 20px 2px 6px;
+  border-top: 1px solid #dfe5e8;
+}
+
+.preferences-subsection-heading h4,
+.preferences-subsection-heading p {
+  margin: 0;
+}
+
+.preferences-subsection-heading h4 {
+  color: #26333c;
+  font-size: 0.9rem;
+}
+
+.preferences-subsection-heading p {
+  color: #65727e;
+  font-size: 0.78rem;
   line-height: 1.4;
 }
 
@@ -3533,5 +3620,16 @@ body.is-resizing-editor * {
   .task-view-rail-button.is-transition-destination,
   .editor-header .eyebrow.is-transition-context {
     animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .task-read-only-notice {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .task-read-only-notice .secondary-button {
+    grid-column: 2;
+    justify-self: start;
   }
 }

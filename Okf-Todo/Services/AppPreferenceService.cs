@@ -18,6 +18,8 @@ public sealed class AppPreferenceService(
     private const bool DefaultShowOwner = false;
     private const bool DefaultShowResponsible = false;
     private const bool DefaultShowRelationships = false;
+    private const bool DefaultAllowEditingCompletedTasks = true;
+    private const bool DefaultAllowEditingCancelledTasks = true;
     private const int DefaultEditorHeight = 360;
     private const int MinimumEditorHeight = 200;
     private const int MaximumEditorHeight = 1800;
@@ -98,6 +100,8 @@ public sealed class AppPreferenceService(
             preferences.ShowOwner ?? DefaultShowOwner,
             preferences.ShowResponsible ?? DefaultShowResponsible,
             preferences.ShowRelationships ?? DefaultShowRelationships,
+            preferences.AllowEditingCompletedTasks ?? DefaultAllowEditingCompletedTasks,
+            preferences.AllowEditingCancelledTasks ?? DefaultAllowEditingCancelledTasks,
             colorScheme,
             taskSortModes,
             taskSortDirections);
@@ -137,6 +141,12 @@ public sealed class AppPreferenceService(
         var showRelationships = request.ShowRelationships
             ?? preferences.ShowRelationships
             ?? DefaultShowRelationships;
+        var allowEditingCompletedTasks = request.AllowEditingCompletedTasks
+            ?? preferences.AllowEditingCompletedTasks
+            ?? DefaultAllowEditingCompletedTasks;
+        var allowEditingCancelledTasks = request.AllowEditingCancelledTasks
+            ?? preferences.AllowEditingCancelledTasks
+            ?? DefaultAllowEditingCancelledTasks;
         var colorScheme = request.ColorScheme is null
             ? NormalizeOrDefaultColorScheme(preferences.ColorScheme)
             : NormalizeColorScheme(request.ColorScheme);
@@ -156,6 +166,8 @@ public sealed class AppPreferenceService(
             ShowOwner = showOwner,
             ShowResponsible = showResponsible,
             ShowRelationships = showRelationships,
+            AllowEditingCompletedTasks = allowEditingCompletedTasks,
+            AllowEditingCancelledTasks = allowEditingCancelledTasks,
             ColorScheme = colorScheme,
             TaskSortModes = taskSortModes,
             TaskSortDirections = taskSortDirections
@@ -163,7 +175,7 @@ public sealed class AppPreferenceService(
         await WritePreferencesAsync(preferences, cancellationToken);
 
         logger.LogInformation(
-            "Saved layout preference with task list width {TaskListWidth}, height {TaskListHeight}, mode {LayoutMode}, source fields {ShowSourceFields}, owner {ShowOwner}, responsible {ShowResponsible}, relationships {ShowRelationships}, color scheme {ColorScheme}, task sort modes {TaskSortModes}, and task sort directions {TaskSortDirections}.",
+            "Saved layout preference with task list width {TaskListWidth}, height {TaskListHeight}, mode {LayoutMode}, source fields {ShowSourceFields}, owner {ShowOwner}, responsible {ShowResponsible}, relationships {ShowRelationships}, completed editing {AllowEditingCompletedTasks}, cancelled editing {AllowEditingCancelledTasks}, color scheme {ColorScheme}, task sort modes {TaskSortModes}, and task sort directions {TaskSortDirections}.",
             taskListWidth,
             taskListHeight,
             layoutMode,
@@ -171,6 +183,8 @@ public sealed class AppPreferenceService(
             showOwner,
             showResponsible,
             showRelationships,
+            allowEditingCompletedTasks,
+            allowEditingCancelledTasks,
             colorScheme,
             taskSortModes,
             taskSortDirections);
@@ -183,6 +197,8 @@ public sealed class AppPreferenceService(
             showOwner,
             showResponsible,
             showRelationships,
+            allowEditingCompletedTasks,
+            allowEditingCancelledTasks,
             colorScheme,
             taskSortModes,
             taskSortDirections);
@@ -378,6 +394,8 @@ public sealed class AppPreferenceService(
             DefaultShowOwner,
             DefaultShowResponsible,
             DefaultShowRelationships,
+            DefaultAllowEditingCompletedTasks,
+            DefaultAllowEditingCancelledTasks,
             null,
             null,
             null,
@@ -786,6 +804,8 @@ public sealed record LayoutPreferenceDto(
     bool ShowOwner,
     bool ShowResponsible,
     bool ShowRelationships,
+    bool AllowEditingCompletedTasks,
+    bool AllowEditingCancelledTasks,
     string ColorScheme,
     IReadOnlyDictionary<string, string> TaskSortModes,
     IReadOnlyDictionary<string, string> TaskSortDirections);
@@ -798,6 +818,8 @@ public sealed record LayoutPreferenceSaveRequest(
     bool? ShowOwner = null,
     bool? ShowResponsible = null,
     bool? ShowRelationships = null,
+    bool? AllowEditingCompletedTasks = null,
+    bool? AllowEditingCancelledTasks = null,
     string? ColorScheme = null,
     IReadOnlyDictionary<string, string>? TaskSortModes = null,
     IReadOnlyDictionary<string, string>? TaskSortDirections = null);
@@ -817,6 +839,8 @@ internal sealed record StoredPreferences(
     bool? ShowOwner,
     bool? ShowResponsible,
     bool? ShowRelationships,
+    bool? AllowEditingCompletedTasks,
+    bool? AllowEditingCancelledTasks,
     int? WindowLeft,
     int? WindowTop,
     int? WindowWidth,

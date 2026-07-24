@@ -629,8 +629,17 @@ textarea.is-invalid {
 .preferences-content-header p,
 .preferences-page-intro,
 .preference-row-copy > span,
+.preferences-subsection-heading p,
 .preferences-data-group .preference-row-copy > span {
   color: var(--theme-muted);
+}
+
+.preferences-subsection-heading {
+  border-color: var(--theme-border);
+}
+
+.preferences-subsection-heading h4 {
+  color: var(--theme-text);
 }
 
 .preference-action-row:hover:not(:disabled) {
@@ -872,6 +881,35 @@ textarea.is-invalid {
 .editor-header .eyebrow.is-waiting-context {
   color: #f3ca7a;
   background: #3b301d;
+}
+
+.task-read-only-notice {
+  border-color: #45545a;
+  border-left-color: #8fa7ae;
+  color: var(--theme-text);
+  background: #1c2427;
+}
+
+.task-read-only-icon {
+  color: #b4d2d8;
+  background: #2d3c40;
+}
+
+.task-read-only-copy strong {
+  color: var(--theme-text);
+}
+
+.task-read-only-copy > span {
+  color: var(--theme-muted);
+}
+
+.task-form.is-task-read-only input:disabled,
+.task-form.is-task-read-only select:disabled,
+.task-form.is-task-read-only textarea:disabled,
+.editor-host[aria-readonly="true"] {
+  border-color: var(--theme-border);
+  color: var(--theme-muted);
+  background: #171a1b;
 }
 
 .task-row.is-transition-reveal,

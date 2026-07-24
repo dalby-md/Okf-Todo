@@ -121,17 +121,21 @@
     showOwner: false,
     showResponsible: false,
     showRelationships: false,
+    allowEditingCompletedTasks: true,
+    allowEditingCancelledTasks: true,
     taskSortModes: taskSortModes,
     taskSortDirections: taskSortDirections,
     colorScheme: document.documentElement.classList.contains('theme-dark')
       ? colorSchemeCodes.dark
       : colorSchemeCodes.light
   }
-  const taskSectionPreferenceByControlId = {
+  const taskDetailPreferenceByControlId = {
     'show-source-fields': 'showSourceFields',
     'show-owner': 'showOwner',
     'show-responsible': 'showResponsible',
-    'show-relationships': 'showRelationships'
+    'show-relationships': 'showRelationships',
+    'allow-editing-completed-tasks': 'allowEditingCompletedTasks',
+    'allow-editing-cancelled-tasks': 'allowEditingCancelledTasks'
   }
   let layoutPreferenceSaveTimer = null
   let editorHeightPreferenceSaveTimer = null
@@ -498,6 +502,9 @@
       setStatus('Save the task before adding images', 'error')
       return null
     }
+    if (!canMutateCurrentTask()) {
+      return null
+    }
 
     const imageBlob = blob || await chooseEditorImageFile()
 
@@ -628,7 +635,10 @@
   }
 
   function markDirty() {
-    if (!isEditorReady || dirtyTrackingSuppressions > 0 || Date.now() < markdownEditTypeSwitchCleanUntil) {
+    if (!isEditorReady
+      || !isTaskEditable(currentTask)
+      || dirtyTrackingSuppressions > 0
+      || Date.now() < markdownEditTypeSwitchCleanUntil) {
       return
     }
 
@@ -1017,6 +1027,15 @@
             </header>
 
           <form id="task-form" class="task-form">
+            <div id="task-read-only-notice" class="task-read-only-notice" role="status" hidden>
+              <span class="task-read-only-icon fluent-icon" aria-hidden="true">&#xE72E;</span>
+              <span class="task-read-only-copy">
+                <strong id="task-read-only-title">Task is read only</strong>
+                <span id="task-read-only-message">Reopen this task to make changes.</span>
+              </span>
+              <button id="task-read-only-reopen-button" class="secondary-button" type="button">Reopen to edit</button>
+            </div>
+
             <label class="field-label" for="task-title">Title</label>
             <input id="task-title" class="title-input" type="text" autocomplete="off" required disabled>
 
@@ -1279,6 +1298,27 @@
                       <span>Display related tasks and linked items.</span>
                     </span>
                     <input id="show-relationships" type="checkbox" role="switch">
+                  </label>
+
+                  <div class="preferences-subsection-heading">
+                    <h4>Finished task editing</h4>
+                    <p>Choose whether completed and cancelled work stays directly editable.</p>
+                  </div>
+
+                  <label class="preference-row preference-toggle-row" for="allow-editing-completed-tasks">
+                    <span class="preference-row-copy">
+                      <strong>Allow editing completed tasks</strong>
+                      <span>When off, completed tasks are read only until reopened.</span>
+                    </span>
+                    <input id="allow-editing-completed-tasks" type="checkbox" role="switch">
+                  </label>
+
+                  <label class="preference-row preference-toggle-row" for="allow-editing-cancelled-tasks">
+                    <span class="preference-row-copy">
+                      <strong>Allow editing cancelled tasks</strong>
+                      <span>When off, cancelled tasks are read only until reopened.</span>
+                    </span>
+                    <input id="allow-editing-cancelled-tasks" type="checkbox" role="switch">
                   </label>
                 </section>
 
@@ -1550,6 +1590,7 @@
     const rows = Array.isArray(items) ? items : []
     if (!rows.length) {
       $('#relationships-list').html('<span class="empty-relationships">No relationships.</span>')
+      setTaskOwnedControlsEnabled(!!currentTask?.id && isTaskEditable(currentTask))
       return
     }
     $('#relationships-list').html(rows.map(function (item) {
@@ -1578,12 +1619,12 @@
     $('#relationship-task').html('<option value="">Select task</option>' + result[1].tasks.map(function (task) {
       return `<option value="${task.id}">${encodeText(task.title)}</option>`
     }).join(''))
-    $('#relationship-type, #relationship-task, #relationship-add-button').prop('disabled', false)
+    setTaskOwnedControlsEnabled(isTaskEditable(currentTask))
   }
 
   async function addRelationship() {
     const targetTaskId = Number($('#relationship-task').val())
-    if (!currentTask || !currentTask.id || !targetTaskId) return
+    if (!currentTask || !currentTask.id || !targetTaskId || !canMutateCurrentTask()) return
     const items = await sendBridgeMessage('task.relation.create', {
       taskId: currentTask.id,
       targetTaskId,
@@ -1596,6 +1637,7 @@
   }
 
   async function deleteRelationship(relationId) {
+    if (!canMutateCurrentTask()) return
     const items = await sendBridgeMessage('task.relation.delete', { taskId: currentTask.id, relationId })
     renderRelationships(items)
     await loadTimeline(currentTask.id)
@@ -1609,6 +1651,7 @@
 
     if (checklistItems.length === 0) {
       $('#checklist-list').html('<span class="empty-checklist">No checklist items.</span>')
+      setTaskOwnedControlsEnabled(!!currentTask?.id && isTaskEditable(currentTask))
       return
     }
 
@@ -1623,6 +1666,7 @@
         </div>
       `
     }).join(''))
+    setTaskOwnedControlsEnabled(!!currentTask?.id && isTaskEditable(currentTask))
   }
 
   async function loadChecklist(taskId) {
@@ -1633,7 +1677,7 @@
     }
 
     renderChecklist(await sendBridgeMessage('task.checklist.list', { taskId }))
-    $('#checklist-new-text, #checklist-add-button').prop('disabled', false)
+    setTaskOwnedControlsEnabled(isTaskEditable(currentTask))
   }
 
   async function refreshAfterChecklistChange(items, statusText, reloadTimeline) {
@@ -1645,7 +1689,7 @@
   }
 
   async function addChecklistItem() {
-    if (!currentTask || !currentTask.id) return
+    if (!currentTask || !currentTask.id || !canMutateCurrentTask()) return
     const text = $('#checklist-new-text').val().toString().trim()
     if (!text) {
       $('#checklist-new-text').trigger('focus')
@@ -1658,6 +1702,7 @@
   }
 
   async function updateChecklistItem(checklistItemId, text) {
+    if (!canMutateCurrentTask()) return
     const normalizedText = text.trim()
     if (!normalizedText) {
       await loadChecklist(currentTask.id)
@@ -1672,6 +1717,7 @@
   }
 
   async function setChecklistItemCompleted(checklistItemId, isCompleted) {
+    if (!canMutateCurrentTask()) return
     const items = await sendBridgeMessage('task.checklist.complete', {
       taskId: currentTask.id,
       checklistItemId,
@@ -1681,6 +1727,7 @@
   }
 
   async function moveChecklistItem(checklistItemId, offset) {
+    if (!canMutateCurrentTask()) return
     const ids = $('#checklist-list .checklist-row').map(function () {
       return Number($(this).attr('data-checklist-item-id'))
     }).get()
@@ -1697,6 +1744,7 @@
   }
 
   async function deleteChecklistItem(checklistItemId) {
+    if (!canMutateCurrentTask()) return
     const items = await sendBridgeMessage('task.checklist.delete', {
       taskId: currentTask.id,
       checklistItemId
@@ -1713,6 +1761,7 @@
   function renderAttachments(items) {
     if (!items || items.length === 0) {
       $('#attachment-list').html('<span class="empty-attachments">No attachments.</span>')
+      setTaskOwnedControlsEnabled(!!currentTask?.id && isTaskEditable(currentTask))
       return
     }
 
@@ -1723,6 +1772,7 @@
         <button class="attachment-delete-button secondary-button danger-button" type="button" data-attachment-id="${item.id}" aria-label="Remove ${encodeAttribute(item.fileName)}">Remove</button>
       </div>`
     }).join(''))
+    setTaskOwnedControlsEnabled(!!currentTask?.id && isTaskEditable(currentTask))
   }
 
   async function loadAttachments(taskId) {
@@ -1743,7 +1793,7 @@
   }
 
   async function addAttachment() {
-    if (!currentTask || !currentTask.id) return
+    if (!currentTask || !currentTask.id || !canMutateCurrentTask()) return
     const file = $('#attachment-file')[0].files[0]
     if (!file) return
     if (file.size > 25 * 1024 * 1024) throw new Error('Attachments cannot exceed 25 MB.')
@@ -1778,6 +1828,7 @@
   }
 
   async function deleteAttachment(attachmentId) {
+    if (!canMutateCurrentTask()) return
     const items = await sendBridgeMessage('task.attachment.delete', {
       taskId: currentTask.id,
       attachmentId
@@ -1853,6 +1904,7 @@
         <span class="preference-row-action">${countLabel}</span>
       </button>`
     }).join(''))
+    setTaskOwnedControlsEnabled(!!currentTask?.id && isTaskEditable(currentTask))
   }
 
   async function loadLookupSettings() {
@@ -2520,6 +2572,8 @@
       .attr('title', 'No task selected')
       .removeClass('is-waiting-context')
     $('#task-editor-title').text('Select or create a task')
+    $('#task-read-only-notice').prop('hidden', true)
+    $('#task-form').removeClass('is-task-read-only').attr('aria-readonly', null)
     $('#task-title').val('')
     $('#task-type').val('')
     $('#task-priority').val('')
@@ -2617,6 +2671,8 @@
       showOwner: layoutPreference.showOwner,
       showResponsible: layoutPreference.showResponsible,
       showRelationships: layoutPreference.showRelationships,
+      allowEditingCompletedTasks: layoutPreference.allowEditingCompletedTasks,
+      allowEditingCancelledTasks: layoutPreference.allowEditingCancelledTasks,
       colorScheme: layoutPreference.colorScheme,
       taskSortModes: taskSortModes,
       taskSortDirections: taskSortDirections
@@ -2645,6 +2701,8 @@
     layoutPreference.showOwner = preference.showOwner === true
     layoutPreference.showResponsible = preference.showResponsible === true
     layoutPreference.showRelationships = preference.showRelationships === true
+    layoutPreference.allowEditingCompletedTasks = preference.allowEditingCompletedTasks !== false
+    layoutPreference.allowEditingCancelledTasks = preference.allowEditingCancelledTasks !== false
     taskSortModes = normalizeTaskSortModes(preference.taskSortModes)
     layoutPreference.taskSortModes = taskSortModes
     taskSortDirections = normalizeTaskSortDirections(preference.taskSortDirections, preference.taskSortModes)
@@ -2740,6 +2798,8 @@
     $('#show-owner').prop('checked', layoutPreference.showOwner)
     $('#show-responsible').prop('checked', layoutPreference.showResponsible)
     $('#show-relationships').prop('checked', layoutPreference.showRelationships)
+    $('#allow-editing-completed-tasks').prop('checked', layoutPreference.allowEditingCompletedTasks)
+    $('#allow-editing-cancelled-tasks').prop('checked', layoutPreference.allowEditingCancelledTasks)
   }
 
   function applyStoredLayoutSplit(shouldSave) {
@@ -2760,17 +2820,21 @@
     })
   }
 
-  function saveTaskSectionVisibility(event) {
-    const preferenceName = taskSectionPreferenceByControlId[event.currentTarget.id]
+  function saveTaskDetailPreference(event) {
+    const preferenceName = taskDetailPreferenceByControlId[event.currentTarget.id]
     if (!preferenceName) {
       return
     }
 
     layoutPreference[preferenceName] = $(event.currentTarget).prop('checked')
     applyTaskSectionVisibility()
+    applyCurrentTaskEditability()
     saveLayoutPreference().then(function (wasSaved) {
       if (wasSaved) {
-        setStatus('Display preference saved', 'saved')
+        const statusMessage = preferenceName.startsWith('show')
+          ? 'Display preference saved'
+          : 'Editing preference saved'
+        setStatus(statusMessage, 'saved')
       }
     })
   }
@@ -3423,7 +3487,7 @@
     window.Editor.markClean()
     isEditorReady = true
     setEditorHeightControlEnabled(true)
-    $('#save-button').prop('disabled', false)
+    applyCurrentTaskEditability()
 
     if (modeCode === 'MARKDOWN' && typeof window.Editor.getMarkdownEditType === 'function') {
       handleMarkdownEditTypeChanged(window.Editor.getMarkdownEditType())
@@ -3468,7 +3532,8 @@
 
   function renderWaitingPanel(task) {
     const waitingFor = task.activeWaitingFor
-    const canEditWaiting = !task.id || task.taskStatusCode === 'ACTIVE'
+    const canEditWaiting = isTaskEditable(task)
+      && (!task.id || task.taskStatusCode === 'ACTIVE')
 
     $('#waiting-text').val(waitingFor ? describeWaiting(waitingFor) : '')
 
@@ -3505,6 +3570,7 @@
 
     if (timelineItems.length === 0) {
       $('#timeline-list').html('<div class="empty-timeline">No timeline.</div>')
+      setTaskOwnedControlsEnabled(!!currentTask?.id && isTaskEditable(currentTask))
       return
     }
 
@@ -3525,6 +3591,7 @@
         </article>
       `
     }).join(''))
+    setTaskOwnedControlsEnabled(!!currentTask?.id && isTaskEditable(currentTask))
   }
 
   async function loadTimeline(taskId) {
@@ -3538,11 +3605,11 @@
       taskId
     })
     renderTimeline(items)
-    setCommentControlsEnabled(true)
+    setTaskOwnedControlsEnabled(isTaskEditable(currentTask))
   }
 
   async function addComment() {
-    if (!currentTask || !currentTask.id) {
+    if (!currentTask || !currentTask.id || !canMutateCurrentTask()) {
       return
     }
 
@@ -3572,7 +3639,7 @@
   }
 
   async function deleteComment(commentId) {
-    if (!currentTask || !currentTask.id || !commentId) {
+    if (!currentTask || !currentTask.id || !commentId || !canMutateCurrentTask()) {
       return
     }
 
@@ -3706,6 +3773,69 @@
     }
   }
 
+  function isTaskEditable(task) {
+    if (!task) {
+      return false
+    }
+
+    if (!task.id) {
+      return true
+    }
+
+    if (task.taskStatusCode === 'COMPLETED') {
+      return layoutPreference.allowEditingCompletedTasks
+    }
+
+    if (task.taskStatusCode === 'CANCELLED') {
+      return layoutPreference.allowEditingCancelledTasks
+    }
+
+    return true
+  }
+
+  function canMutateCurrentTask() {
+    if (isTaskEditable(currentTask)) {
+      return true
+    }
+
+    setStatus('Reopen task to edit', 'ready')
+    return false
+  }
+
+  function applyCurrentTaskEditability() {
+    if (!currentTask) {
+      $('#task-read-only-notice').prop('hidden', true)
+      $('#task-form').removeClass('is-task-read-only').attr('aria-readonly', null)
+      return
+    }
+
+    const isEditable = isTaskEditable(currentTask)
+    const isCompleted = currentTask.taskStatusCode === 'COMPLETED'
+    const stateName = isCompleted ? 'Completed' : 'Cancelled'
+    const isReadOnlyFinalTask = !isEditable
+      && (isCompleted || currentTask.taskStatusCode === 'CANCELLED')
+
+    $('#task-read-only-notice').prop('hidden', !isReadOnlyFinalTask)
+    $('#task-read-only-title').text(`${stateName} task — read only`)
+    $('#task-read-only-message').text(
+      'Reopen this task to make changes. History, relationships, and attachments remain available to review.')
+    $('#task-form')
+      .toggleClass('is-task-read-only', isReadOnlyFinalTask)
+      .attr('aria-readonly', isReadOnlyFinalTask ? 'true' : null)
+    $('#task-form input, #task-form select').prop('disabled', !isEditable)
+    $('#save-button')
+      .prop('disabled', !isEditable)
+      .attr('title', isEditable ? null : 'Reopen this task to edit it')
+    $('#editor-host').attr('aria-readonly', String(!isEditable))
+
+    if (window.Editor && isEditorReady && typeof window.Editor.setReadOnly === 'function') {
+      window.Editor.setReadOnly(!isEditable)
+    }
+
+    setTaskOwnedControlsEnabled(!!currentTask.id && isEditable)
+    renderWaitingPanel(currentTask)
+  }
+
   function renderTaskHeaderAndActions(task) {
     const isSavedTask = !!task.id
     const isFinal = task.taskStatusCode === 'COMPLETED' || task.taskStatusCode === 'CANCELLED'
@@ -3732,14 +3862,23 @@
       .text(canReopen ? 'Reopen' : 'Complete')
       .prop('disabled', !(canCompleteOrCancel || canReopen))
     $('#cancel-button').prop('disabled', !canCompleteOrCancel)
-    setTaskOwnedControlsEnabled(isSavedTask)
-    renderWaitingPanel(task)
+    applyCurrentTaskEditability()
   }
 
   function setTaskOwnedControlsEnabled(isEnabled) {
     $('#attachment-add-button, #attachment-file').prop('disabled', !isEnabled)
     $('#checklist-new-text, #checklist-add-button').prop('disabled', !isEnabled)
     $('#relationship-type, #relationship-task, #relationship-add-button').prop('disabled', !isEnabled)
+    $('#relationships-list .relationship-delete').prop('disabled', !isEnabled)
+    $('#checklist-list .checklist-completed, #checklist-list .checklist-text, #checklist-list .checklist-delete')
+      .prop('disabled', !isEnabled)
+    $('#checklist-list .checklist-move-up, #checklist-list .checklist-move-down').prop('disabled', !isEnabled)
+    if (isEnabled) {
+      $('#checklist-list .checklist-row:first .checklist-move-up').prop('disabled', true)
+      $('#checklist-list .checklist-row:last .checklist-move-down').prop('disabled', true)
+    }
+    $('#attachment-list .attachment-delete-button').prop('disabled', !isEnabled)
+    $('#timeline-list .timeline-delete-comment-button').prop('disabled', !isEnabled)
     setCommentControlsEnabled(isEnabled)
   }
 
@@ -3810,10 +3949,11 @@
       await loadChecklist(task.id)
       await loadAttachments(task.id)
       await loadTimeline(task.id)
+      applyCurrentTaskEditability()
       isDirty = false
       setCleanTaskSnapshot()
       window.Editor.markClean()
-      setStatus(task.id ? 'Loaded' : 'Draft', 'ready')
+      setStatus(task.id && !isTaskEditable(task) ? 'Read only' : task.id ? 'Loaded' : 'Draft', 'ready')
       renderTaskList()
     } finally {
       releaseDirtyTracking()
@@ -3983,6 +4123,9 @@
     if (!currentTask) {
       return false
     }
+    if (!canMutateCurrentTask()) {
+      return false
+    }
 
     const isNewTask = !currentTask.id
     clearValidationState()
@@ -4048,7 +4191,7 @@
       keepSelection: true,
       revealTaskId: task.id
     })
-    setStatus('Loaded', 'ready')
+    setStatus(isTaskEditable(task) ? 'Loaded' : 'Read only', 'ready')
   }
 
   async function confirmCompleteWaitClear() {
@@ -4740,7 +4883,8 @@
     $('#editor-height-resizer').on('keydown', resizeEditorFromKeyboard)
     $('#layout-mode').on('change', switchLayoutMode)
     $('#color-scheme').on('change', switchColorScheme)
-    $('#show-source-fields, #show-owner, #show-responsible, #show-relationships').on('change', saveTaskSectionVisibility)
+    $('#show-source-fields, #show-owner, #show-responsible, #show-relationships, #allow-editing-completed-tasks, #allow-editing-cancelled-tasks')
+      .on('change', saveTaskDetailPreference)
     $('#backup-database-button').on('click', function () {
       backupDatabase().catch(function (error) {
         setStatus(getErrorMessage(error, 'Could not back up database'), 'error')
@@ -4759,6 +4903,11 @@
     $('#cancel-button').on('click', function () {
       runLifecycleAction('task.cancel').catch(function (error) {
         setStatus(getErrorMessage(error, 'Could not cancel task'), 'error')
+      })
+    })
+    $('#task-read-only-reopen-button').on('click', function () {
+      runLifecycleAction('task.reopen').catch(function (error) {
+        setStatus(getErrorMessage(error, 'Could not reopen task'), 'error')
       })
     })
     window.Editor.onChanged(markDirty)

@@ -153,6 +153,13 @@ Cancel task          => Cancelled
 
 Automatic log entries must be created for lifecycle changes.
 
+Completed and cancelled task editing is controlled by two independent user preferences:
+
+- **Allow editing completed tasks**
+- **Allow editing cancelled tasks**
+
+Both preferences default to enabled to preserve existing behavior. When either preference is disabled, tasks in that lifecycle state are read only in the desktop task editor. The user can still inspect all fields and history, download attachments, follow task relationships, and reopen the task. Reopening always returns the task to `ACTIVE` and restores editing.
+
 ## Lifecycle timestamps
 
 Store timestamps directly on the task for fast querying:
@@ -441,7 +448,7 @@ Add a settings/admin area for editable lookup values:
 - Statuses
 - Priorities
 
-The Preferences dialog uses isolated pages for General, Appearance, Task details, Data & values, and Backup. Selecting a navigation item shows only that page's settings. Preference changes apply immediately. Appearance contains the color scheme and task layout controls. Task details contains only visibility controls for optional task-detail fields and sections. Data & values contains lookup and tag management; database backup is available only on the dedicated Backup page.
+The Preferences dialog uses isolated pages for General, Appearance, Task details, Data & values, and Backup. Selecting a navigation item shows only that page's settings. Preference changes apply immediately. Appearance contains the color scheme and task layout controls. Task details contains visibility controls for optional task-detail fields and sections plus independent editability switches for completed and cancelled tasks. Data & values contains lookup and tag management; database backup is available only on the dedicated Backup page.
 
 Task sources, relationship types, body formats, and log types are system-managed in the first version and are not editable in the preferences UI.
 
