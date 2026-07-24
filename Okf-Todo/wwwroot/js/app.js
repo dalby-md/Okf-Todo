@@ -1154,10 +1154,7 @@
                       <option value="DARK">Dark</option>
                     </select>
                   </div>
-                </section>
 
-                <section class="preferences-page" data-preference-panel="task-details" aria-labelledby="preferences-task-details-title" hidden>
-                  <h4 id="preferences-task-details-title">Task details</h4>
                   <div class="preference-row">
                     <div class="preference-row-copy">
                       <strong>Task layout</strong>
@@ -1174,7 +1171,10 @@
                       <option value="STACKED">Stacked</option>
                     </select>
                   </div>
+                </section>
 
+                <section class="preferences-page" data-preference-panel="task-details" aria-labelledby="preferences-task-details-title" hidden>
+                  <h4 id="preferences-task-details-title">Task details</h4>
                   <label class="preference-row preference-toggle-row" for="show-source-fields">
                     <span class="preference-row-copy">
                       <strong>Show source fields</strong>

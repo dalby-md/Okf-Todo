@@ -338,7 +338,10 @@ public sealed class NewTaskDialogUiTests
         await CaptureWorkspaceAsync(page, "triage-command-small.png");
 
         await page.SetViewportSizeAsync(1487, 1058);
-        await OpenTaskDetailsPreferencesAsync(page);
+        await OpenAppearancePreferencesAsync(page);
+        var layoutPreferencePanel = await page.Locator(".preferences-layout-control")
+            .EvaluateAsync<string>("control => control.closest('[data-preference-panel]').dataset.preferencePanel");
+        Assert.Equal("appearance", layoutPreferencePanel);
         await page.Locator(".preferences-layout-control .preference-choice[data-value='STACKED']").ClickAsync();
         await page.WaitForFunctionAsync(
             "() => document.documentElement.classList.contains('layout-mode-stacked') && document.querySelector('#save-status').textContent === 'Layout preference saved'");
@@ -368,6 +371,12 @@ public sealed class NewTaskDialogUiTests
     {
         await page.Locator("#settings-button").ClickAsync();
         await page.Locator("[data-preference-section='task-details']").ClickAsync();
+    }
+
+    private static async Task OpenAppearancePreferencesAsync(IPage page)
+    {
+        await page.Locator("#settings-button").ClickAsync();
+        await page.Locator("[data-preference-section='appearance']").ClickAsync();
     }
 
     private static Task WaitForDisplayPreferenceSavedAsync(IPage page)

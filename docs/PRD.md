@@ -441,7 +441,7 @@ Add a settings/admin area for editable lookup values:
 - Statuses
 - Priorities
 
-The Preferences dialog uses isolated pages for General, Appearance, Task details, Data & values, and Backup. Selecting a navigation item shows only that page's settings. Preference changes apply immediately. Data & values contains lookup and tag management; database backup is available only on the dedicated Backup page.
+The Preferences dialog uses isolated pages for General, Appearance, Task details, Data & values, and Backup. Selecting a navigation item shows only that page's settings. Preference changes apply immediately. Appearance contains the color scheme and task layout controls. Task details contains only visibility controls for optional task-detail fields and sections. Data & values contains lookup and tag management; database backup is available only on the dedicated Backup page.
 
 Task sources, relationship types, body formats, and log types are system-managed in the first version and are not editable in the preferences UI.
 
