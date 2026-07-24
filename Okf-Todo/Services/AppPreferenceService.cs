@@ -18,8 +18,8 @@ public sealed class AppPreferenceService(
     private const bool DefaultShowOwner = false;
     private const bool DefaultShowResponsible = false;
     private const bool DefaultShowRelationships = false;
-    private const bool DefaultAllowEditingCompletedTasks = true;
-    private const bool DefaultAllowEditingCancelledTasks = true;
+    private const bool DefaultAllowEditingCompletedTasks = false;
+    private const bool DefaultAllowEditingCancelledTasks = false;
     private const int DefaultEditorHeight = 360;
     private const int MinimumEditorHeight = 200;
     private const int MaximumEditorHeight = 1800;

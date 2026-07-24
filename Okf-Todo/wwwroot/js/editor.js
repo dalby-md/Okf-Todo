@@ -290,14 +290,12 @@
       body.style.setProperty('background-color', isDark ? '#101112' : '#ffffff')
     }
 
-    function applyReadOnlyState() {
+    function applyReadOnlyDomState() {
       host.classList.toggle('is-read-only', readOnly)
 
       if (!editor) {
         return
       }
-
-      editor.mode.set(readOnly ? 'readonly' : 'design')
 
       const body = typeof editor.getBody === 'function' ? editor.getBody() : null
       if (body) {
@@ -314,6 +312,13 @@
           button.setAttribute('aria-disabled', String(readOnly))
         })
       }
+    }
+
+    function applyReadOnlyState() {
+      if (editor) {
+        editor.mode.set(readOnly ? 'readonly' : 'design')
+      }
+      applyReadOnlyDomState()
     }
 
     return {
@@ -415,7 +420,7 @@
       setReadOnly: function (value) {
         readOnly = value === true
         applyReadOnlyState()
-        window.requestAnimationFrame(applyReadOnlyState)
+        window.requestAnimationFrame(applyReadOnlyDomState)
       },
 
       setColorScheme: function (colorScheme) {

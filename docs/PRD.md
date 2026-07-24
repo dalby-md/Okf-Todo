@@ -158,7 +158,7 @@ Completed and cancelled task editing is controlled by two independent user prefe
 - **Allow editing completed tasks**
 - **Allow editing cancelled tasks**
 
-Both preferences default to enabled to preserve existing behavior. When either preference is disabled, tasks in that lifecycle state are read only in the desktop task editor. The user can still inspect all fields and history, download attachments, follow task relationships, and reopen the task. Reopening always returns the task to `ACTIVE` and restores editing.
+Both preferences default to disabled, so completed and cancelled tasks are read only unless the user explicitly allows editing for that lifecycle state. The user can still inspect all fields and history, download attachments, follow task relationships, and reopen the task. Reopening always returns the task to `ACTIVE` and restores editing.
 
 ## Lifecycle timestamps
 

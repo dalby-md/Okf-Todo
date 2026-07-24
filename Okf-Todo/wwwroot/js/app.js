@@ -121,8 +121,8 @@
     showOwner: false,
     showResponsible: false,
     showRelationships: false,
-    allowEditingCompletedTasks: true,
-    allowEditingCancelledTasks: true,
+    allowEditingCompletedTasks: false,
+    allowEditingCancelledTasks: false,
     taskSortModes: taskSortModes,
     taskSortDirections: taskSortDirections,
     colorScheme: document.documentElement.classList.contains('theme-dark')
@@ -2701,8 +2701,8 @@
     layoutPreference.showOwner = preference.showOwner === true
     layoutPreference.showResponsible = preference.showResponsible === true
     layoutPreference.showRelationships = preference.showRelationships === true
-    layoutPreference.allowEditingCompletedTasks = preference.allowEditingCompletedTasks !== false
-    layoutPreference.allowEditingCancelledTasks = preference.allowEditingCancelledTasks !== false
+    layoutPreference.allowEditingCompletedTasks = preference.allowEditingCompletedTasks === true
+    layoutPreference.allowEditingCancelledTasks = preference.allowEditingCancelledTasks === true
     taskSortModes = normalizeTaskSortModes(preference.taskSortModes)
     layoutPreference.taskSortModes = taskSortModes
     taskSortDirections = normalizeTaskSortDirections(preference.taskSortDirections, preference.taskSortModes)

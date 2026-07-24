@@ -364,30 +364,36 @@ public sealed class NewTaskDialogUiTests
         await page.Locator("#complete-button").ClickAsync();
         await page.WaitForFunctionAsync(
             "() => document.querySelector('#complete-button')?.textContent === 'Reopen'");
-
-        await OpenTaskDetailsPreferencesAsync(page);
-        Assert.True(await page.Locator("#allow-editing-completed-tasks").IsCheckedAsync());
-        Assert.True(await page.Locator("#allow-editing-cancelled-tasks").IsCheckedAsync());
-        await page.Locator("#allow-editing-completed-tasks").SetCheckedAsync(false);
-        await page.Locator("#settings-close-button").ClickAsync();
-
         await AssertCurrentTaskReadOnlyAsync(page, "Completed task — read only");
-
-        await page.Locator("#task-read-only-reopen-button").ClickAsync();
-        await page.WaitForFunctionAsync(
-            "() => document.querySelector('#task-read-only-notice')?.hidden === true"
-                + " && document.querySelector('#task-title')?.disabled === false"
-                + " && document.querySelector('#complete-button')?.textContent === 'Complete'");
-
-        await page.Locator("#cancel-button").ClickAsync();
-        await page.WaitForFunctionAsync(
-            "() => document.querySelector('#complete-button')?.textContent === 'Reopen'"
-                + " && document.querySelector('#task-read-only-notice')?.hidden === true"
-                + " && document.querySelector('#task-title')?.disabled === false");
 
         await OpenTaskDetailsPreferencesAsync(page);
         Assert.False(await page.Locator("#allow-editing-completed-tasks").IsCheckedAsync());
-        Assert.True(await page.Locator("#allow-editing-cancelled-tasks").IsCheckedAsync());
+        Assert.False(await page.Locator("#allow-editing-cancelled-tasks").IsCheckedAsync());
+        await page.Locator("#allow-editing-completed-tasks").SetCheckedAsync(true);
+        await page.Locator("#settings-close-button").ClickAsync();
+        await AssertCurrentTaskEditableAsync(page);
+
+        await OpenTaskDetailsPreferencesAsync(page);
+        await page.Locator("#allow-editing-completed-tasks").SetCheckedAsync(false);
+        await page.Locator("#settings-close-button").ClickAsync();
+        await AssertCurrentTaskReadOnlyAsync(page, "Completed task — read only");
+
+        await page.Locator("#task-read-only-reopen-button").ClickAsync();
+        await AssertCurrentTaskEditableAsync(page);
+        await page.WaitForFunctionAsync(
+            "() => document.querySelector('#complete-button')?.textContent === 'Complete'");
+
+        await page.Locator("#cancel-button").ClickAsync();
+        await AssertCurrentTaskReadOnlyAsync(page, "Cancelled task — read only");
+
+        await OpenTaskDetailsPreferencesAsync(page);
+        Assert.False(await page.Locator("#allow-editing-completed-tasks").IsCheckedAsync());
+        Assert.False(await page.Locator("#allow-editing-cancelled-tasks").IsCheckedAsync());
+        await page.Locator("#allow-editing-cancelled-tasks").SetCheckedAsync(true);
+        await page.Locator("#settings-close-button").ClickAsync();
+        await AssertCurrentTaskEditableAsync(page);
+
+        await OpenTaskDetailsPreferencesAsync(page);
         await page.Locator("#allow-editing-cancelled-tasks").SetCheckedAsync(false);
         await page.Locator("#settings-close-button").ClickAsync();
 
@@ -658,6 +664,24 @@ public sealed class NewTaskDialogUiTests
         var editorBody = page.FrameLocator("#editor-host iframe").Locator("body");
         await editorBody.WaitForAsync();
         Assert.Equal("false", await editorBody.GetAttributeAsync("contenteditable"));
+    }
+
+    private static Task AssertCurrentTaskEditableAsync(IPage page)
+    {
+        return page.WaitForFunctionAsync(
+            """
+            () => document.querySelector('#task-read-only-notice')?.hidden === true
+              && document.querySelector('#task-title')?.disabled === false
+              && document.querySelector('#task-type')?.disabled === false
+              && document.querySelector('#task-priority')?.disabled === false
+              && document.querySelector('#task-deadline')?.disabled === false
+              && document.querySelector('#task-tags')?.disabled === false
+              && document.querySelector('#save-button')?.disabled === false
+              && document.querySelector('#checklist-new-text')?.disabled === false
+              && document.querySelector('#attachment-add-button')?.disabled === false
+              && document.querySelector('#comment-text')?.disabled === false
+              && document.querySelector('#editor-host')?.getAttribute('aria-readonly') === 'false'
+            """);
     }
 
     private static Task AssertMarkdownEditorReadOnlyAsync(IPage page)

@@ -624,8 +624,8 @@ public sealed class BridgeTaskMessageTests
         Assert.False(initial.GetProperty("showOwner").GetBoolean());
         Assert.False(initial.GetProperty("showResponsible").GetBoolean());
         Assert.False(initial.GetProperty("showRelationships").GetBoolean());
-        Assert.True(initial.GetProperty("allowEditingCompletedTasks").GetBoolean());
-        Assert.True(initial.GetProperty("allowEditingCancelledTasks").GetBoolean());
+        Assert.False(initial.GetProperty("allowEditingCompletedTasks").GetBoolean());
+        Assert.False(initial.GetProperty("allowEditingCancelledTasks").GetBoolean());
         Assert.Equal("LIGHT", initial.GetProperty("colorScheme").GetString());
         Assert.Equal("ATTENTION", initial.GetProperty("taskSortModes").GetProperty("active").GetString());
         Assert.Equal("ATTENTION", initial.GetProperty("taskSortModes").GetProperty("waiting").GetString());
@@ -646,8 +646,8 @@ public sealed class BridgeTaskMessageTests
             showOwner = true,
             showResponsible = false,
             showRelationships = true,
-            allowEditingCompletedTasks = false,
-            allowEditingCancelledTasks = true,
+            allowEditingCompletedTasks = true,
+            allowEditingCancelledTasks = false,
             colorScheme = "DARK",
             taskSortModes = new Dictionary<string, string>
             {
@@ -667,8 +667,8 @@ public sealed class BridgeTaskMessageTests
         Assert.True(saved.GetProperty("showOwner").GetBoolean());
         Assert.False(saved.GetProperty("showResponsible").GetBoolean());
         Assert.True(saved.GetProperty("showRelationships").GetBoolean());
-        Assert.False(saved.GetProperty("allowEditingCompletedTasks").GetBoolean());
-        Assert.True(saved.GetProperty("allowEditingCancelledTasks").GetBoolean());
+        Assert.True(saved.GetProperty("allowEditingCompletedTasks").GetBoolean());
+        Assert.False(saved.GetProperty("allowEditingCancelledTasks").GetBoolean());
         Assert.Equal("DARK", saved.GetProperty("colorScheme").GetString());
         Assert.Equal("RECENTLY_UPDATED", saved.GetProperty("taskSortModes").GetProperty("active").GetString());
         Assert.Equal("WAITING_LONGEST", saved.GetProperty("taskSortModes").GetProperty("waiting").GetString());
@@ -684,8 +684,8 @@ public sealed class BridgeTaskMessageTests
         Assert.True(loaded.GetProperty("showOwner").GetBoolean());
         Assert.False(loaded.GetProperty("showResponsible").GetBoolean());
         Assert.True(loaded.GetProperty("showRelationships").GetBoolean());
-        Assert.False(loaded.GetProperty("allowEditingCompletedTasks").GetBoolean());
-        Assert.True(loaded.GetProperty("allowEditingCancelledTasks").GetBoolean());
+        Assert.True(loaded.GetProperty("allowEditingCompletedTasks").GetBoolean());
+        Assert.False(loaded.GetProperty("allowEditingCancelledTasks").GetBoolean());
         Assert.Equal("DARK", loaded.GetProperty("colorScheme").GetString());
         Assert.Equal("RECENTLY_UPDATED", loaded.GetProperty("taskSortModes").GetProperty("active").GetString());
         Assert.Equal("WAITING_LONGEST", loaded.GetProperty("taskSortModes").GetProperty("waiting").GetString());

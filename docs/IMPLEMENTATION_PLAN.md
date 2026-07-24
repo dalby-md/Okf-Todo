@@ -162,7 +162,7 @@ Acceptance criteria:
 - User can edit title/body/type/priority/deadline/source.
 - User can edit optional owner and responsible values when their independently persisted visibility switches are enabled.
 - Overview text search includes owner and responsible values even when their detail fields are hidden.
-- Completed and cancelled task editability is controlled by independent persisted preferences that default to enabled.
+- Completed and cancelled task editability is controlled by independent persisted preferences that default to disabled.
 - A disabled final-state edit preference makes every desktop mutation control read only while preserving review, download, relationship navigation, and Reopen.
 - Changes update `UpdatedAt`.
 - Meaningful changes create log entries where appropriate.
