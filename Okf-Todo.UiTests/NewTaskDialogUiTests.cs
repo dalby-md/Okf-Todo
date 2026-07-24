@@ -260,6 +260,110 @@ public sealed class NewTaskDialogUiTests
         Assert.True(await page.Locator(".responsible-field").IsHiddenAsync());
     }
 
+    [Fact]
+    public async Task TriageCommandWorkspace_AdaptsAcrossLargeCompactAndSmallWindows()
+    {
+        await using var fixture = await UiAppFixture.CreateAsync(seedSampleTasks: true);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+        {
+            Channel = "msedge",
+            Headless = true
+        });
+        await using var context = await browser.NewContextAsync(new BrowserNewContextOptions
+        {
+            ViewportSize = new ViewportSize { Width = 1487, Height = 1058 }
+        });
+        await context.AddInitScriptAsync(BridgeAdapterScript);
+
+        var page = await context.NewPageAsync();
+        await page.GotoAsync($"{fixture.BaseUrl}/index.html?v=triage-command-responsive-contract", new PageGotoOptions
+        {
+            WaitUntil = WaitUntilState.DOMContentLoaded
+        });
+        await page.WaitForFunctionAsync("() => document.querySelectorAll('#task-type option').length > 0");
+        await page.Locator("#task-list .task-row").First.ClickAsync();
+        await page.Locator(".tox-tinymce").WaitForAsync();
+
+        var largeRail = await page.Locator(".task-view-rail").BoundingBoxAsync();
+        var largeList = await page.Locator(".task-sidebar").BoundingBoxAsync();
+        var largeEditor = await page.Locator(".task-editor-panel").BoundingBoxAsync();
+        Assert.NotNull(largeRail);
+        Assert.NotNull(largeList);
+        Assert.NotNull(largeEditor);
+        Assert.True(largeRail.Width >= 160);
+        Assert.True(largeList.Width >= 360);
+        Assert.True(largeRail.X < largeList.X);
+        Assert.True(largeList.X < largeEditor.X);
+        Assert.False(await page.Locator(".task-view-rail-label").First.IsHiddenAsync());
+        Assert.True(await page.Locator(".task-view-compact").IsHiddenAsync());
+        var semanticIconColors = await page.Locator(".task-view-rail-button .fluent-icon")
+            .EvaluateAllAsync<string[]>("icons => icons.map(icon => getComputedStyle(icon).color)");
+        Assert.True(
+            semanticIconColors.Distinct(StringComparer.Ordinal).Count() >= 5,
+            "Expected the task views to retain distinct semantic icon colors.");
+        await AssertNoHorizontalPageOverflowAsync(page);
+        await page.Locator(".task-view-rail-button[data-task-view='urgent']").ClickAsync();
+        await page.WaitForFunctionAsync(
+            "() => document.querySelector('#task-list-title').textContent === 'Urgent' && document.querySelector('#task-view').value === 'urgent'");
+        await page.Locator(".task-view-rail-button[data-task-view='active']").ClickAsync();
+        await page.WaitForFunctionAsync(
+            "() => document.querySelector('#task-list-title').textContent === 'Active' && document.querySelector('#task-view').value === 'active'");
+        await CaptureWorkspaceAsync(page, "triage-command-large.png");
+
+        await page.SetViewportSizeAsync(1100, 900);
+        var compactRail = await page.Locator(".task-view-rail").BoundingBoxAsync();
+        Assert.NotNull(compactRail);
+        Assert.InRange(compactRail.Width, 60, 76);
+        Assert.True(await page.Locator(".task-view-rail-label").First.IsHiddenAsync());
+        Assert.True(await page.Locator(".task-view-compact").IsHiddenAsync());
+        await AssertNoHorizontalPageOverflowAsync(page);
+        await CaptureWorkspaceAsync(page, "triage-command-compact.png");
+
+        await page.SetViewportSizeAsync(820, 900);
+        Assert.True(await page.Locator(".task-view-rail").IsHiddenAsync());
+        Assert.False(await page.Locator(".task-view-compact").IsHiddenAsync());
+        var stackedList = await page.Locator(".task-sidebar").BoundingBoxAsync();
+        var stackedResizer = await page.Locator("#layout-resizer").BoundingBoxAsync();
+        var stackedEditor = await page.Locator(".task-editor-panel").BoundingBoxAsync();
+        Assert.NotNull(stackedList);
+        Assert.NotNull(stackedResizer);
+        Assert.NotNull(stackedEditor);
+        Assert.True(stackedList.Y < stackedResizer.Y);
+        Assert.True(stackedResizer.Y < stackedEditor.Y);
+        var firstSmallTask = await page.Locator("#task-list .task-row").First.BoundingBoxAsync();
+        Assert.NotNull(firstSmallTask);
+        Assert.True(firstSmallTask.Y < stackedList.Y + stackedList.Height);
+        await AssertNoHorizontalPageOverflowAsync(page);
+        await CaptureWorkspaceAsync(page, "triage-command-small.png");
+
+        await page.SetViewportSizeAsync(1487, 1058);
+        await OpenTaskDetailsPreferencesAsync(page);
+        await page.Locator(".preferences-layout-control .preference-choice[data-value='STACKED']").ClickAsync();
+        await page.WaitForFunctionAsync(
+            "() => document.documentElement.classList.contains('layout-mode-stacked') && document.querySelector('#save-status').textContent === 'Layout preference saved'");
+        await page.Locator("#settings-close-button").ClickAsync();
+
+        Assert.True(await page.Locator(".task-view-rail").IsHiddenAsync());
+        Assert.False(await page.Locator(".task-view-compact").IsHiddenAsync());
+        var explicitStackedList = await page.Locator(".task-sidebar").BoundingBoxAsync();
+        var explicitStackedResizer = await page.Locator("#layout-resizer").BoundingBoxAsync();
+        var explicitStackedEditor = await page.Locator(".task-editor-panel").BoundingBoxAsync();
+        var explicitStackedBody = await page.Locator(".editor-host").BoundingBoxAsync();
+        Assert.NotNull(explicitStackedList);
+        Assert.NotNull(explicitStackedResizer);
+        Assert.NotNull(explicitStackedEditor);
+        Assert.NotNull(explicitStackedBody);
+        Assert.True(explicitStackedList.Y < explicitStackedResizer.Y);
+        Assert.True(explicitStackedResizer.Y < explicitStackedEditor.Y);
+        Assert.True(
+            explicitStackedBody.Y < explicitStackedEditor.Y + explicitStackedEditor.Height,
+            "Expected the body editor to remain visible without first scrolling the stacked detail panel.");
+        Assert.InRange(explicitStackedList.Height, 220, 455);
+        await AssertNoHorizontalPageOverflowAsync(page);
+        await CaptureWorkspaceAsync(page, "triage-command-stacked.png");
+    }
+
     private static async Task OpenTaskDetailsPreferencesAsync(IPage page)
     {
         await page.Locator("#settings-button").ClickAsync();
@@ -275,6 +379,28 @@ public sealed class NewTaskDialogUiTests
     private static async Task AssertEnabledAsync(IPage page, string selector)
     {
         Assert.False(await page.Locator(selector).IsDisabledAsync(), $"Expected {selector} to be enabled.");
+    }
+
+    private static async Task AssertNoHorizontalPageOverflowAsync(IPage page)
+    {
+        Assert.True(await page.EvaluateAsync<bool>(
+            "() => document.documentElement.scrollWidth <= document.documentElement.clientWidth"));
+    }
+
+    private static async Task CaptureWorkspaceAsync(IPage page, string fileName)
+    {
+        var captureDirectory = Environment.GetEnvironmentVariable("OKF_TODO_UI_CAPTURE_DIR");
+        if (string.IsNullOrWhiteSpace(captureDirectory))
+        {
+            return;
+        }
+
+        Directory.CreateDirectory(captureDirectory);
+        await page.ScreenshotAsync(new PageScreenshotOptions
+        {
+            Path = Path.Combine(captureDirectory, fileName),
+            FullPage = true
+        });
     }
 
     private static Task<bool> IsEditorFocusedAsync(IPage page)
@@ -333,7 +459,7 @@ public sealed class NewTaskDialogUiTests
                 responseDocument.RootElement.ToString());
         }
 
-        public static async Task<UiAppFixture> CreateAsync()
+        public static async Task<UiAppFixture> CreateAsync(bool seedSampleTasks = false)
         {
             var workspaceRoot = FindWorkspaceRoot();
             var testDirectory = Path.Combine(Path.GetTempPath(), "Okf-Todo.UiTests", Guid.NewGuid().ToString("N"));
@@ -364,6 +490,7 @@ public sealed class NewTaskDialogUiTests
             builder.Services.AddScoped<IssueService>();
             builder.Services.AddScoped<ImageService>();
             builder.Services.AddScoped<DatabaseBackupService>();
+            builder.Services.AddScoped<SampleDataSeeder>();
             builder.Services.AddSingleton<ApplicationCommandService>();
             builder.Services.AddSingleton<BridgeMessageHandler>();
 
@@ -390,6 +517,10 @@ public sealed class NewTaskDialogUiTests
                 var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 await dbContext.Database.MigrateAsync();
                 await scope.ServiceProvider.GetRequiredService<LookupSeedService>().SeedAsync();
+                if (seedSampleTasks)
+                {
+                    await scope.ServiceProvider.GetRequiredService<SampleDataSeeder>().SeedAsync();
+                }
             }
 
             await application.StartAsync();

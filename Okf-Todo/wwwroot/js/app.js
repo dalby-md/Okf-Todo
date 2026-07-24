@@ -79,7 +79,7 @@
   const minimumEditorHeight = 200
   const maximumEditorHeight = 1800
   const editorHeightStep = 40
-  const defaultTaskListWidth = 320
+  const defaultTaskListWidth = 410
   const layoutModeCodes = {
     auto: 'AUTO',
     sideBySide: 'SIDE_BY_SIDE',
@@ -717,6 +717,26 @@
     }).join('')
   }
 
+  function renderTaskViewRail() {
+    const viewIcons = {
+      active: '&#xE80F;',
+      urgent: '&#xE814;',
+      waiting: '&#xE823;',
+      overdue: '&#xE787;',
+      completed: '&#xE73E;',
+      all: '&#xEA37;'
+    }
+
+    return Object.keys(viewLabels).map(function (view) {
+      return `
+        <button class="task-view-rail-button" type="button" data-task-view="${view}" aria-label="${viewLabels[view]}" title="${viewLabels[view]}">
+          <span class="fluent-icon" aria-hidden="true">${viewIcons[view]}</span>
+          <span class="task-view-rail-label">${viewLabels[view]}</span>
+        </button>
+      `
+    }).join('')
+  }
+
   function getTaskSortOption(code) {
     return taskSortOptions.find(function (option) {
       return option.code === code
@@ -805,18 +825,55 @@
   function renderShell() {
     $('#app').html(`
       <main class="app-shell">
-        <aside class="task-sidebar" aria-labelledby="app-title">
-          <header class="sidebar-header">
+        <header class="app-topbar">
+          <div class="app-brand">
+            <span class="app-brand-mark fluent-icon" aria-hidden="true">&#xE8A5;</span>
             <div>
-              <p class="eyebrow">Local task system</p>
               <h1 id="app-title">OKF-Todo</h1>
+              <span>Local task system</span>
             </div>
-            <button id="new-task-button" type="button">New task</button>
-          </header>
+          </div>
+          <div class="app-actions" aria-label="Task actions">
+            <span id="save-status" class="save-status is-ready" role="status">Ready</span>
+            <button id="help-button" class="icon-button setup-button" type="button" aria-label="Help" title="Help">
+              <span class="fluent-icon" aria-hidden="true">&#xE897;</span>
+              <span>Help</span>
+            </button>
+            <button id="settings-button" class="icon-button setup-button" type="button" aria-label="Setup" title="Setup">
+              <span class="fluent-icon" aria-hidden="true">&#xE713;</span>
+              <span>Setup</span>
+            </button>
+            <button id="new-task-button" type="button">
+              <span class="fluent-icon" aria-hidden="true">&#xE710;</span>
+              <span>New task</span>
+            </button>
+            <button id="complete-button" class="secondary-button" type="button" disabled>Complete</button>
+            <button id="cancel-button" class="secondary-button danger-button" type="button" disabled>Cancel</button>
+            <button id="save-button" type="button" disabled>Save</button>
+          </div>
+        </header>
+
+        <div class="workspace-shell">
+          <nav class="task-view-rail" aria-label="Task views">
+            <div class="task-view-rail-heading">
+              <span class="fluent-icon" aria-hidden="true">&#xE8FD;</span>
+              <span>Views</span>
+            </div>
+            ${renderTaskViewRail()}
+          </nav>
+
+          <aside class="task-sidebar" aria-labelledby="task-list-title">
+            <header class="sidebar-header">
+              <div>
+                <p class="eyebrow">Task queue</p>
+                <h2 id="task-list-title">Active</h2>
+              </div>
+              <span id="task-list-header-count" class="task-list-header-count">0</span>
+            </header>
 
           <div class="task-browse-controls" aria-label="Browse tasks">
             <div class="task-browse-primary">
-              <label class="task-view-field" for="task-view">
+              <label class="task-view-field task-view-compact" for="task-view">
                 <span class="sr-only">Task view</span>
                 <select id="task-view" aria-label="Task view">
                   ${renderTaskViewOptions()}
@@ -875,38 +932,15 @@
           </div>
 
           <div id="task-list" class="task-list" aria-label="Tasks" tabindex="0"></div>
-        </aside>
+          </aside>
 
-        <div id="layout-resizer" class="layout-resizer" role="separator" aria-label="Resize task list" aria-orientation="vertical" tabindex="0"></div>
+          <div id="layout-resizer" class="layout-resizer" role="separator" aria-label="Resize task list" aria-orientation="vertical" tabindex="0"></div>
 
-        <section class="task-editor-panel" aria-labelledby="task-editor-title">
-          <header class="editor-header">
-            <div>
+          <section class="task-editor-panel" aria-labelledby="task-editor-title">
+            <header class="editor-header">
               <p id="task-status-label" class="eyebrow">No task selected</p>
               <h2 id="task-editor-title">Select or create a task</h2>
-            </div>
-            <div class="app-actions" aria-label="Task actions">
-              <span id="save-status" class="save-status is-ready" role="status">Ready</span>
-              <button id="help-button" class="icon-button setup-button" type="button" aria-label="Help" title="Help">
-                <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                  <path d="M9.4 9a2.8 2.8 0 1 1 4.42 2.28c-1.02.72-1.82 1.27-1.82 2.72"></path>
-                  <path d="M12 18h.01"></path>
-                  <circle cx="12" cy="12" r="9"></circle>
-                </svg>
-                <span>Help</span>
-              </button>
-              <button id="settings-button" class="icon-button setup-button" type="button" aria-label="Setup" title="Setup">
-                <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                  <path d="M12 8.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"></path>
-                  <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.04.04-2.12 2.12-.04-.04a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.1 1.66V20.5h-3v-.1a1.8 1.8 0 0 0-1.1-1.66 1.8 1.8 0 0 0-1.98.36l-.04.04-2.12-2.12.04-.04A1.8 1.8 0 0 0 4.6 15a1.8 1.8 0 0 0-1.66-1.1H2.8v-3h.14A1.8 1.8 0 0 0 4.6 9.8a1.8 1.8 0 0 0-.36-1.98l-.04-.04 2.12-2.12.04.04a1.8 1.8 0 0 0 1.98.36 1.8 1.8 0 0 0 1.1-1.66V4.3h3v.1a1.8 1.8 0 0 0 1.1 1.66 1.8 1.8 0 0 0 1.98-.36l.04-.04 2.12 2.12-.04.04a1.8 1.8 0 0 0-.36 1.98 1.8 1.8 0 0 0 1.66 1.1h.14v3h-.14A1.8 1.8 0 0 0 19.4 15Z"></path>
-                </svg>
-                <span>Setup</span>
-              </button>
-              <button id="complete-button" class="secondary-button" type="button" disabled>Complete</button>
-              <button id="cancel-button" class="secondary-button danger-button" type="button" disabled>Cancel</button>
-              <button id="save-button" type="button" disabled>Save</button>
-            </div>
-          </header>
+            </header>
 
           <form id="task-form" class="task-form">
             <label class="field-label" for="task-title">Title</label>
@@ -1032,8 +1066,9 @@
                 <button id="comment-add-button" class="secondary-button" type="button" disabled>Add</button>
               </div>
             </section>
-          </form>
-        </section>
+            </form>
+          </section>
+        </div>
 
         <div id="help-overlay" class="modal-overlay" hidden>
           <section class="settings-dialog help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title">
@@ -2406,7 +2441,10 @@
       window.Editor.destroy()
     }
 
-    $('#task-status-label').text('No task selected')
+    $('#task-status-label')
+      .text('No task selected')
+      .attr('title', 'No task selected')
+      .removeClass('is-waiting-context')
     $('#task-editor-title').text('Select or create a task')
     $('#task-title').val('')
     $('#task-type').val('')
@@ -2527,7 +2565,7 @@
   async function loadLayoutPreference() {
     const preference = await sendBridgeMessage('layout.preference.get', {})
     layoutPreference.taskListWidth = preference.taskListWidth || defaultTaskListWidth
-    layoutPreference.taskListHeight = preference.taskListHeight || Math.round(window.innerHeight * 0.42)
+    layoutPreference.taskListHeight = preference.taskListHeight || Math.round(window.innerHeight * 0.34)
     layoutPreference.layoutMode = normalizeLayoutMode(preference.layoutMode)
     layoutPreference.showSourceFields = preference.showSourceFields === true
     layoutPreference.showOwner = preference.showOwner === true
@@ -2550,18 +2588,27 @@
   }
 
   function getLayoutBounds() {
-    const shell = $('.app-shell')[0]
-    const rect = shell.getBoundingClientRect()
+    const workspace = $('.workspace-shell')[0]
+    const rect = workspace.getBoundingClientRect()
+    const topbar = $('.app-topbar')[0]
+    const topbarHeight = topbar ? topbar.getBoundingClientRect().height : 64
 
     return {
-      width: rect.width || window.innerWidth,
-      height: rect.height || window.innerHeight
+      width: rect.width > 320 ? rect.width : window.innerWidth,
+      height: rect.height > 240
+        ? rect.height
+        : Math.max(320, window.innerHeight - topbarHeight)
     }
   }
 
   function setTaskListWidth(width, shouldSave) {
     const bounds = getLayoutBounds()
-    const clampedWidth = clampSplitValue(width, 220, Math.max(260, bounds.width - 460))
+    const rail = $('.task-view-rail')[0]
+    const railWidth = rail && getComputedStyle(rail).display !== 'none'
+      ? rail.getBoundingClientRect().width
+      : 0
+    const maximumWidth = Math.max(300, bounds.width - railWidth - 520)
+    const clampedWidth = clampSplitValue(width, 300, maximumWidth)
     document.documentElement.style.setProperty('--task-list-width', `${clampedWidth}px`)
     layoutPreference.taskListWidth = Math.round(clampedWidth)
 
@@ -2572,7 +2619,10 @@
 
   function setTaskListHeight(height, shouldSave) {
     const bounds = getLayoutBounds()
-    const clampedHeight = clampSplitValue(height, 170, Math.max(220, bounds.height - 380))
+    const maximumHeight = Math.max(
+      230,
+      Math.min(Math.round(bounds.height * 0.44), bounds.height - 420))
+    const clampedHeight = clampSplitValue(height, 220, maximumHeight)
     document.documentElement.style.setProperty('--task-list-height', `${clampedHeight}px`)
     layoutPreference.taskListHeight = Math.round(clampedHeight)
 
@@ -2622,7 +2672,7 @@
     applyLayoutMode()
     applyTaskSectionVisibility()
     setTaskListWidth(getLayoutPreferenceValue('taskListWidth', defaultTaskListWidth), shouldSave)
-    setTaskListHeight(getLayoutPreferenceValue('taskListHeight', Math.round(window.innerHeight * 0.42)), shouldSave)
+    setTaskListHeight(getLayoutPreferenceValue('taskListHeight', Math.round(window.innerHeight * 0.34)), shouldSave)
     $('#layout-resizer').attr('aria-orientation', isWideLayout() ? 'vertical' : 'horizontal')
   }
 
@@ -2677,15 +2727,15 @@
 
     $resizer.on('pointerdown', function (event) {
       event.preventDefault()
-      const shell = $('.app-shell')[0]
-      const shellRect = shell.getBoundingClientRect()
+      const sidebar = $('.task-sidebar')[0]
+      const sidebarRect = sidebar.getBoundingClientRect()
       $resizer.addClass('is-dragging')
 
       $(document).on('pointermove.layoutResizer', function (moveEvent) {
         if (isWideLayout()) {
-          setTaskListWidth(moveEvent.clientX - shellRect.left, true)
+          setTaskListWidth(moveEvent.clientX - sidebarRect.left, true)
         } else {
-          setTaskListHeight(moveEvent.clientY - shellRect.top, true)
+          setTaskListHeight(moveEvent.clientY - sidebarRect.top, true)
         }
       })
 
@@ -2699,7 +2749,7 @@
     $resizer.on('keydown', function (event) {
       const step = event.shiftKey ? 40 : 20
       const currentWidth = getLayoutPreferenceValue('taskListWidth', defaultTaskListWidth)
-      const currentHeight = getLayoutPreferenceValue('taskListHeight', Math.round(window.innerHeight * 0.42))
+      const currentHeight = getLayoutPreferenceValue('taskListHeight', Math.round(window.innerHeight * 0.34))
 
       if (isWideLayout() && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
         event.preventDefault()
@@ -2977,6 +3027,14 @@
       : `${visibleTasks.length} ${visibleTasks.length === 1 ? 'task' : 'tasks'}`
     renderTaskFilterSummary(countLabel)
     $('#task-view').val(currentView)
+    $('#task-list-title').text(viewLabels[currentView])
+    $('#task-list-header-count').text(visibleTasks.length)
+    $('.task-view-rail-button')
+      .removeClass('is-active')
+      .attr('aria-current', null)
+      .filter(`[data-task-view="${currentView}"]`)
+      .addClass('is-active')
+      .attr('aria-current', 'page')
 
     if (visibleTasks.length === 0) {
       const title = hasFilters ? 'No matching tasks' : `No ${viewLabels[currentView].toLowerCase()} tasks`
@@ -3119,6 +3177,23 @@
       activeWaitingForLabel: null,
       tags: []
     }
+  }
+
+  function switchTaskView(targetView) {
+    if (!Object.hasOwn(viewLabels, targetView) || targetView === currentView) {
+      return
+    }
+
+    allowContextSwitch().then(function (isAllowed) {
+      if (!isAllowed) {
+        $('#task-view').val(currentView)
+        return
+      }
+
+      currentView = targetView
+      syncTaskSortControl()
+      loadTasks({ selectFirst: true }).catch(showFatalError)
+    })
   }
 
   function getSelectedLookupItem(items) {
@@ -3454,9 +3529,16 @@
     const isFinal = task.taskStatusCode === 'COMPLETED' || task.taskStatusCode === 'CANCELLED'
     const canReopen = isSavedTask && isFinal
     const canCompleteOrCancel = isSavedTask && !isFinal
+    const waitingLabel = task.activeWaitingFor ? describeWaiting(task.activeWaitingFor) : ''
+    const contextLabel = waitingLabel
+      ? `Waiting · ${waitingLabel}`
+      : task.taskStatusName || 'Draft'
 
     $('#task-editor-title').text(task.id ? 'Task details' : 'New task')
-    $('#task-status-label').text(task.taskStatusName || 'Draft')
+    $('#task-status-label')
+      .text(contextLabel)
+      .attr('title', contextLabel)
+      .toggleClass('is-waiting-context', waitingLabel.length > 0)
     $('#complete-button')
       .text(canReopen ? 'Reopen' : 'Complete')
       .prop('disabled', !(canCompleteOrCancel || canReopen))
@@ -4287,21 +4369,11 @@
     })
 
     $('#task-view').on('change', function () {
-      const targetView = $(this).val().toString()
-      if (targetView === currentView) {
-        return
-      }
+      switchTaskView($(this).val().toString())
+    })
 
-      allowContextSwitch().then(function (isAllowed) {
-        if (!isAllowed) {
-          $('#task-view').val(currentView)
-          return
-        }
-
-        currentView = targetView
-        syncTaskSortControl()
-        loadTasks({ selectFirst: true }).catch(showFatalError)
-      })
+    $('.task-view-rail').on('click', '.task-view-rail-button', function () {
+      switchTaskView($(this).attr('data-task-view'))
     })
 
     $('#task-search').on('input', renderTaskList)

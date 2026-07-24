@@ -33,6 +33,67 @@ No blocking follow-up. Lookup-defined badge colors intentionally differ from amb
 
 final result: passed
 
+---
+
+# Design QA — Triage Command refinement
+
+## Evidence
+
+- Selected reference:
+  `docs/images/design-options/okf-todo-workspace-option-2-triage-command.png`
+- User-reported mismatch:
+  `artifacts/design-audit-v2/00-user-reported-rail.png`
+- Final large implementation:
+  `artifacts/design-qa-v2-final/triage-command-large.png`
+- Final compact implementation:
+  `artifacts/design-qa-v2-final/triage-command-compact.png`
+- Final small-window implementation:
+  `artifacts/design-qa-v2-final/triage-command-small.png`
+- Final explicit Stacked implementation:
+  `artifacts/design-qa-v2-final/triage-command-stacked.png`
+- Same-input comparison:
+  `artifacts/design-qa-v2-final/triage-command-comparison.png`
+- Reference and large implementation viewport: 1487 × 1058.
+
+## Source-to-build review
+
+- The implementation now preserves the reference's three clearly separated
+  zones: persistent task-view navigation, focused triage list, and spacious
+  task-detail work surface.
+- Queue navigation now uses stable semantic colors for Active, Urgent, Waiting,
+  Overdue, Completed, and All. Labels, distinct icons, tooltips, and current
+  state remain available so color is supplementary.
+- Full-row waiting tint was removed. Waiting uses an amber rail and pill while
+  teal remains the selected-row signal.
+- The title, metadata, editor, checklist, and attachments retain the real
+  application's controls rather than copying simplified mock controls.
+- The final same-input comparison was visually inspected after the responsive
+  contract passed.
+
+## Responsive review
+
+- Large desktop keeps the labelled rail and all three work zones.
+- Compact desktop keeps a color-coded icon rail with accessible labels.
+- Automatic small-window mode removes the rail and stacks list over details.
+- Explicit Stacked mode now caps the list according to screen height, reserves
+  detail space, and shows the body editor without an initial resize or scroll.
+- No tested state introduces horizontal page overflow.
+
+## Findings
+
+- P0: none.
+- P1: none remaining.
+- P2: none remaining.
+
+## Verification
+
+- `node --check Okf-Todo/wwwroot/js/app.js`
+- Focused Playwright contract:
+  `TriageCommandWorkspace_AdaptsAcrossLargeCompactAndSmallWindows`
+- Source and final large build inspected together in one comparison image.
+
+final result: passed
+
 # Design QA — Preferences option 1
 
 ## Evidence
@@ -145,3 +206,67 @@ final result: passed
 - Capture the running Photino window at approximately 1560 × 876 and compare the browse header at its normal and narrow sidebar widths.
 
 final result: blocked
+
+---
+
+# Design QA — main workspace option 2
+
+## Evidence
+
+- Selected reference: `docs/images/design-options/okf-todo-workspace-option-2-triage-command.png`
+- Large implementation: `artifacts/design-qa/triage-command-large.png`
+- Compact implementation: `artifacts/design-qa/triage-command-compact.png`
+- Small-window implementation: `artifacts/design-qa/triage-command-small.png`
+- Same-input comparison: `artifacts/design-qa/triage-command-comparison.png`
+- Reference and large implementation viewport: 1487 × 1058.
+
+## Visual review
+
+- P0: none.
+- P1: none.
+- P2: none remaining.
+- The implementation preserves the selected three-zone hierarchy: task-view rail,
+  triage list, and document-like detail workspace.
+- The unified application bar keeps product identity, save state, setup, creation,
+  lifecycle, and save actions stable.
+- The reference's simplified example controls were adapted to the existing
+  product contract: Tags, Type, Priority, grouped sort options, sort direction,
+  result counts, waiting indicators, and lookup-defined badge colours remain
+  available.
+- The task list uses flat rows, separators, restrained state rails, and a quiet
+  selected surface instead of independent cards.
+- The detail area uses a stronger title hierarchy, more whitespace, reduced
+  borders, and a contained editor surface.
+- The Light and Dark styles both define the new top bar, navigation rail, list,
+  selection, fields, and editor surfaces.
+
+## Responsive review
+
+- At 1487 px, the full labelled rail, resizable task list, and detail workspace
+  remain visible.
+- At 1100 px, the rail collapses to icons with accessible names and tooltips.
+- At 820 px, the rail is removed, the task-view select is restored, and the list
+  stacks above the detail editor.
+- The initial split calculation now ignores incomplete first-frame dimensions,
+  so the small-window task list retains enough height to show actual task rows.
+- Browser contracts verify that all three modes avoid horizontal page overflow.
+
+## Functional review
+
+- Task-view rail buttons use the same unsaved-change guard, loading path, current
+  view state, sort state, and list rendering as the existing select.
+- The resizer measures from the task-list edge after the navigation rail was
+  introduced.
+- Existing new-task, editor-focus, checklist, attachment, comment, relationship,
+  ownership visibility, search, and preference behavior remains covered by the
+  UI test suite.
+
+## Verification
+
+- `node --check Okf-Todo/wwwroot/js/app.js`
+- `dotnet test Okf-Todo.UiTests/Okf-Todo.UiTests.csproj -c Release --no-restore`
+- `dotnet build Okf-Todo.slnx -c Release --no-restore`
+- Visual comparison of the selected reference and implementation in the same
+  image.
+
+final result: passed
