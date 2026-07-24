@@ -3395,3 +3395,143 @@ body.is-resizing-editor * {
     grid-column: auto;
   }
 }
+
+/* Lifecycle destination reveal: retain and spotlight the task that just moved views. */
+.task-row-transition-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--transition-color, #26734d);
+  font-size: 0.65rem;
+  font-weight: 750;
+  letter-spacing: 0.015em;
+  line-height: 1;
+}
+
+.task-row-transition-label .fluent-icon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--transition-color, #26734d);
+  background: color-mix(in srgb, var(--transition-color, #26734d) 12%, #ffffff);
+  font-size: 0.68rem;
+}
+
+.task-row.is-transition-completed {
+  --transition-color: #26734d;
+  --transition-soft: #e8f4ed;
+}
+
+.task-row.is-transition-cancelled {
+  --transition-color: #a52a4b;
+  --transition-soft: #fbeaf0;
+}
+
+.task-row.is-transition-active {
+  --transition-color: #0f766e;
+  --transition-soft: #e6f4f2;
+}
+
+.task-row.is-transition-reveal,
+.task-row.is-transition-reveal:hover,
+.task-row.is-transition-reveal:hover:not(:disabled),
+.task-row.is-transition-reveal.is-selected,
+.task-row.is-transition-reveal.is-selected:hover,
+.task-row.is-transition-reveal.is-selected:hover:not(:disabled) {
+  margin-block: 6px;
+  border: 1px solid var(--transition-color);
+  border-radius: 10px;
+  background: var(--transition-soft);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--transition-color) 10%, transparent),
+    0 10px 22px color-mix(in srgb, var(--transition-color) 14%, transparent);
+  animation: task-transition-arrival 620ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.task-row.is-transition-reveal::before,
+.task-row.is-transition-reveal.is-selected::before {
+  background: var(--transition-color);
+}
+
+.task-view-rail-button.is-transition-destination {
+  animation: task-view-destination-arrival 720ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.editor-header .eyebrow.is-transition-context {
+  color: #175f3f;
+  background: #dff2e7;
+  box-shadow: 0 0 0 3px rgb(38 115 77 / 8%);
+  animation: task-transition-context-arrival 520ms ease-out;
+}
+
+.editor-header .eyebrow.is-transition-context.is-transition-cancelled {
+  color: #8d2442;
+  background: #f8e6ec;
+  box-shadow: 0 0 0 3px rgb(165 42 75 / 8%);
+}
+
+.editor-header .eyebrow.is-transition-context.is-transition-active {
+  color: #0d665f;
+  background: #e3f2ef;
+  box-shadow: 0 0 0 3px rgb(15 118 110 / 8%);
+}
+
+@keyframes task-transition-arrival {
+  from {
+    opacity: 0.72;
+    transform: translateY(-5px);
+    box-shadow:
+      0 0 0 7px color-mix(in srgb, var(--transition-color) 18%, transparent),
+      0 14px 28px color-mix(in srgb, var(--transition-color) 20%, transparent);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes task-view-destination-arrival {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  42% {
+    transform: translateX(3px);
+    box-shadow:
+      0 0 0 5px color-mix(in srgb, var(--view-color) 14%, transparent),
+      0 10px 22px color-mix(in srgb, var(--view-color) 28%, transparent);
+  }
+}
+
+@keyframes task-transition-context-arrival {
+  from {
+    opacity: 0.55;
+    transform: translateX(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 900px) {
+  .task-row.is-transition-reveal,
+  .task-row.is-transition-reveal:hover,
+  .task-row.is-transition-reveal:hover:not(:disabled) {
+    margin-block: 3px;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--transition-color) 11%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-row.is-transition-reveal,
+  .task-view-rail-button.is-transition-destination,
+  .editor-header .eyebrow.is-transition-context {
+    animation: none;
+  }
+}

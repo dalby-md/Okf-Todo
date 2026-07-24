@@ -873,3 +873,44 @@ textarea.is-invalid {
   color: #f3ca7a;
   background: #3b301d;
 }
+
+.task-row.is-transition-reveal,
+.task-row.is-transition-reveal:hover,
+.task-row.is-transition-reveal:hover:not(:disabled),
+.task-row.is-transition-reveal.is-selected,
+.task-row.is-transition-reveal.is-selected:hover,
+.task-row.is-transition-reveal.is-selected:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--transition-color) 78%, #ffffff);
+  color: var(--theme-text);
+  background: color-mix(in srgb, var(--transition-color) 24%, #131516);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--transition-color) 22%, transparent),
+    0 10px 24px rgb(0 0 0 / 34%);
+}
+
+.task-row-transition-label {
+  color: color-mix(in srgb, var(--transition-color) 58%, #ffffff);
+}
+
+.task-row-transition-label .fluent-icon {
+  color: color-mix(in srgb, var(--transition-color) 60%, #ffffff);
+  background: color-mix(in srgb, var(--transition-color) 28%, #151719);
+}
+
+.editor-header .eyebrow.is-transition-context {
+  color: #9be0c1;
+  background: #17382b;
+  box-shadow: 0 0 0 3px rgb(82 190 139 / 10%);
+}
+
+.editor-header .eyebrow.is-transition-context.is-transition-cancelled {
+  color: #f1a1b9;
+  background: #3b1d28;
+  box-shadow: 0 0 0 3px rgb(213 96 130 / 10%);
+}
+
+.editor-header .eyebrow.is-transition-context.is-transition-active {
+  color: #91ddd3;
+  background: #173835;
+  box-shadow: 0 0 0 3px rgb(92 199 186 / 10%);
+}

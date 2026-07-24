@@ -35,6 +35,92 @@ final result: passed
 
 ---
 
+# Design QA — lifecycle destination reveal, option 3
+
+## Evidence
+
+- Source visual truth:
+  `C:\Users\soere\.codex\generated_images\019f64d1-7fc6-7900-afb4-ee49130ff5eb\call_jvwEauJzqVzmN5fM9v8gx96f.png`
+- Browser-rendered implementation:
+  `artifacts/design-qa-lifecycle/lifecycle-destination-completed.png`
+- Same-input comparison:
+  `artifacts/design-qa-lifecycle/lifecycle-option3-comparison.png`
+- Viewport: 1487 × 1058.
+- State: a newly created task has just been completed; Completed is the active
+  destination view and the changed task remains selected, revealed, focused,
+  and open in task details.
+
+## Full-view comparison evidence
+
+The source and browser capture were placed together in the same comparison
+image. Both show the same three-way confirmation: the Completed view is active,
+the exact moved task is emphasized in the queue, and task details remain on
+that task with a `COMPLETED · VIEWING IN COMPLETED` context badge and Reopen
+action. The implementation preserves the product's real filters, sort controls,
+editor, and lifecycle actions.
+
+## Focused region comparison evidence
+
+A separate crop was not required. At the native viewport, the view rail,
+selected task treatment, “Just moved” label and Fluent status icon, task title,
+header context, lifecycle action, and focus outline are all legible in the
+combined image.
+
+## Required fidelity surfaces
+
+- Fonts and typography: the existing system typography, compact queue hierarchy,
+  uppercase context badge, and task-title weight match the selected direction.
+- Spacing and layout rhythm: the established rail, queue, resizer, and detail
+  proportions remain intact. The temporary selected card adds emphasis without
+  changing surrounding controls.
+- Colors and visual tokens: Completed uses the existing semantic green; Cancelled
+  uses the existing rose family; reopened Active uses teal. Selection remains
+  understandable without relying on color because it also has a label, icon,
+  border, and retained focus.
+- Image quality and asset fidelity: no raster assets were required. The status
+  glyph comes from the application's existing Fluent icon font.
+- Copy and content: `Just moved` and
+  `<STATUS> · VIEWING IN <VIEW>` make the navigation consequence explicit
+  without adding a modal or persistent notification.
+
+## Functional and accessibility review
+
+- Complete switches to Completed; cancel switches to All; reopen switches to
+  Active.
+- The lifecycle response task ID is retained through the destination reload.
+  The code never selects the first task as a fallback for this transition.
+- The exact row is selected, scrolled fully into the queue viewport, and receives
+  keyboard focus. The context badge is an ARIA live status.
+- A status-based search that would hide the moved task is cleared first; other
+  filters are cleared only as a defensive fallback.
+- The temporary rail glow, row card, and context badge fade after 4.2 seconds,
+  leaving the normal selected row. Reduced-motion users receive the same state
+  without animation.
+- The compact/stacked breakpoint reduces the reveal shadow and retains the
+  existing no-horizontal-overflow layout.
+
+## Comparison history
+
+1. First browser capture: P2, the global save-status repeated the destination
+   message already present in the detail context badge. It was returned to
+   `Loaded`, and the context badge became the live announcement.
+2. First browser capture: P3, the “Just moved” icon was visually weak. It was
+   refined into a small semantic status disc using the existing Fluent icon.
+3. Final browser capture: no actionable P0, P1, or P2 differences remain.
+
+## Verification
+
+- `node --check Okf-Todo/wwwroot/js/app.js`
+- Focused Edge/Playwright contract:
+  `LifecycleActions_SwitchViewAndKeepChangedTaskSelectedRevealedAndFocused`
+- The contract exercises complete, reopen, and cancel and verifies destination
+  view, retained task, one selected row, reveal class, full row visibility,
+  keyboard focus, task details, and lifecycle button state.
+
+final result: passed
+
+---
+
 # Design QA — Triage Command refinement
 
 ## Evidence

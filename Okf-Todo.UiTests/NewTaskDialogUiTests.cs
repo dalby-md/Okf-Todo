@@ -261,6 +261,76 @@ public sealed class NewTaskDialogUiTests
     }
 
     [Fact]
+    public async Task LifecycleActions_SwitchViewAndKeepChangedTaskSelectedRevealedAndFocused()
+    {
+        await using var fixture = await UiAppFixture.CreateAsync(seedSampleTasks: true);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+        {
+            Channel = "msedge",
+            Headless = true
+        });
+        await using var context = await browser.NewContextAsync(new BrowserNewContextOptions
+        {
+            ViewportSize = new ViewportSize { Width = 1487, Height = 1058 }
+        });
+        await context.AddInitScriptAsync(BridgeAdapterScript);
+
+        var page = await context.NewPageAsync();
+        await page.GotoAsync(
+            $"{fixture.BaseUrl}/index.html?v=lifecycle-destination-contract",
+            new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
+        await page.WaitForFunctionAsync("() => document.querySelectorAll('#task-type option').length > 0");
+
+        const string taskTitle = "Lifecycle destination browser contract";
+        await page.Locator("#new-task-button").ClickAsync();
+        await page.Locator("#new-task-title-input").FillAsync(taskTitle);
+        await page.Locator("#new-task-save-button").ClickAsync();
+        await page.Locator("#new-task-overlay").WaitForAsync(new LocatorWaitForOptions
+        {
+            State = WaitForSelectorState.Hidden
+        });
+
+        var workspaceScrollPosition = await ReadWorkspaceScrollPositionAsync(page);
+        await page.Locator("#complete-button").ClickAsync();
+        await AssertLifecycleDestinationAsync(
+            page,
+            taskTitle,
+            "completed",
+            "COMPLETED · VIEWING IN COMPLETED",
+            "is-transition-completed",
+            "Reopen",
+            workspaceScrollPosition);
+        await CaptureWorkspaceAsync(page, "lifecycle-destination-completed.png");
+
+        workspaceScrollPosition = await ReadWorkspaceScrollPositionAsync(page);
+        await page.Locator("#complete-button").ClickAsync();
+        await AssertLifecycleDestinationAsync(
+            page,
+            taskTitle,
+            "active",
+            "ACTIVE · VIEWING IN ACTIVE",
+            "is-transition-active",
+            "Complete",
+            workspaceScrollPosition);
+
+        workspaceScrollPosition = await ReadWorkspaceScrollPositionAsync(page);
+        await page.Locator("#cancel-button").ClickAsync();
+        await AssertLifecycleDestinationAsync(
+            page,
+            taskTitle,
+            "all",
+            "CANCELLED · VIEWING IN ALL",
+            "is-transition-cancelled",
+            "Reopen",
+            workspaceScrollPosition);
+
+        Assert.Contains("task.complete", fixture.BridgeMessageTypes);
+        Assert.Contains("task.reopen", fixture.BridgeMessageTypes);
+        Assert.Contains("task.cancel", fixture.BridgeMessageTypes);
+    }
+
+    [Fact]
     public async Task TriageCommandWorkspace_AdaptsAcrossLargeCompactAndSmallWindows()
     {
         await using var fixture = await UiAppFixture.CreateAsync(seedSampleTasks: true);
@@ -394,6 +464,114 @@ public sealed class NewTaskDialogUiTests
     {
         Assert.True(await page.EvaluateAsync<bool>(
             "() => document.documentElement.scrollWidth <= document.documentElement.clientWidth"));
+    }
+
+    private static async Task AssertLifecycleDestinationAsync(
+        IPage page,
+        string taskTitle,
+        string view,
+        string headerLabel,
+        string transitionClass,
+        string lifecycleButtonText,
+        double[] expectedWorkspaceScrollPosition)
+    {
+        try
+        {
+            await page.WaitForFunctionAsync(
+                """
+            ({ title, view, headerLabel, transitionClass }) => {
+              const row = [...document.querySelectorAll('#task-list .task-row')]
+                .find(candidate => candidate.querySelector('.task-row-title')?.textContent === title)
+              const list = document.querySelector('#task-list')
+              const activeView = document.querySelector(`.task-view-rail-button[data-task-view="${view}"]`)
+              if (!row || !list || !activeView) return false
+
+              const rowBox = row.getBoundingClientRect()
+              const listBox = list.getBoundingClientRect()
+              return document.querySelector('#task-list-title')?.textContent === activeView.title
+                && activeView.classList.contains('is-active')
+                && activeView.classList.contains('is-transition-destination')
+                && row.classList.contains('is-selected')
+                && row.classList.contains('is-transition-reveal')
+                && row.classList.contains(transitionClass)
+                && row.querySelector('.task-row-transition-label')?.textContent.includes('Just moved')
+                && document.querySelector('#task-title')?.value === title
+                && document.querySelector('#task-status-label')?.textContent === headerLabel
+                && document.activeElement === row
+                && rowBox.top >= listBox.top - 1
+                && rowBox.bottom <= listBox.bottom + 1
+            }
+            """,
+                new { title = taskTitle, view, headerLabel, transitionClass });
+        }
+        catch (TimeoutException exception)
+        {
+            var state = await page.EvaluateAsync<string>(
+                """
+                ({ title, view, headerLabel, transitionClass }) => {
+                  const row = [...document.querySelectorAll('#task-list .task-row')]
+                    .find(candidate => candidate.querySelector('.task-row-title')?.textContent === title)
+                  const list = document.querySelector('#task-list')
+                  const activeView = document.querySelector(`.task-view-rail-button[data-task-view="${view}"]`)
+                  const rowBox = row?.getBoundingClientRect()
+                  const listBox = list?.getBoundingClientRect()
+                  return JSON.stringify({
+                    listTitle: document.querySelector('#task-list-title')?.textContent,
+                    expectedListTitle: activeView?.title,
+                    activeView: activeView?.className,
+                    rowClass: row?.className,
+                    rowTransitionLabel: row?.querySelector('.task-row-transition-label')?.textContent,
+                    selectedTitle: document.querySelector('#task-title')?.value,
+                    statusLabel: document.querySelector('#task-status-label')?.textContent,
+                    expectedHeaderLabel: headerLabel,
+                    activeElementClass: document.activeElement?.className,
+                    rowTop: rowBox?.top,
+                    rowBottom: rowBox?.bottom,
+                    listTop: listBox?.top,
+                    listBottom: listBox?.bottom,
+                    transitionClass
+                  })
+                }
+                """,
+                new { title = taskTitle, view, headerLabel, transitionClass });
+            throw new InvalidOperationException($"Lifecycle destination state did not stabilize: {state}", exception);
+        }
+
+        Assert.Equal(
+            lifecycleButtonText,
+            await page.Locator("#complete-button").TextContentAsync());
+        Assert.False(await page.Locator("#complete-button").IsDisabledAsync());
+        Assert.Equal(1, await page.Locator("#task-list .task-row.is-selected").CountAsync());
+        var actualWorkspaceScrollPosition = await ReadWorkspaceScrollPositionAsync(page);
+        Assert.Equal(expectedWorkspaceScrollPosition.Length, actualWorkspaceScrollPosition.Length);
+        for (var index = 0; index < expectedWorkspaceScrollPosition.Length; index++)
+        {
+            Assert.InRange(
+                Math.Abs(actualWorkspaceScrollPosition[index] - expectedWorkspaceScrollPosition[index]),
+                0,
+                1);
+        }
+        await AssertNoHorizontalPageOverflowAsync(page);
+    }
+
+    private static Task<double[]> ReadWorkspaceScrollPositionAsync(IPage page)
+    {
+        return page.EvaluateAsync<double[]>(
+            """
+            () => {
+              const documentScroller = document.scrollingElement
+              const editorPanel = document.querySelector('.task-editor-panel')
+              const workspaceShell = document.querySelector('.workspace-shell')
+              return [
+                documentScroller?.scrollLeft ?? window.scrollX,
+                documentScroller?.scrollTop ?? window.scrollY,
+                editorPanel?.scrollLeft ?? 0,
+                editorPanel?.scrollTop ?? 0,
+                workspaceShell?.scrollLeft ?? 0,
+                workspaceShell?.scrollTop ?? 0
+              ]
+            }
+            """);
     }
 
     private static async Task CaptureWorkspaceAsync(IPage page, string fileName)

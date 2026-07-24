@@ -74,6 +74,7 @@
   }
   const supportedEditorImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
   const maxEditorImageBytes = 5 * 1024 * 1024
+  const taskTransitionRevealDurationMs = 4200
   const wideLayoutMediaQuery = window.matchMedia('(min-width: 901px)')
   const defaultEditorHeight = 360
   const minimumEditorHeight = 200
@@ -143,6 +144,8 @@
   let markdownEditTypeSwitchWasClean = false
   let activeHelpTopic = 'okf-layer'
   let activePreferenceSection = 'appearance'
+  let taskTransitionReveal = null
+  let taskTransitionRevealTimer = null
   const helpDocumentCache = new Map()
 
   function createMessageId() {
@@ -369,6 +372,77 @@
 
   function selectViewForTask(task) {
     currentView = getViewForTask(task)
+  }
+
+  function getLifecycleTransitionPresentation(task) {
+    const view = getViewForTask(task)
+    const viewLabel = viewLabels[view]
+    const statusLabel = task && task.taskStatusName
+      ? task.taskStatusName.toString().trim()
+      : viewLabel
+    const kind = task && task.taskStatusCode === 'CANCELLED'
+      ? 'cancelled'
+      : task && task.taskStatusCode === 'COMPLETED'
+        ? 'completed'
+        : 'active'
+    const icon = kind === 'cancelled'
+      ? '&#xE711;'
+      : kind === 'completed'
+        ? '&#xE73E;'
+        : '&#xE72C;'
+
+    return {
+      taskId: Number(task.id),
+      view,
+      kind,
+      icon,
+      rowLabel: 'Just moved',
+      headerLabel: `${statusLabel.toUpperCase()} · VIEWING IN ${viewLabel.toUpperCase()}`
+    }
+  }
+
+  function getTaskTransitionReveal(task) {
+    if (!taskTransitionReveal || !task || Number(task.id) !== taskTransitionReveal.taskId) {
+      return null
+    }
+
+    return taskTransitionReveal
+  }
+
+  function clearTaskTransitionReveal(shouldRender) {
+    if (taskTransitionRevealTimer !== null) {
+      window.clearTimeout(taskTransitionRevealTimer)
+      taskTransitionRevealTimer = null
+    }
+
+    if (!taskTransitionReveal) {
+      return
+    }
+
+    taskTransitionReveal = null
+
+    if (shouldRender !== false) {
+      if (currentTask) {
+        renderTaskHeaderAndActions(currentTask)
+      }
+      renderTaskList()
+    }
+  }
+
+  function beginTaskTransitionReveal(task) {
+    clearTaskTransitionReveal(false)
+    taskTransitionReveal = getLifecycleTransitionPresentation(task)
+    const revealTaskId = taskTransitionReveal.taskId
+
+    taskTransitionRevealTimer = window.setTimeout(function () {
+      if (!taskTransitionReveal || taskTransitionReveal.taskId !== revealTaskId) {
+        return
+      }
+
+      clearTaskTransitionReveal(true)
+    }, taskTransitionRevealDurationMs)
+
+    return taskTransitionReveal
   }
 
   function readBlobAsDataUrl(blob) {
@@ -938,7 +1012,7 @@
 
           <section class="task-editor-panel" aria-labelledby="task-editor-title">
             <header class="editor-header">
-              <p id="task-status-label" class="eyebrow">No task selected</p>
+              <p id="task-status-label" class="eyebrow" role="status" aria-live="polite">No task selected</p>
               <h2 id="task-editor-title">Select or create a task</h2>
             </header>
 
@@ -3029,12 +3103,15 @@
     $('#task-view').val(currentView)
     $('#task-list-title').text(viewLabels[currentView])
     $('#task-list-header-count').text(visibleTasks.length)
-    $('.task-view-rail-button')
-      .removeClass('is-active')
+    const $activeViewButton = $('.task-view-rail-button')
+      .removeClass('is-active is-transition-destination')
       .attr('aria-current', null)
       .filter(`[data-task-view="${currentView}"]`)
       .addClass('is-active')
       .attr('aria-current', 'page')
+    if (taskTransitionReveal && taskTransitionReveal.view === currentView) {
+      $activeViewButton.addClass('is-transition-destination')
+    }
 
     if (visibleTasks.length === 0) {
       const title = hasFilters ? 'No matching tasks' : `No ${viewLabels[currentView].toLowerCase()} tasks`
@@ -3053,6 +3130,18 @@
       const selectedClass = currentTask && currentTask.id === task.id ? ' is-selected' : ''
       const waitingClass = task.activeWaitingForLabel ? ' is-waiting' : ''
       const cancelledClass = task.taskStatusCode === 'CANCELLED' ? ' is-cancelled' : ''
+      const transitionReveal = getTaskTransitionReveal(task)
+      const transitionClass = transitionReveal
+        ? ` is-transition-reveal is-transition-${transitionReveal.kind}`
+        : ''
+      const transitionLabel = transitionReveal
+        ? `
+          <span class="task-row-transition-label">
+            <span class="fluent-icon" aria-hidden="true">${transitionReveal.icon}</span>
+            <span>${encodeText(transitionReveal.rowLabel)}</span>
+          </span>
+        `
+        : ''
       const priority = task.taskPriorityName
         ? renderBadge(task.taskPriorityName, task.taskPriorityBackgroundColor, task.taskPriorityForegroundColor)
         : ''
@@ -3067,7 +3156,8 @@
         : ''
 
       return `
-        <button class="task-row${selectedClass}${waitingClass}${cancelledClass}" type="button" data-task-id="${task.id}">
+        <button class="task-row${selectedClass}${waitingClass}${cancelledClass}${transitionClass}" type="button" data-task-id="${task.id}"${selectedClass ? ' aria-current="true"' : ''}>
+          ${transitionLabel}
           <span class="task-row-title">${encodeText(task.title)}</span>
           <span class="task-row-meta">
             ${renderBadge(task.taskTypeName, task.taskTypeBackgroundColor, task.taskTypeForegroundColor)}
@@ -3086,6 +3176,97 @@
     window.setTimeout(function () {
       $(`#task-list .task-row[data-task-id="${taskId}"]`).trigger('focus')
     }, 0)
+  }
+
+  function revealTaskRow(taskId) {
+    const taskList = document.querySelector('#task-list')
+    const taskRow = document.querySelector(`#task-list .task-row[data-task-id="${taskId}"]`)
+    if (!taskList || !taskRow) {
+      return false
+    }
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    window.requestAnimationFrame(function () {
+      const documentScroller = document.scrollingElement
+      const editorPanel = document.querySelector('.task-editor-panel')
+      const workspaceShell = document.querySelector('.workspace-shell')
+      const scrollState = {
+        documentLeft: documentScroller ? documentScroller.scrollLeft : window.scrollX,
+        documentTop: documentScroller ? documentScroller.scrollTop : window.scrollY,
+        editorLeft: editorPanel ? editorPanel.scrollLeft : 0,
+        editorTop: editorPanel ? editorPanel.scrollTop : 0,
+        workspaceLeft: workspaceShell ? workspaceShell.scrollLeft : 0,
+        workspaceTop: workspaceShell ? workspaceShell.scrollTop : 0,
+        taskListLeft: taskList.scrollLeft,
+        taskListTop: taskList.scrollTop
+      }
+
+      try {
+        taskRow.focus({ preventScroll: true })
+      } catch {
+        taskRow.focus()
+      }
+
+      if (documentScroller) {
+        documentScroller.scrollLeft = scrollState.documentLeft
+        documentScroller.scrollTop = scrollState.documentTop
+      } else {
+        window.scrollTo(scrollState.documentLeft, scrollState.documentTop)
+      }
+      if (editorPanel) {
+        editorPanel.scrollLeft = scrollState.editorLeft
+        editorPanel.scrollTop = scrollState.editorTop
+      }
+      if (workspaceShell) {
+        workspaceShell.scrollLeft = scrollState.workspaceLeft
+        workspaceShell.scrollTop = scrollState.workspaceTop
+      }
+      taskList.scrollLeft = scrollState.taskListLeft
+      taskList.scrollTop = scrollState.taskListTop
+
+      const listBox = taskList.getBoundingClientRect()
+      const rowBox = taskRow.getBoundingClientRect()
+      const centeredTop = taskList.scrollTop
+        + (rowBox.top - listBox.top)
+        - ((taskList.clientHeight - rowBox.height) / 2)
+      const maximumTop = Math.max(0, taskList.scrollHeight - taskList.clientHeight)
+      const targetTop = Math.max(0, Math.min(maximumTop, centeredTop))
+
+      taskList.scrollTo({
+        top: targetTop,
+        left: scrollState.taskListLeft,
+        behavior: reduceMotion ? 'auto' : 'smooth'
+      })
+    })
+
+    return true
+  }
+
+  function ensureTaskVisibleForTransition(taskId) {
+    const isVisible = function () {
+      return getVisibleTasks().some(function (task) {
+        return task.id === taskId
+      })
+    }
+
+    if (isVisible()) {
+      return true
+    }
+
+    if (getTaskSearchQuery()) {
+      $('#task-search').val('')
+      renderTaskList()
+    }
+
+    if (isVisible()) {
+      return true
+    }
+
+    $('#task-tag-filter').val([]).trigger('change.select2')
+    $('#task-type-filter, #task-priority-filter').val('')
+    setTaskFilterPopoverOpen(false, false)
+    renderTaskList()
+    return isVisible()
   }
 
   function focusTaskList() {
@@ -3190,6 +3371,7 @@
         return
       }
 
+      clearTaskTransitionReveal(false)
       currentView = targetView
       syncTaskSortControl()
       loadTasks({ selectFirst: true }).catch(showFatalError)
@@ -3530,15 +3712,22 @@
     const canReopen = isSavedTask && isFinal
     const canCompleteOrCancel = isSavedTask && !isFinal
     const waitingLabel = task.activeWaitingFor ? describeWaiting(task.activeWaitingFor) : ''
-    const contextLabel = waitingLabel
-      ? `Waiting · ${waitingLabel}`
-      : task.taskStatusName || 'Draft'
+    const transitionReveal = getTaskTransitionReveal(task)
+    const contextLabel = transitionReveal
+      ? transitionReveal.headerLabel
+      : waitingLabel
+        ? `Waiting · ${waitingLabel}`
+        : task.taskStatusName || 'Draft'
 
     $('#task-editor-title').text(task.id ? 'Task details' : 'New task')
     $('#task-status-label')
       .text(contextLabel)
       .attr('title', contextLabel)
-      .toggleClass('is-waiting-context', waitingLabel.length > 0)
+      .toggleClass('is-waiting-context', !transitionReveal && waitingLabel.length > 0)
+      .toggleClass('is-transition-context', !!transitionReveal)
+      .toggleClass('is-transition-completed', !!transitionReveal && transitionReveal.kind === 'completed')
+      .toggleClass('is-transition-cancelled', !!transitionReveal && transitionReveal.kind === 'cancelled')
+      .toggleClass('is-transition-active', !!transitionReveal && transitionReveal.kind === 'active')
     $('#complete-button')
       .text(canReopen ? 'Reopen' : 'Complete')
       .prop('disabled', !(canCompleteOrCancel || canReopen))
@@ -3563,7 +3752,7 @@
     return taskId
   }
 
-  function refreshCurrentTaskWithoutEditor(task) {
+  function refreshCurrentTaskWithoutEditor(task, options) {
     const releaseDirtyTracking = suppressDirtyTracking()
 
     try {
@@ -3582,7 +3771,9 @@
       $('#task-form input, #task-form select').prop('disabled', false)
       $('#editor-mode').prop('disabled', false)
       renderTaskHeaderAndActions(task)
-      renderTaskList()
+      if (!(options && options.skipTaskListRender)) {
+        renderTaskList()
+      }
       setCleanTaskSnapshot()
     } finally {
       releaseDirtyTracking()
@@ -3731,6 +3922,7 @@
   async function loadTasks(options) {
     const keepSelection = options && options.keepSelection
     const selectFirst = options && options.selectFirst
+    const revealTaskId = options && Number(options.revealTaskId)
     tasks = await sendBridgeMessage('task.list', {
       view: currentView
     })
@@ -3741,7 +3933,15 @@
         return task.id === currentTask.id
       })
       if (stillVisible) {
+        if (Number.isSafeInteger(revealTaskId) && revealTaskId === currentTask.id) {
+          ensureTaskVisibleForTransition(revealTaskId)
+          revealTaskRow(revealTaskId)
+        }
         return currentTask
+      }
+
+      if (Number.isSafeInteger(revealTaskId) && revealTaskId === currentTask.id) {
+        throw new Error(`Updated task was not returned by the ${viewLabels[currentView]} view.`)
       }
     }
 
@@ -3769,6 +3969,10 @@
   }
 
   async function selectTask(id) {
+    if (taskTransitionReveal && taskTransitionReveal.taskId !== Number(id)) {
+      clearTaskTransitionReveal(false)
+    }
+
     const task = await sendBridgeMessage('task.get', {
       id
     })
@@ -3836,11 +4040,15 @@
     const task = await sendBridgeMessage(type, {
       id: currentTask.id
     })
-    refreshCurrentTaskWithoutEditor(task)
-    await loadTimeline(task.id)
     selectViewForTask(task)
-    await loadTasks({ keepSelection: true })
-    setStatus('Updated', 'saved')
+    beginTaskTransitionReveal(task)
+    refreshCurrentTaskWithoutEditor(task, { skipTaskListRender: true })
+    await loadTimeline(task.id)
+    await loadTasks({
+      keepSelection: true,
+      revealTaskId: task.id
+    })
+    setStatus('Loaded', 'ready')
   }
 
   async function confirmCompleteWaitClear() {
